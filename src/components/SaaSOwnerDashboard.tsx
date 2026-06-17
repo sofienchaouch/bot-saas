@@ -316,6 +316,9 @@ export const SaaSOwnerDashboard: React.FC<SaaSOwnerDashboardProps> = ({
                   <option value="Fitness">Fitness</option>
                   <option value="Healthcare">Healthcare</option>
                   <option value="Legal">Legal</option>
+                  <option value="ECommerce">ECommerce</option>
+                  <option value="Real Estate">Real Estate</option>
+                  <option value="Education">Education</option>
                   <option value="Custom Shop">Custom Shop</option>
                 </select>
               </div>

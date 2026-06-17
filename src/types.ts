@@ -1,3 +1,8 @@
+export interface KBChunk {
+  text: string;
+  embedding?: number[];
+}
+
 export interface KnowledgeBaseItem {
   id: string;
   type: 'faq' | 'document' | 'file' | 'url' | 'crawl';
@@ -11,6 +16,7 @@ export interface KnowledgeBaseItem {
   crawlStatus?: 'pending' | 'crawling' | 'synced' | 'failed';
   crawlPagesCount?: number;
   socialNetwork?: 'instagram' | 'facebook' | 'linkedin' | 'twitter' | 'web';
+  chunks?: KBChunk[];
 }
 
 export interface Lead {
@@ -84,6 +90,8 @@ export interface Tenant {
   agents?: Agent[];
   activeAgentId?: string;
   googleCalendarAutoSchedule?: boolean;
+  twilioVoiceActive?: boolean;
+  twilioVoiceName?: string;
 }
 
 export interface ChatMessage {
@@ -93,7 +101,7 @@ export interface ChatMessage {
   timestamp: string;
   status?: 'sent' | 'delivered' | 'read';
   actionsTriggered?: {
-    type: 'capture_lead' | 'book_appointment' | 'consult_kb';
+    type: 'capture_lead' | 'book_appointment' | 'consult_kb' | 'purchase_item';
     details: string;
   };
 }

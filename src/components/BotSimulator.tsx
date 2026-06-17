@@ -1918,9 +1918,13 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                     >
                       {/* Action Trigger Flag */}
                       {m.actionsTriggered && (
-                        <div className="flex items-center gap-1 text-[10px] text-teal-700 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5 mb-1.5 font-bold uppercase tracking-wider font-mono">
-                          <Sparkles className="h-3 w-3 animate-bounce" />
-                          <span>{m.actionsTriggered.type.replace('_', ' ')}: Active</span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-teal-700 bg-teal-50 border border-teal-100 rounded px-2 py-0.5 mb-1.5 font-bold uppercase tracking-wider font-mono">
+                          {m.actionsTriggered.type === 'purchase_item' ? (
+                            <span className="animate-pulse">🛒</span>
+                          ) : (
+                            <Sparkles className="h-3 w-3 animate-bounce" />
+                          )}
+                          <span>{m.actionsTriggered.type.replace('_', ' ')}: {m.actionsTriggered.details || 'Active'}</span>
                         </div>
                       )}
 

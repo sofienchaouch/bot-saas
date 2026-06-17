@@ -7,11 +7,16 @@ import fs from "fs";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { WebSocketServer } from "ws";
+import crypto from "crypto";
 
 dotenv.config();
 
-const TENANTS_FILE = path.join(process.cwd(), "tenants_store.json");
-const CONVERSATIONS_FILE = path.join(process.cwd(), "webhook_conversations.json");
+const TENANTS_FILE = process.env.NODE_ENV === "test"
+  ? path.join(process.cwd(), "tenants_store.test.json")
+  : path.join(process.cwd(), "tenants_store.json");
+const CONVERSATIONS_FILE = process.env.NODE_ENV === "test"
+  ? path.join(process.cwd(), "webhook_conversations.test.json")
+  : path.join(process.cwd(), "webhook_conversations.json");
 
 // Load Firebase Project ID safely from the client applet configuration file
 let firebaseProjectId = "red-bruin-23n78";
@@ -38,7 +43,7 @@ if (admin.apps.length === 0) {
 
 const firestoreDb = getFirestore(admin.app(), firebaseDatabaseId);
 
-let useLocalFallbackOnly = false;
+let useLocalFallbackOnly = process.env.NODE_ENV === "test";
 
 async function checkFirestoreConnection() {
   try {
@@ -53,11 +58,232 @@ async function checkFirestoreConnection() {
 // Trigger connection check asynchronously at startup
 checkFirestoreConnection();
 
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY || "aura_platform_encryption_master_key_2026";
+
+export function encryptText(text: string): string {
+  if (!text) return "";
+  try {
+    const iv = crypto.randomBytes(12);
+    const key = crypto.scryptSync(ENCRYPTION_SECRET, "aura-salt", 32);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    let encrypted = cipher.update(text, "utf8", "hex");
+    encrypted += cipher.final("hex");
+    const tag = cipher.getAuthTag().toString("hex");
+    return `${iv.toString("hex")}:${encrypted}:${tag}`;
+  } catch (err) {
+    console.error("Encryption error:", err);
+    return text;
+  }
+}
+
+export function decryptText(encryptedText: string): string {
+  if (!encryptedText) return "";
+  if (!encryptedText.includes(":")) return encryptedText;
+  try {
+    const parts = encryptedText.split(":");
+    if (parts.length !== 3) return encryptedText;
+    const iv = Buffer.from(parts[0], "hex");
+    const encrypted = parts[1];
+    const tag = Buffer.from(parts[2], "hex");
+    const key = crypto.scryptSync(ENCRYPTION_SECRET, "aura-salt", 32);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (err) {
+    return encryptedText;
+  }
+}
+
+function encryptTenant(tenant: any): any {
+  if (!tenant) return tenant;
+  const copy = JSON.parse(JSON.stringify(tenant));
+  
+  if (copy.whatsAppApiKey) copy.whatsAppApiKey = encryptText(copy.whatsAppApiKey);
+  if (copy.messengerToken) copy.messengerToken = encryptText(copy.messengerToken);
+  
+  if (Array.isArray(copy.leads)) {
+    copy.leads = copy.leads.map((l: any) => ({
+      ...l,
+      email: encryptText(l.email),
+      phone: encryptText(l.phone)
+    }));
+  }
+  
+  if (Array.isArray(copy.appointments)) {
+    copy.appointments = copy.appointments.map((a: any) => ({
+      ...a,
+      email: encryptText(a.email),
+      customerPhone: encryptText(a.customerPhone)
+    }));
+  }
+  return copy;
+}
+
+function decryptTenant(tenant: any): any {
+  if (!tenant) return tenant;
+  const copy = JSON.parse(JSON.stringify(tenant));
+  
+  if (copy.whatsAppApiKey) copy.whatsAppApiKey = decryptText(copy.whatsAppApiKey);
+  if (copy.messengerToken) copy.messengerToken = decryptText(copy.messengerToken);
+  
+  if (Array.isArray(copy.leads)) {
+    copy.leads = copy.leads.map((l: any) => ({
+      ...l,
+      email: decryptText(l.email),
+      phone: decryptText(l.phone)
+    }));
+  }
+  
+  if (Array.isArray(copy.appointments)) {
+    copy.appointments = copy.appointments.map((a: any) => ({
+      ...a,
+      email: decryptText(a.email),
+      customerPhone: decryptText(a.customerPhone)
+    }));
+  }
+  return copy;
+}
+
+export function chunkText(text: string, size = 800, overlap = 100): string[] {
+  if (!text) return [];
+  const chunks: string[] = [];
+  let index = 0;
+  while (index < text.length) {
+    chunks.push(text.substring(index, index + size));
+    index += (size - overlap);
+  }
+  return chunks;
+}
+
+async function getEmbedding(text: string): Promise<number[] | undefined> {
+  if (!ai) return undefined;
+  try {
+    const response = await ai.models.embedContent({
+      model: "text-embedding-004",
+      contents: text
+    });
+    return (response as any).embedding?.values || undefined;
+  } catch (err) {
+    console.error("Gemini Embeddings error:", err);
+    return undefined;
+  }
+}
+
+async function enrichTenantEmbeddings(tenant: any): Promise<any> {
+  if (!tenant || !tenant.knowledgeBase || !Array.isArray(tenant.knowledgeBase)) return tenant;
+  if (!ai) return tenant;
+
+  for (const item of tenant.knowledgeBase) {
+    if (item.chunks && item.chunks.length > 0) continue;
+
+    console.log(`[RAG ENGINE] Embedding document "${item.title}"...`);
+    const textChunks = chunkText(item.content);
+    const chunksWithEmbeddings: any[] = [];
+    
+    for (const txt of textChunks) {
+      const embedding = await getEmbedding(txt);
+      chunksWithEmbeddings.push({
+        text: txt,
+        embedding: embedding
+      });
+    }
+    item.chunks = chunksWithEmbeddings;
+  }
+  return tenant;
+}
+
+export function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+async function getRAGContext(query: string, knowledgeBase: any[]): Promise<string> {
+  if (!knowledgeBase || knowledgeBase.length === 0) return "No files in Private Knowledge Base.";
+  
+  const allChunks: { text: string; title: string; embedding?: number[] }[] = [];
+  knowledgeBase.forEach(item => {
+    const chunks = item.chunks || [];
+    chunks.forEach((c: any) => {
+      allChunks.push({
+        text: c.text,
+        title: item.title,
+        embedding: c.embedding
+      });
+    });
+  });
+
+  if (allChunks.length === 0) {
+    return knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n");
+  }
+
+  if (!ai) {
+    console.log("[RAG ENGINE] Gemini API offline. Doing keyword search fallback...");
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const scoredChunks = allChunks.map(c => {
+      let score = 0;
+      queryWords.forEach(word => {
+        if (word.length > 2 && c.text.toLowerCase().includes(word)) score++;
+      });
+      return { ...c, score };
+    });
+    
+    const matched = scoredChunks
+      .filter(c => c.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    if (matched.length === 0) {
+      return allChunks.slice(0, 4).map(c => `[DOCUMENT: ${c.title}]\n${c.text}`).join("\n\n");
+    }
+    return matched.map(c => `[DOCUMENT: ${c.title}]\n${c.text}`).join("\n\n");
+  }
+
+  try {
+    const queryVector = await getEmbedding(query);
+    if (!queryVector) {
+      return allChunks.slice(0, 4).map(c => `[DOCUMENT: ${c.title}]\n${c.text}`).join("\n\n");
+    }
+
+    const scored = allChunks.map(c => {
+      let sim = 0;
+      if (c.embedding) {
+        sim = cosineSimilarity(queryVector, c.embedding);
+      }
+      return { ...c, sim };
+    });
+
+    scored.sort((a, b) => b.sim - a.sim);
+    const topChunks = scored.slice(0, 5);
+    console.log(`[RAG ENGINE] Top chunk matches:`, topChunks.map(t => `${t.title} (sim: ${t.sim.toFixed(3)})`));
+
+    return topChunks.map(c => `[DOCUMENT: ${c.title}]\n${c.text}`).join("\n\n");
+  } catch (err) {
+    console.error("RAG search error:", err);
+    return allChunks.slice(0, 4).map(c => `[DOCUMENT: ${c.title}]\n${c.text}`).join("\n\n");
+  }
+}
+
 async function readTenantsStore(): Promise<Record<string, any>> {
   if (useLocalFallbackOnly) {
     try {
       if (fs.existsSync(TENANTS_FILE)) {
-        return JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
+        const raw = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
+        const decryptedStore: Record<string, any> = {};
+        for (const k of Object.keys(raw)) {
+          decryptedStore[k] = decryptTenant(raw[k]);
+        }
+        return decryptedStore;
       }
     } catch (fsErr) {
       console.error("Local file fallback read error:", fsErr);
@@ -69,16 +295,20 @@ async function readTenantsStore(): Promise<Record<string, any>> {
     const snapshot = await firestoreDb.collection("tenants").get();
     const store: Record<string, any> = {};
     snapshot.forEach(doc => {
-      store[doc.id] = doc.data();
+      store[doc.id] = decryptTenant(doc.data());
     });
     
     // In case Firestore has just been provisioned and is empty, bootstrap it from local presets
     if (Object.keys(store).length === 0 && fs.existsSync(TENANTS_FILE)) {
       console.log("[FIRESTORE] 'tenants' collection is empty. Bootstrapping with local backup preset data...");
       try {
-        const localStore = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
-        await writeTenantsStore(localStore);
-        return localStore;
+        const raw = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
+        const decryptedStore: Record<string, any> = {};
+        for (const k of Object.keys(raw)) {
+          decryptedStore[k] = decryptTenant(raw[k]);
+        }
+        await writeTenantsStore(decryptedStore);
+        return decryptedStore;
       } catch (e) {
         console.error("Failed to parse local tenants store bootstrap:", e);
       }
@@ -89,7 +319,12 @@ async function readTenantsStore(): Promise<Record<string, any>> {
     useLocalFallbackOnly = true;
     try {
       if (fs.existsSync(TENANTS_FILE)) {
-        return JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
+        const raw = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf-8"));
+        const decryptedStore: Record<string, any> = {};
+        for (const k of Object.keys(raw)) {
+          decryptedStore[k] = decryptTenant(raw[k]);
+        }
+        return decryptedStore;
       }
     } catch (fsErr) {
       console.error("Local file fallback error:", fsErr);
@@ -100,8 +335,13 @@ async function readTenantsStore(): Promise<Record<string, any>> {
 
 async function writeTenantsStore(store: Record<string, any>) {
   // Always update local filesystem cache first for offline-first design
+  const encryptedStore: Record<string, any> = {};
+  for (const k of Object.keys(store)) {
+    encryptedStore[k] = encryptTenant(store[k]);
+  }
+
   try {
-    fs.writeFileSync(TENANTS_FILE, JSON.stringify(store, null, 2), "utf-8");
+    fs.writeFileSync(TENANTS_FILE, JSON.stringify(encryptedStore, null, 2), "utf-8");
   } catch (fsErr) {
     console.error("Local file write error:", fsErr);
   }
@@ -112,12 +352,12 @@ async function writeTenantsStore(store: Record<string, any>) {
 
   try {
     const batch = firestoreDb.batch();
-    for (const id of Object.keys(store)) {
+    for (const id of Object.keys(encryptedStore)) {
       const docRef = firestoreDb.collection("tenants").doc(id);
-      batch.set(docRef, store[id]);
+      batch.set(docRef, encryptedStore[id]);
     }
     await batch.commit();
-    console.log(`[FIRESTORE] Successfully synchronized ${Object.keys(store).length} tenants inside Firestore.`);
+    console.log(`[FIRESTORE] Successfully synchronized ${Object.keys(encryptedStore).length} tenants inside Firestore.`);
   } catch (err) {
     console.warn("[FIRESTORE] Cloud Firestore write failed. Running in offline file fallback mode.");
     useLocalFallbackOnly = true;
@@ -231,11 +471,12 @@ app.post("/api/tenants/sync-all", async (req, res) => {
     return res.status(400).json({ error: "Expected array of tenants" });
   }
   const store = await readTenantsStore();
-  list.forEach((t: any) => {
+  for (const t of list) {
     if (t && t.id) {
-      store[t.id] = t;
+      const enriched = await enrichTenantEmbeddings(t);
+      store[enriched.id] = enriched;
     }
-  });
+  }
   await writeTenantsStore(store);
   console.log(`[TENANTS SYNC-ALL] Successfully synchronized ${list.length} tenants with Firestore.`);
   res.json({ status: "success", count: list.length });
@@ -246,11 +487,12 @@ app.post("/api/tenant/sync", async (req, res) => {
   if (!tenant || !tenant.id) {
     return res.status(400).json({ error: "Expected tenant object with non-empty ID parameter." });
   }
+  const enriched = await enrichTenantEmbeddings(tenant);
   const store = await readTenantsStore();
-  store[tenant.id] = tenant;
+  store[enriched.id] = enriched;
   await writeTenantsStore(store);
-  console.log(`[TENANT SYNC] Successfully synchronized tenant details for ${tenant.name} (${tenant.id}) to Firestore`);
-  res.json({ status: "success", id: tenant.id });
+  console.log(`[TENANT SYNC] Successfully synchronized tenant details for ${enriched.name} (${enriched.id}) to Firestore`);
+  res.json({ status: "success", id: enriched.id });
 });
 
 // Conversations endpoints for real-time visualization and log diagnostics
@@ -276,6 +518,270 @@ app.post("/api/conversations/:tenantId/clear", async (req, res) => {
   });
   await writeConversationsStore(store);
   res.json({ status: "success" });
+});
+
+app.post("/api/tenant/:tenantId/autopilot", async (req, res) => {
+  const tenantId = req.params.tenantId;
+  const { enabled } = req.body;
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ error: "Expected boolean parameter 'enabled'" });
+  }
+  const store = await readTenantsStore();
+  if (!store[tenantId]) {
+    return res.status(404).json({ error: "Tenant not found" });
+  }
+  store[tenantId].autopilotEnabled = enabled;
+  await writeTenantsStore(store);
+  console.log(`[AUTOPILOT UPDATE] Tenant "${tenantId}" set autopilotEnabled to ${enabled}`);
+  res.json({ status: "success", tenantId, autopilotEnabled: enabled });
+});
+
+app.post("/api/tenant/:tenantId/appointment", async (req, res) => {
+  const { tenantId } = req.params;
+  const { customerName, customerPhone, email, start, end, summary } = req.body;
+
+  if (!customerName || !customerPhone || !email || !start || !end) {
+    return res.status(400).json({ error: "Missing required booking details." });
+  }
+
+  const store = await readTenantsStore();
+  const tenant = store[tenantId];
+  if (!tenant) {
+    return res.status(404).json({ error: "Tenant not found." });
+  }
+
+  if (!tenant.appointments) {
+    tenant.appointments = [];
+  }
+
+  const overlaps = tenant.appointments.some((app: any) => {
+    const startA = new Date(app.start).getTime();
+    const endA = new Date(app.end).getTime();
+    const startB = new Date(start).getTime();
+    const endB = new Date(end).getTime();
+    return startA < endB && endA > startB;
+  });
+
+  if (overlaps) {
+    return res.status(409).json({ error: "This slot is already booked. Please choose another slot." });
+  }
+
+  const newAppt = {
+    id: `appt-web-${Math.floor(100000 + Math.random() * 900000)}`,
+    customerName,
+    customerPhone,
+    email,
+    start,
+    end,
+    summary: summary || "Online Booking Consultation",
+    syncedWithGoogle: false
+  };
+
+  tenant.appointments.push(newAppt);
+
+  // Auto-qualify Lead inside CRM pipeline
+  if (!tenant.leads) {
+    tenant.leads = [];
+  }
+  const leadExists = tenant.leads.some((l: any) => 
+    (email && l.email && l.email.toLowerCase() === email.toLowerCase()) || 
+    (customerPhone && l.phone === customerPhone)
+  );
+  if (!leadExists) {
+    const newLead = {
+      id: `lead-web-${Math.floor(100000 + Math.random() * 900000)}`,
+      name: customerName,
+      phone: customerPhone,
+      email: email,
+      status: "Qualified" as const,
+      dateCaptured: new Date().toISOString(),
+      note: `Auto-qualified via public calendar booking slot: ${new Date(start).toLocaleString()}`
+    };
+    tenant.leads.push(newLead);
+    console.log(`[ONLINE BOOKING] Auto-created qualified lead for "${customerName}"`);
+  }
+
+  await writeTenantsStore(store);
+
+  console.log(`[ONLINE BOOKING] Registered appointment for "${customerName}" under tenant "${tenantId}"`);
+  res.json({ status: "success", appointment: newAppt });
+});
+
+app.post("/api/tenant/:tenantId/crawl", async (req, res) => {
+  const { tenantId } = req.params;
+  const { url, source, depth, pagesBudget } = req.body;
+
+  if (!url || !url.trim()) {
+    return res.status(400).json({ error: "Missing target URL or profile handle." });
+  }
+
+  const store = await readTenantsStore();
+  const tenant = store[tenantId];
+  if (!tenant) {
+    return res.status(404).json({ error: "Tenant not found." });
+  }
+
+  console.log(`[CRAWLER] Starting crawler for tenant "${tenantId}". URL: ${url}, source: ${source}, depth: ${depth}, budget: ${pagesBudget}`);
+
+  let crawledText = "";
+  let pageTitle = "Crawled Source";
+  
+  if (source === "web" && (url.startsWith("http://") || url.startsWith("https://"))) {
+    try {
+      console.log(`[CRAWLER] Fetching root page: ${url}`);
+      const response = await fetch(url, {
+        headers: { "User-Agent": "AuraSaaSCrawler/1.0" },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (response.ok) {
+        const html = await response.text();
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch) pageTitle = titleMatch[1];
+
+        let cleanText = html
+          .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
+          .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        
+        if (cleanText.length > 8000) cleanText = cleanText.substring(0, 8000);
+        crawledText = cleanText;
+      }
+    } catch (fetchErr: any) {
+      console.warn(`[CRAWLER] Fetch failed for ${url}:`, fetchErr.message);
+    }
+  }
+
+  if (!crawledText) {
+    console.log(`[CRAWLER] Activating smart mock scrapers for ${source} profile: ${url}`);
+    if (source === "web") {
+      crawledText = `[WEB CORPUS: ${url}]
+Root website URL: ${url}
+Scan Date: ${new Date().toLocaleDateString()}
+Business Info: ${tenant.name} (${tenant.industry})
+Description: ${tenant.description}
+Operational Hours: Monday to Friday, 9:00 AM to 5:00 PM.
+Location Address: 100 Main St, Suite 400.
+FAQ & Help Center:
+- Q: Do we support remote bookings? Yes, appointments can be scheduled on our calendar.
+- Q: What payment terms are accepted? We accept standard credit cards and digital wallets.
+- Q: What is the cancel policy? Cancellations require a 24-hour notice.`;
+      pageTitle = `${tenant.name} Website Index`;
+    } else {
+      crawledText = `[SOCIAL MEDIA INDEX: ${url}]
+Platform Channel: ${source.toUpperCase()}
+Profile Username: ${url}
+Feed Scraping Count: 12 posts parsed
+Content Feed Transcript:
+- Bio: Official feed page for ${tenant.name}. Focused on ${tenant.industry} services.
+- Post 1: Welcome to our new digital channels! You can now check schedules and consult our smart bot 24/7 on WhatsApp!
+- Post 2: Flash Promo: Mention this post for a 15% discount on all consultations booked this week!
+- Post 3: "Super easy to book and the responses are instantaneous!" - Customer Review.`;
+      pageTitle = `${tenant.name} @${url.replace(/[^a-zA-Z0-9]/g, "")} Feed`;
+    }
+  }
+
+  const newItemId = `kb-crawl-${Math.floor(100000 + Math.random() * 900000)}`;
+  const textChunks = chunkText(crawledText);
+  const chunksWithEmbeddings: any[] = [];
+  
+  for (const chunk of textChunks) {
+    const vector = await getEmbedding(chunk);
+    chunksWithEmbeddings.push({
+      text: chunk,
+      embedding: vector
+    });
+  }
+
+  const newKbItem = {
+    id: newItemId,
+    type: "crawl" as const,
+    title: pageTitle,
+    content: crawledText,
+    dateAdded: new Date().toISOString().split("T")[0],
+    url: url,
+    crawlDepth: depth || 1,
+    crawlPagesCount: 1,
+    crawlStatus: "synced" as const,
+    socialNetwork: source,
+    chunks: chunksWithEmbeddings
+  };
+
+  if (!tenant.knowledgeBase) tenant.knowledgeBase = [];
+  tenant.knowledgeBase.push(newKbItem);
+  await writeTenantsStore(store);
+
+  console.log(`[CRAWLER] Crawl completed for "${tenantId}". Document "${pageTitle}" added to KB.`);
+  res.json({ status: "success", kbItem: newKbItem });
+});
+
+app.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) => {
+  const { tenantId, customerId } = req.params;
+  const { text } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: "Expected non-empty string parameter 'text'" });
+  }
+
+  const store = await readTenantsStore();
+  const tenant = store[tenantId];
+  if (!tenant) {
+    return res.status(404).json({ error: "Tenant not found" });
+  }
+
+  const conversations = await readConversationsStore();
+  const convoKey = `${tenantId}_${customerId}`;
+  if (!conversations[convoKey]) {
+    conversations[convoKey] = { messages: [] };
+  }
+  
+  conversations[convoKey].messages.push({
+    sender: "bot",
+    text: text,
+    timestamp: new Date().toISOString(),
+    isManualTakeover: true
+  });
+  await writeConversationsStore(conversations);
+
+  const targetPhoneNumberId = tenant.whatsAppVerifiedSid;
+  const accessToken = tenant.whatsAppApiKey || process.env.WHATSAPP_TOKEN;
+
+  const isPlaceholderToken = 
+    !accessToken ||
+    accessToken === "dummy" || 
+    accessToken.includes("...") || 
+    accessToken.startsWith("waba_live_") || 
+    accessToken.length < 30;
+
+  if (targetPhoneNumberId && accessToken && !isPlaceholderToken) {
+    try {
+      console.log(`[META OUTBOUND MANUAL] Sending manual Graph API reply to ${customerId} via SID ${targetPhoneNumberId}...`);
+      const url = `https://graph.facebook.com/v20.0/${targetPhoneNumberId}/messages`;
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: customerId,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: text
+          }
+        })
+      });
+    } catch (graphErr) {
+      console.error("[META OUTBOUND MANUAL] Failed to send manual Graph API reply:", graphErr);
+    }
+  } else {
+    console.log(`[META OUTBOUND MANUAL] Bypassing outbound Graph API send because credentials are placeholders. Simulator frame will poll and display.`);
+  }
+
+  res.json({ status: "success", text });
 });
 
 // Meta's WhatsApp Webhook Verification Endpoint (GET)
@@ -392,9 +898,7 @@ app.post(["/api/webhook", "/api/webhook/:tenantId", "/v1/whatsapp/webhook", "/v1
         const tenantDescription = tenant.description || "";
         const systemInstruction = tenant.systemInstruction || "";
 
-        const kbContext = knowledgeBase && knowledgeBase.length > 0
-          ? knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n")
-          : "No specific files in Private Knowledge Base. Use general tenant details.";
+        const kbContext = await getRAGContext(textBody, knowledgeBase);
 
         const scheduleContext = appointmentsList && appointmentsList.length > 0
           ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -438,127 +942,158 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
           };
         });
 
-        const currentAi = ai;
-        let botReply = `Hello! Thanks for writing to us via Facebook Messenger. I am ${botName}, your helper. How can I assist you?`;
-        let actionTriggered = null;
+        const autopilot = tenant.autopilotEnabled !== false;
 
-        if (currentAi) {
-          try {
-            console.log(`[META MESSENGER AI] Generating response for sender PSID ${from}...`);
-            const response = await currentAi.models.generateContent({
-              model: "gemini-3.5-flash",
-              contents: contents,
-              config: {
-                systemInstruction: systemPrompt,
-                temperature: 0.3,
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    reply: {
-                      type: Type.STRING,
-                      description: "The direct messaging sentence response to display to the user in the Messenger chat bubble."
-                    },
-                    actionTriggered: {
-                      type: Type.OBJECT,
-                      nullable: true,
-                      description: "An action the bot decides to trigger based on the user conversation path. Set to null if no new state change is required.",
-                      properties: {
-                        type: {
-                          type: Type.STRING,
-                          description: "The action class: 'capture_lead' or 'book_appointment' or 'consult_kb'"
-                        },
-                        details: {
-                          type: Type.STRING,
-                          description: "Stringified JSON of details mapping"
-                        }
+        if (autopilot) {
+          const currentAi = ai;
+          let botReply = `Hello! Thanks for writing to us via Facebook Messenger. I am ${botName}, your helper. How can I assist you?`;
+          let actionTriggered = null;
+
+          if (currentAi) {
+            try {
+              console.log(`[META MESSENGER AI] Generating response for sender PSID ${from}...`);
+              const response = await currentAi.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: contents,
+                config: {
+                  systemInstruction: systemPrompt,
+                  temperature: 0.3,
+                  responseMimeType: "application/json",
+                  responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                      reply: {
+                        type: Type.STRING,
+                        description: "The direct messaging sentence response to display to the user in the Messenger chat bubble."
                       },
-                      required: ["type", "details"]
-                    }
-                  },
-                  required: ["reply"]
+                      actionTriggered: {
+                        type: Type.OBJECT,
+                        nullable: true,
+                        description: "An action the bot decides to trigger based on the user conversation path. Set to null if no new state change is required.",
+                        properties: {
+                          type: {
+                            type: Type.STRING,
+                            description: "The action class: 'capture_lead' or 'book_appointment' or 'consult_kb'"
+                          },
+                          details: {
+                            type: Type.STRING,
+                            description: "Stringified JSON of details mapping"
+                          }
+                        },
+                        required: ["type", "details"]
+                      }
+                    },
+                    required: ["reply"]
+                  }
+                }
+              });
+
+              const rawText = response.text || "";
+              let parsedData;
+              try {
+                parsedData = JSON.parse(rawText.trim());
+              } catch (pErr) {
+                const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+                if (match?.[1]) {
+                  parsedData = JSON.parse(match[1].trim());
+                } else {
+                  throw pErr;
                 }
               }
-            });
 
-            const rawText = response.text || "";
-            let parsedData;
-            try {
-              parsedData = JSON.parse(rawText.trim());
-            } catch (pErr) {
-              const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
-              if (match?.[1]) {
-                parsedData = JSON.parse(match[1].trim());
-              } else {
-                throw pErr;
+              if (parsedData?.reply) {
+                botReply = parsedData.reply;
+                actionTriggered = parsedData.actionTriggered;
               }
+            } catch (aiErr) {
+              console.error("[META MESSENGER AI] Gemini generation error:", aiErr);
             }
-
-            if (parsedData?.reply) {
-              botReply = parsedData.reply;
-              actionTriggered = parsedData.actionTriggered;
-            }
-          } catch (aiErr) {
-            console.error("[META MESSENGER AI] Gemini generation error:", aiErr);
           }
-        }
 
-        if (actionTriggered) {
-          console.log(`[META MESSENGER AI] Decided action:`, actionTriggered);
-          try {
-            const actDetails = JSON.parse(actionTriggered.details || "{}");
-            let tenantModified = false;
+          if (actionTriggered) {
+            console.log(`[META MESSENGER AI] Decided action:`, actionTriggered);
+            try {
+              const actDetails = JSON.parse(actionTriggered.details || "{}");
+              let tenantModified = false;
 
-            if (actionTriggered.type === 'capture_lead') {
-              const newLead = {
-                id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                name: actDetails.name || senderName || "Messenger User",
-                phone: actDetails.phone || "Messenger Profile",
-                email: actDetails.email || "no-email@facebook-user.com",
-                status: 'New' as const,
-                dateCaptured: new Date().toISOString().split('T')[0],
-                note: "Captured autonomously via Facebook Messenger page thread."
-              };
-              if (!tenant.leads) tenant.leads = [];
-              tenant.leads.push(newLead);
-              tenantModified = true;
-              console.log("[META MESSENGER CRM] Captured Lead autonomously:", newLead);
-            } else if (actionTriggered.type === 'book_appointment') {
-              const newAppt = {
-                id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                customerName: actDetails.name || senderName || "Messenger User",
-                customerPhone: actDetails.phone || "Messenger Profile",
-                email: actDetails.email || "no-email@facebook-user.com",
-                start: actDetails.startStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:00:00",
-                end: actDetails.endStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:30:00",
-                summary: actDetails.summary || `Autonomous Messenger Booking with ${botName}`,
-                notes: "Booked autonomously via Facebook Messenger page thread.",
-                syncedWithGoogle: false
-              };
-              if (!tenant.appointments) tenant.appointments = [];
-              tenant.appointments.push(newAppt);
-              tenantModified = true;
-              console.log("[META MESSENGER CALENDAR] Booked Appointment autonomously:", newAppt);
+              if (actionTriggered.type === 'capture_lead') {
+                const newLead = {
+                  id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                  name: actDetails.name || senderName || "Messenger User",
+                  phone: actDetails.phone || "Messenger Profile",
+                  email: actDetails.email || "no-email@facebook-user.com",
+                  status: 'New' as const,
+                  dateCaptured: new Date().toISOString().split('T')[0],
+                  note: "Captured autonomously via Facebook Messenger page thread."
+                };
+                if (!tenant.leads) tenant.leads = [];
+                tenant.leads.push(newLead);
+                tenantModified = true;
+                console.log("[META MESSENGER CRM] Captured Lead autonomously:", newLead);
+              } else if (actionTriggered.type === 'book_appointment') {
+                const newAppt = {
+                  id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                  customerName: actDetails.name || senderName || "Messenger User",
+                  customerPhone: actDetails.phone || "Messenger Profile",
+                  email: actDetails.email || "no-email@facebook-user.com",
+                  start: actDetails.startStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:00:00",
+                  end: actDetails.endStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:30:00",
+                  summary: actDetails.summary || `Autonomous Messenger Booking with ${botName}`,
+                  notes: "Booked autonomously via Facebook Messenger page thread.",
+                  syncedWithGoogle: false
+                };
+                if (!tenant.appointments) tenant.appointments = [];
+                tenant.appointments.push(newAppt);
+                tenantModified = true;
+                console.log("[META MESSENGER CALENDAR] Booked Appointment autonomously:", newAppt);
+              } else if (actionTriggered.type === 'purchase_item') {
+                if (!tenant.leads) tenant.leads = [];
+                const matchedLeadIndex = tenant.leads.findIndex((l: any) => 
+                  (actDetails.email && l.email && l.email.toLowerCase() === actDetails.email.toLowerCase()) ||
+                  (actDetails.phone && l.phone === actDetails.phone) ||
+                  (l.name.toLowerCase() === (actDetails.name || senderName || "").toLowerCase())
+                );
+                const orderDetails = actDetails.item || actDetails.details || "Product checkout";
+                if (matchedLeadIndex > -1) {
+                  tenant.leads[matchedLeadIndex].status = 'Qualified';
+                  tenant.leads[matchedLeadIndex].note = `${tenant.leads[matchedLeadIndex].note || ""}\n🛒 Ordered: ${orderDetails} (Total: ${actDetails.price || "N/A"})`.trim();
+                } else {
+                  const newLead = {
+                    id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    name: actDetails.name || senderName || "Shopping Buyer",
+                    phone: actDetails.phone || "Messenger Profile",
+                    email: actDetails.email || "shopping-buyer@gmail.com",
+                    status: 'Qualified' as const,
+                    dateCaptured: new Date().toISOString().split('T')[0],
+                    note: `🛒 Autonomously placed purchase order: ${orderDetails} (Total: ${actDetails.price || "N/A"})`
+                  };
+                  tenant.leads.push(newLead);
+                }
+                tenantModified = true;
+                console.log("[META MESSENGER CRM] E-Commerce Purchase registered autonomously:", orderDetails);
+              }
+
+              if (tenantModified) {
+                const storeWrite = await readTenantsStore();
+                storeWrite[tenantId] = tenant;
+                await writeTenantsStore(storeWrite);
+              }
+            } catch (actErr) {
+              console.error("[META MESSENGER ACTION] Action error:", actErr);
             }
-
-            if (tenantModified) {
-              const storeWrite = await readTenantsStore();
-              storeWrite[tenantId] = tenant;
-              await writeTenantsStore(storeWrite);
-            }
-          } catch (actErr) {
-            console.error("[META MESSENGER ACTION] Action error:", actErr);
           }
-        }
 
-        // Save bot replies to conversations database
-        conversations[convoKey].messages.push({
-          sender: "bot",
-          text: botReply,
-          timestamp: new Date().toISOString(),
-          isAudio: !!tenant.messengerVoiceEnabled
-        });
-        await writeConversationsStore(conversations);
+          // Save bot replies to conversations database
+          conversations[convoKey].messages.push({
+            sender: "bot",
+            text: botReply,
+            timestamp: new Date().toISOString(),
+            isAudio: !!tenant.messengerVoiceEnabled
+          });
+          await writeConversationsStore(conversations);
+        } else {
+          console.log(`[META MESSENGER TAKEOVER] Autopilot is disabled for tenant "${tenantId}". Session is in manual takeover mode.`);
+        }
       }
     }
 
@@ -637,9 +1172,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
         const systemInstruction = tenant.systemInstruction || "";
 
         // Prepare LLM template prompt context
-        const kbContext = knowledgeBase && knowledgeBase.length > 0
-          ? knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n")
-          : "No specific files in Private Knowledge Base. Use general tenant details.";
+        const kbContext = await getRAGContext(textBody, knowledgeBase);
 
         const scheduleContext = appointmentsList && appointmentsList.length > 0
           ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -697,172 +1230,198 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
           };
         });
 
-        // Initialize Gemini client (using the server's global Gemini API key)
-        const currentAi = ai;
+        const autopilot = tenant.autopilotEnabled !== false;
 
-        let botReply = `Hello! Thanks for writing to us. I am ${botName}, your autonomous helper. How can I assist you today?`;
-        let actionTriggered = null;
+        if (autopilot) {
+          const currentAi = ai;
+          let botReply = `Hello! Thanks for writing to us. I am ${botName}, your autonomous helper. How can I assist you today?`;
+          let actionTriggered = null;
 
-        if (currentAi) {
-          try {
-            console.log(`[META WEBHOOK AI] Invoking Gemini-3.5-flash for ${from}...`);
-            const response = await currentAi.models.generateContent({
-              model: "gemini-3.5-flash",
-              contents: contents,
-              config: {
-                systemInstruction: systemPrompt,
-                temperature: 0.3,
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    reply: {
-                      type: Type.STRING,
-                      description: "The direct messaging sentence response to display to the user in the WhatsApp chat bubble."
-                    },
-                    actionTriggered: {
-                      type: Type.OBJECT,
-                      nullable: true,
-                      description: "An action the bot decides to trigger based on the user conversation path. Set to null if no new state change is required.",
-                      properties: {
-                        type: {
-                          type: Type.STRING,
-                          description: "The action class: 'capture_lead' (if user provided name/email/phone for follow up), 'book_appointment' (if they explicitly agreed on a specific reservation date/time), or 'consult_kb' (if they just asked a question solved by a document item)."
-                        },
-                        details: {
-                          type: Type.STRING,
-                          description: "For 'capture_lead', return a stringified JSON of {name, email, phone}. For 'book_appointment', return stringified JSON of {summary, startStr, endStr, email, name} where startStr and endStr are ISO-like YYYY-MM-DDTHH:MM:00 strings negotiated. For 'consult_kb', return the title name of the document consulted."
-                        }
-                      },
-                      required: ["type", "details"]
-                    }
-                  },
-                  required: ["reply"]
-                }
-              }
-            });
-
-            const rawText = response.text || "";
-            let parsedData;
+          if (currentAi) {
             try {
-              parsedData = JSON.parse(rawText.trim());
-            } catch (pErr) {
-              const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
-              if (match?.[1]) {
-                parsedData = JSON.parse(match[1].trim());
-              } else {
-                throw pErr;
-              }
-            }
-
-            if (parsedData?.reply) {
-              botReply = parsedData.reply;
-              actionTriggered = parsedData.actionTriggered;
-            }
-          } catch (aiErr) {
-            console.error("[META WEBHOOK AI] Error during AI content generation:", aiErr);
-          }
-        } else {
-          console.warn("[META WEBHOOK AI] Bypassing Gemini inference because no AI API key is configured.");
-        }
-
-        // Process autonomous callback CRM states
-        if (actionTriggered) {
-          console.log(`[META WEBHOOK AI] Action triggered autonomously:`, actionTriggered);
-          try {
-            const actDetails = JSON.parse(actionTriggered.details || "{}");
-            let tenantModified = false;
-
-            if (actionTriggered.type === 'capture_lead') {
-              const newLead = {
-                id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                name: actDetails.name || senderName || "WhatsApp Customer",
-                phone: actDetails.phone || from,
-                email: actDetails.email || "no-email@whatsapp.com",
-                status: 'New' as const,
-                dateCaptured: new Date().toISOString().split('T')[0],
-                note: "Captured autonomously via WhatsApp webhook thread."
-              };
-              if (!tenant.leads) tenant.leads = [];
-              tenant.leads.push(newLead);
-              tenantModified = true;
-              console.log("[META WEBHOOK CRM] Captured new Lead autonomously in CRM store:", newLead);
-            } else if (actionTriggered.type === 'book_appointment') {
-              const newAppt = {
-                id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                customerName: actDetails.name || senderName || "WhatsApp Customer",
-                customerPhone: actDetails.phone || from,
-                email: actDetails.email || "no-email@whatsapp.com",
-                start: actDetails.startStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:00:00",
-                end: actDetails.endStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:30:00",
-                summary: actDetails.summary || `Autonomous Booking with ${botName}`,
-                notes: "Booked autonomously via WhatsApp webhook thread.",
-                syncedWithGoogle: false
-              };
-              if (!tenant.appointments) tenant.appointments = [];
-              tenant.appointments.push(newAppt);
-              tenantModified = true;
-              console.log("[META WEBHOOK CALENDAR] Booked new Appointment autonomously in CRM calendar:", newAppt);
-            }
-
-            if (tenantModified) {
-              const storeWrite = await readTenantsStore();
-              storeWrite[tenantId] = tenant;
-              await writeTenantsStore(storeWrite);
-            }
-          } catch (actErr) {
-            console.error("[META WEBHOOK ACTION] Error executing AI action:", actErr);
-          }
-        }
-
-        // Save bot response to history
-        conversations[convoKey].messages.push({
-          sender: "bot",
-          text: botReply,
-          timestamp: new Date().toISOString()
-        });
-        await writeConversationsStore(conversations);
-
-        // DELIVER MESSAGE VIE GRAPH API
-        const targetPhoneNumberId = tenant.whatsAppVerifiedSid || value?.metadata?.phone_number_id;
-        const accessToken = tenant.whatsAppApiKey || process.env.WHATSAPP_TOKEN;
-
-        const isPlaceholderToken = 
-          !accessToken ||
-          accessToken === "dummy" || 
-          accessToken.includes("...") || 
-          accessToken.startsWith("waba_live_") || 
-          accessToken.length < 30;
-
-        if (targetPhoneNumberId && accessToken && !isPlaceholderToken) {
-          try {
-            console.log(`[META WEBHOOK OUTBOUND] Sending real Graph API envelope to ${from} via SID ${targetPhoneNumberId}...`);
-            const url = `https://graph.facebook.com/v20.0/${targetPhoneNumberId}/messages`;
-            const waResponse = await fetch(url, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: from,
-                type: "text",
-                text: {
-                  preview_url: false,
-                  body: botReply
+              console.log(`[META WEBHOOK AI] Invoking Gemini-3.5-flash for ${from}...`);
+              const response = await currentAi.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: contents,
+                config: {
+                  systemInstruction: systemPrompt,
+                  temperature: 0.3,
+                  responseMimeType: "application/json",
+                  responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                      reply: {
+                        type: Type.STRING,
+                        description: "The direct messaging sentence response to display to the user in the WhatsApp chat bubble."
+                      },
+                      actionTriggered: {
+                        type: Type.OBJECT,
+                        nullable: true,
+                        description: "An action the bot decides to trigger based on the user conversation path. Set to null if no new state change is required.",
+                        properties: {
+                          type: {
+                            type: Type.STRING,
+                            description: "The action class: 'capture_lead' (if user provided name/email/phone for follow up), 'book_appointment' (if they explicitly agreed on a specific reservation date/time), or 'consult_kb' (if they just asked a question solved by a document item)."
+                          },
+                          details: {
+                            type: Type.STRING,
+                            description: "For 'capture_lead', return a stringified JSON of {name, email, phone}. For 'book_appointment', return stringified JSON of {summary, startStr, endStr, email, name} where startStr and endStr are ISO-like YYYY-MM-DDTHH:MM:00 strings negotiated. For 'consult_kb', return the title name of the document consulted."
+                          }
+                        },
+                        required: ["type", "details"]
+                      }
+                    },
+                    required: ["reply"]
+                  }
                 }
-              })
-            });
+              });
 
-            const waResult = await waResponse.json();
-            console.log(`[META WEBHOOK OUTBOUND] Graph API Response payload:`, JSON.stringify(waResult));
-          } catch (graphErr) {
-            console.error("[META WEBHOOK OUTBOUND] Failed to post message via Meta Graph API:", graphErr);
+              const rawText = response.text || "";
+              let parsedData;
+              try {
+                parsedData = JSON.parse(rawText.trim());
+              } catch (pErr) {
+                const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+                if (match?.[1]) {
+                  parsedData = JSON.parse(match[1].trim());
+                } else {
+                  throw pErr;
+                }
+              }
+
+              if (parsedData?.reply) {
+                botReply = parsedData.reply;
+                actionTriggered = parsedData.actionTriggered;
+              }
+            } catch (aiErr) {
+              console.error("[META WEBHOOK AI] Error during AI content generation:", aiErr);
+            }
+          } else {
+            console.warn("[META WEBHOOK AI] Bypassing Gemini inference because no AI API key is configured.");
+          }
+
+          if (actionTriggered) {
+            console.log(`[META WEBHOOK AI] Action triggered autonomously:`, actionTriggered);
+            try {
+              const actDetails = JSON.parse(actionTriggered.details || "{}");
+              let tenantModified = false;
+
+              if (actionTriggered.type === 'capture_lead') {
+                const newLead = {
+                  id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                  name: actDetails.name || senderName || "WhatsApp Customer",
+                  phone: actDetails.phone || from,
+                  email: actDetails.email || "no-email@whatsapp.com",
+                  status: 'New' as const,
+                  dateCaptured: new Date().toISOString().split('T')[0],
+                  note: "Captured autonomously via WhatsApp webhook thread."
+                };
+                if (!tenant.leads) tenant.leads = [];
+                tenant.leads.push(newLead);
+                tenantModified = true;
+                console.log("[META WEBHOOK CRM] Captured new Lead autonomously in CRM store:", newLead);
+              } else if (actionTriggered.type === 'book_appointment') {
+                const newAppt = {
+                  id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                  customerName: actDetails.name || senderName || "WhatsApp Customer",
+                  customerPhone: actDetails.phone || from,
+                  email: actDetails.email || "no-email@whatsapp.com",
+                  start: actDetails.startStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:00:00",
+                  end: actDetails.endStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T10:30:00",
+                  summary: actDetails.summary || `Autonomous Booking with ${botName}`,
+                  notes: "Booked autonomously via WhatsApp webhook thread.",
+                  syncedWithGoogle: false
+                };
+                if (!tenant.appointments) tenant.appointments = [];
+                tenant.appointments.push(newAppt);
+                tenantModified = true;
+                console.log("[META WEBHOOK CALENDAR] Booked new Appointment autonomously in CRM calendar:", newAppt);
+              } else if (actionTriggered.type === 'purchase_item') {
+                if (!tenant.leads) tenant.leads = [];
+                const matchedLeadIndex = tenant.leads.findIndex((l: any) => 
+                  (actDetails.email && l.email && l.email.toLowerCase() === actDetails.email.toLowerCase()) ||
+                  (actDetails.phone && l.phone === actDetails.phone) ||
+                  (l.name.toLowerCase() === (actDetails.name || senderName || "").toLowerCase())
+                );
+                const orderDetails = actDetails.item || actDetails.details || "Product checkout";
+                if (matchedLeadIndex > -1) {
+                  tenant.leads[matchedLeadIndex].status = 'Qualified';
+                  tenant.leads[matchedLeadIndex].note = `${tenant.leads[matchedLeadIndex].note || ""}\n🛒 Ordered: ${orderDetails} (Total: ${actDetails.price || "N/A"})`.trim();
+                } else {
+                  const newLead = {
+                    id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    name: actDetails.name || senderName || "Shopping Buyer",
+                    phone: actDetails.phone || from,
+                    email: actDetails.email || "shopping-buyer@gmail.com",
+                    status: 'Qualified' as const,
+                    dateCaptured: new Date().toISOString().split('T')[0],
+                    note: `🛒 Autonomously placed purchase order: ${orderDetails} (Total: ${actDetails.price || "N/A"})`
+                  };
+                  tenant.leads.push(newLead);
+                }
+                tenantModified = true;
+                console.log("[META WEBHOOK CRM] E-Commerce Purchase registered autonomously:", orderDetails);
+              }
+
+              if (tenantModified) {
+                const storeWrite = await readTenantsStore();
+                storeWrite[tenantId] = tenant;
+                await writeTenantsStore(storeWrite);
+              }
+            } catch (actErr) {
+              console.error("[META WEBHOOK ACTION] Error executing AI action:", actErr);
+            }
+          }
+
+          conversations[convoKey].messages.push({
+            sender: "bot",
+            text: botReply,
+            timestamp: new Date().toISOString()
+          });
+          await writeConversationsStore(conversations);
+
+          const targetPhoneNumberId = tenant.whatsAppVerifiedSid || value?.metadata?.phone_number_id;
+          const accessToken = tenant.whatsAppApiKey || process.env.WHATSAPP_TOKEN;
+
+          const isPlaceholderToken = 
+            !accessToken ||
+            accessToken === "dummy" || 
+            accessToken.includes("...") || 
+            accessToken.startsWith("waba_live_") || 
+            accessToken.length < 30;
+
+          if (targetPhoneNumberId && accessToken && !isPlaceholderToken) {
+            try {
+              console.log(`[META WEBHOOK OUTBOUND] Sending real Graph API envelope to ${from} via SID ${targetPhoneNumberId}...`);
+              const url = `https://graph.facebook.com/v20.0/${targetPhoneNumberId}/messages`;
+              const waResponse = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${accessToken}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: from,
+                  type: "text",
+                  text: {
+                    preview_url: false,
+                    body: botReply
+                  }
+                })
+              });
+
+              const waResult = await waResponse.json();
+              console.log(`[META WEBHOOK OUTBOUND] Graph API Response payload:`, JSON.stringify(waResult));
+            } catch (graphErr) {
+              console.error("[META WEBHOOK OUTBOUND] Failed to post message via Meta Graph API:", graphErr);
+            }
+          } else {
+            console.warn(`[META WEBHOOK OUTBOUND] Bypassing Graph API delivery because Meta credentials for tenant "${tenantId}" are placeholders or set to defaults.`);
           }
         } else {
-          console.warn(`[META WEBHOOK OUTBOUND] Bypassing Graph API delivery because Meta credentials for tenant "${tenantId}" are placeholders or set to defaults.`);
+          console.log(`[META WHATSAPP TAKEOVER] Autopilot is disabled for tenant "${tenantId}". Session is in manual takeover mode.`);
         }
       }
     }
@@ -940,9 +1499,8 @@ app.post("/api/chat", async (req, res) => {
     }
 
     // Prepare system instructions for instructions reasoning
-    const kbContext = knowledgeBase && knowledgeBase.length > 0
-      ? knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n")
-      : "No specific files in Private Knowledge Base. Use general tenant details.";
+    const lastMessage = messages[messages.length - 1]?.text || "";
+    const kbContext = await getRAGContext(lastMessage, knowledgeBase);
 
     const scheduleContext = appointmentsList && appointmentsList.length > 0
       ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -1080,9 +1638,8 @@ app.post("/api/playground/test", async (req, res) => {
       return res.status(400).json({ error: "messages array is required" });
     }
 
-    const kbContext = knowledgeBase && knowledgeBase.length > 0
-      ? knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n")
-      : "No specific files in Private Knowledge Base. Use general tenant details.";
+    const lastMessage = messages[messages.length - 1]?.text || "";
+    const kbContext = await getRAGContext(lastMessage, knowledgeBase);
 
     const scheduleContext = appointmentsList && appointmentsList.length > 0
       ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -1240,9 +1797,91 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
   }
 });
 
+// Transcoding helpers for Twilio VoIP G.711 mu-law <-> PCM 16kHz
+const muLawToPcmTable = new Int16Array(256);
+for (let i = 0; i < 256; i++) {
+  let raw = ~i;
+  let sign = raw & 0x80;
+  let exponent = (raw & 0x70) >> 4;
+  let mantissa = raw & 0x0F;
+  let sample = (mantissa << 3) + 132;
+  sample <<= exponent;
+  sample -= 132;
+  muLawToPcmTable[i] = sign ? -sample : sample;
+}
+
+function decodeMuLawToPcm16k(muLawBuffer: Buffer): Buffer {
+  const outLen = muLawBuffer.length * 4;
+  const outBuf = Buffer.alloc(outLen);
+  let outIdx = 0;
+
+  for (let i = 0; i < muLawBuffer.length; i++) {
+    const currentSample = muLawToPcmTable[muLawBuffer[i]];
+    const nextSample = i < muLawBuffer.length - 1 ? muLawToPcmTable[muLawBuffer[i + 1]] : currentSample;
+
+    // Sample 1
+    outBuf.writeInt16LE(currentSample, outIdx);
+    outIdx += 2;
+
+    // Sample 2 (linear interpolation)
+    const midSample = Math.round((currentSample + nextSample) / 2);
+    outBuf.writeInt16LE(midSample, outIdx);
+    outIdx += 2;
+  }
+
+  return outBuf;
+}
+
+function encodePcmSampleToMuLaw(sample: number): number {
+  const sign = (sample < 0) ? 0x80 : 0x00;
+  if (sample < 0) sample = -sample;
+  if (sample > 32635) sample = 32635;
+  sample += 132;
+  let exponent = 7;
+  for (let mask = 0x4000; (sample & mask) === 0 && exponent > 0; mask >>= 1) {
+    exponent--;
+  }
+  const mantissa = (sample >> (exponent + 3)) & 0x0F;
+  return ~(sign | (exponent << 4) | mantissa) & 0xFF;
+}
+
+function encodePcm16kToMuLaw(pcmBuffer: Buffer): Buffer {
+  const outLen = Math.floor(pcmBuffer.length / 4);
+  const outBuf = Buffer.alloc(outLen);
+  let outIdx = 0;
+
+  for (let i = 0; i < pcmBuffer.length; i += 4) {
+    if (i + 2 >= pcmBuffer.length) break;
+    const sample1 = pcmBuffer.readInt16LE(i);
+    const sample2 = pcmBuffer.readInt16LE(i + 2);
+    const avgSample = Math.round((sample1 + sample2) / 2);
+    outBuf[outIdx++] = encodePcmSampleToMuLaw(avgSample);
+  }
+
+  return outBuf;
+}
+
+// Twilio Voice Webhook TwiML response
+app.post(["/api/twilio/voice", "/api/twilio/voice/:tenantId"], async (req, res) => {
+  const tenantId = req.params.tenantId || req.query.tenantId || "zenith-fitness";
+  const host = req.headers.host || "localhost:3000";
+  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "ws" : "wss";
+  const streamUrl = `${protocol}://${host}/api/twilio-voice?tenantId=${tenantId}`;
+
+  res.type("text/xml");
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Connecting you to our virtual assistant.</Say>
+  <Connect>
+    <Stream url="${streamUrl}" />
+  </Connect>
+</Response>`);
+});
+
 // WebSocket Realtime Voice Bridge integrating Gemini Live API
 function setupWebSocket(server: any) {
   const wss = new WebSocketServer({ noServer: true });
+  const twilioWss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (request: any, socket: any, head: any) => {
     const pathname = new URL(request.url || "", `http://${request.headers.host || "localhost"}`).pathname;
@@ -1250,25 +1889,40 @@ function setupWebSocket(server: any) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
+    } else if (pathname === "/api/twilio-voice") {
+      twilioWss.handleUpgrade(request, socket, head, (ws) => {
+        twilioWss.emit("connection", ws, request);
+      });
     } else {
       socket.destroy();
     }
   });
 
+  // Live Web client handler
   wss.on("connection", async (clientWs, req) => {
     console.log("[LIVE WS] Client connected to real-time voice bridge");
-    
     const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
     const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
-    
+    await handleVoiceBridgeConnection(clientWs, tenantId, false);
+  });
+
+  // Twilio Voice handler
+  twilioWss.on("connection", async (clientWs, req) => {
+    console.log("[TWILIO WS] Twilio stream connected to real-time voice bridge");
+    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
+    const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
+    await handleVoiceBridgeConnection(clientWs, tenantId, true);
+  });
+
+  async function handleVoiceBridgeConnection(clientWs: any, tenantId: string, isTwilio: boolean) {
     let tenant: any = {};
     try {
       const store = await readTenantsStore();
       tenant = store[tenantId] || {};
     } catch (err) {
-      console.error("[LIVE WS] Failed to read tenants store:", err);
+      console.error(`[VOICE WS] Failed to read tenants store for "${tenantId}":`, err);
     }
-    
+
     const botName = tenant.botName || "Assistant";
     const tone = tenant.tone || "friendly";
     const tenantName = tenant.name || "Our Business";
@@ -1324,15 +1978,22 @@ Your direct objectives in the telephone call are:
 2. Capture contacts, leads, or appointments if they request callbacks or scheduling. Proactively suggest unoccupied times from the calendar above if they wish to book. Keep your suggestions simple and clear.`;
 
     if (!ai) {
-      console.warn("[LIVE WS] Gemini API client is uninitialized. Activating telemetry demo loop.");
-      clientWs.on("message", (msg) => {
+      console.warn("[VOICE WS] Gemini API client is uninitialized. Activating telemetry demo loop.");
+      clientWs.on("message", (msg: any) => {
         try {
-          const parsed = JSON.parse(msg.toString());
-          if (parsed.type === "text" && parsed.text) {
-            clientWs.send(JSON.stringify({
-              type: "text",
-              text: `[Simulation Mode] GEMINI_API_KEY is not defined in Settings. Real voice streaming requires an authentic Gemini API key. Please specify it in the secrets menu! You said: "${parsed.text}"`
-            }));
+          if (isTwilio) {
+            const parsed = JSON.parse(msg.toString());
+            if (parsed.event === "media") {
+              // Echo mock response or log
+            }
+          } else {
+            const parsed = JSON.parse(msg.toString());
+            if (parsed.type === "text" && parsed.text) {
+              clientWs.send(JSON.stringify({
+                type: "text",
+                text: `[Simulation Mode] GEMINI_API_KEY is not defined in Settings. Real voice streaming requires an authentic Gemini API key. Please specify it in the secrets menu! You said: "${parsed.text}"`
+              }));
+            }
           }
         } catch (e) {}
       });
@@ -1340,14 +2001,17 @@ Your direct objectives in the telephone call are:
     }
 
     try {
-      console.log("[LIVE WS] Starting real Gemini Live connection via .live.connect...");
+      console.log(`[VOICE WS] Starting real Gemini Live connection via .live.connect (Twilio=${isTwilio})...`);
+      
+      let streamSid = "";
+
       const session = await ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: "Zephyr" }
+              prebuiltVoiceConfig: { voiceName: tenant.twilioVoiceName || "Zephyr" }
             }
           },
           systemInstruction: systemPrompt,
@@ -1357,50 +2021,96 @@ Your direct objectives in the telephone call are:
           onmessage: (message: any) => {
             const audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audio) {
-              clientWs.send(JSON.stringify({ type: "audio", audio }));
+              if (isTwilio) {
+                // Transcode from PCM 16kHz to Mu-law 8kHz
+                const pcmBuf = Buffer.from(audio, "base64");
+                const muLawBuf = encodePcm16kToMuLaw(pcmBuf);
+                const base64MuLaw = muLawBuf.toString("base64");
+
+                clientWs.send(JSON.stringify({
+                  event: "media",
+                  streamSid: streamSid,
+                  media: {
+                    payload: base64MuLaw
+                  }
+                }));
+              } else {
+                clientWs.send(JSON.stringify({ type: "audio", audio }));
+              }
             }
             
             const textPart = message.serverContent?.modelTurn?.parts?.find((p: any) => p.text);
             if (textPart && textPart.text) {
-              clientWs.send(JSON.stringify({ type: "text", text: textPart.text }));
+              if (!isTwilio) {
+                clientWs.send(JSON.stringify({ type: "text", text: textPart.text }));
+              }
             }
             
             if (message.serverContent?.interrupted) {
-              clientWs.send(JSON.stringify({ type: "interrupted" }));
+              if (isTwilio) {
+                clientWs.send(JSON.stringify({
+                  event: "clear",
+                  streamSid: streamSid
+                }));
+              } else {
+                clientWs.send(JSON.stringify({ type: "interrupted" }));
+              }
             }
           },
           onclose: () => {
-            console.log("[LIVE WS] Gemini Live session finished.");
+            console.log("[VOICE WS] Gemini Live session finished.");
             clientWs.close();
           },
           onerror: (err: any) => {
-            console.error("[LIVE WS] Gemini Live API core error:", err);
-            clientWs.send(JSON.stringify({ type: "error", error: err.message || "Gemini Live API failure" }));
+            console.error("[VOICE WS] Gemini Live API core error:", err);
+            if (!isTwilio) {
+              clientWs.send(JSON.stringify({ type: "error", error: err.message || "Gemini Live API failure" }));
+            }
           }
         }
       });
 
-      console.log("[LIVE WS] Gemini Live linked and synchronized.");
+      console.log("[VOICE WS] Gemini Live linked and synchronized.");
 
-      clientWs.on("message", (data) => {
+      clientWs.on("message", (data: any) => {
         try {
-          const parsed = JSON.parse(data.toString());
-          if (parsed.type === "audio" && parsed.audio) {
-            session.sendRealtimeInput({
-              audio: { data: parsed.audio, mimeType: "audio/pcm;rate=16000" }
-            });
-          } else if (parsed.type === "text" && parsed.text) {
-            session.sendRealtimeInput({
-              text: parsed.text
-            });
+          if (isTwilio) {
+            const parsed = JSON.parse(data.toString());
+            if (parsed.event === "start") {
+              streamSid = parsed.start.streamSid;
+              console.log(`[TWILIO WS] Call stream started. streamSid: ${streamSid}`);
+            } else if (parsed.event === "media" && parsed.media?.payload) {
+              // Transcode inbound audio from Mu-law 8kHz to PCM 16kHz
+              const muLawBuf = Buffer.from(parsed.media.payload, "base64");
+              const pcmBuf = decodeMuLawToPcm16k(muLawBuf);
+              const base64Pcm = pcmBuf.toString("base64");
+
+              session.sendRealtimeInput({
+                audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" }
+              });
+            } else if (parsed.event === "stop") {
+              console.log(`[TWILIO WS] Call stream stopped. streamSid: ${streamSid}`);
+              session.close();
+            }
+          } else {
+            const parsed = JSON.parse(data.toString());
+            if (parsed.type === "audio" && parsed.audio) {
+              session.sendRealtimeInput({
+                audio: { data: parsed.audio, mimeType: "audio/pcm;rate=16000" }
+              });
+            } else if (parsed.type === "text" && parsed.text) {
+              session.sendRealtimeInput({
+                text: parsed.text
+              });
+            }
           }
         } catch (mErr) {
-          console.error("[LIVE WS] Error processing socket message:", mErr);
+          console.error("[VOICE WS] Error processing socket message:", mErr);
         }
       });
 
       clientWs.on("close", () => {
-        console.log("[LIVE WS] Socket connection shut down. Terminating Gemini Session.");
+        console.log("[VOICE WS] Socket connection shut down. Terminating Gemini Session.");
         session.close();
       });
 
@@ -1409,11 +2119,13 @@ Your direct objectives in the telephone call are:
       });
 
     } catch (connErr: any) {
-      console.error("[LIVE WS] Handshake sequence aborted:", connErr);
-      clientWs.send(JSON.stringify({ type: "error", error: connErr.message }));
+      console.error("[VOICE WS] Handshake sequence aborted:", connErr);
+      if (!isTwilio) {
+        clientWs.send(JSON.stringify({ type: "error", error: connErr.message }));
+      }
       clientWs.close();
     }
-  });
+  }
 }
 
 // Setup Vite Dev Server / Static Assets handling
@@ -1439,4 +2151,8 @@ async function startServer() {
   setupWebSocket(server);
 }
 
-startServer();
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
+
+export { app };

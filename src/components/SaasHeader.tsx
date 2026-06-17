@@ -14,6 +14,7 @@ interface SaasHeaderProps {
   onLogout: () => void;
   isSyncingCalendar: boolean;
   onCalendarSyncRefresh: () => void;
+  onAutopilotToggle?: (enabled: boolean) => void;
 }
 
 export const SaasHeader: React.FC<SaasHeaderProps> = ({
@@ -25,7 +26,8 @@ export const SaasHeader: React.FC<SaasHeaderProps> = ({
   onLogin,
   onLogout,
   isSyncingCalendar,
-  onCalendarSyncRefresh
+  onCalendarSyncRefresh,
+  onAutopilotToggle
 }) => {
   const { language, setLanguage, t } = useLanguage();
 
@@ -129,6 +131,26 @@ export const SaasHeader: React.FC<SaasHeaderProps> = ({
               </svg>
             </div>
           </div>
+        </div>
+
+        {/* Autopilot toggle */}
+        <div className="flex items-center gap-2 flex-1 md:flex-none">
+          <button
+            onClick={() => {
+              if (onAutopilotToggle) {
+                onAutopilotToggle(selectedTenant.autopilotEnabled !== false);
+              }
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold font-mono cursor-pointer transition-all w-full md:w-auto ${
+              selectedTenant.autopilotEnabled !== false
+                ? 'bg-emerald-600/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-600/20 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                : 'bg-amber-600/10 text-amber-400 border-amber-500/20 hover:bg-amber-600/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+            }`}
+            title={selectedTenant.autopilotEnabled !== false ? "Autopilot is ACTIVE. Click to pause and take over conversations manually." : "Autopilot is PAUSED. Click to resume autonomous AI responses."}
+          >
+            <span className={`w-2 h-2 rounded-full ${selectedTenant.autopilotEnabled !== false ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-amber-500 animate-ping shadow-[0_0_8px_rgba(245,158,11,0.8)]'}`}></span>
+            <span>{selectedTenant.autopilotEnabled !== false ? 'BOT AUTOPILOT' : 'MANUAL TAKEOVER'}</span>
+          </button>
         </div>
       </div>
 

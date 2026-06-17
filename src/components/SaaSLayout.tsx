@@ -52,7 +52,8 @@ import {
   Cpu,
   Eye,
   EyeOff,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { googleSignIn, logout, initAuth } from '../firebase';
@@ -70,6 +71,7 @@ interface SaaSLayoutProps {
   setTenants?: React.Dispatch<React.SetStateAction<Tenant[]>>;
   sessionEmail?: string | null;
   onGoToOwnerConsole?: () => void;
+  onSelectTenantId?: (tenantId: string) => void;
 }
 
 export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
@@ -79,7 +81,8 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
   tenants: propTenants,
   setTenants: propSetTenants,
   sessionEmail,
-  onGoToOwnerConsole
+  onGoToOwnerConsole,
+  onSelectTenantId
 }) => {
   const { language, t } = useLanguage();
   // Global SaaS States fallback to DEFAULT_TENANTS
@@ -88,8 +91,23 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
   const setTenants = propSetTenants || localSetTenants;
 
   const [selectedTenantId, setSelectedTenantId] = useState<string>(initialTenantId || 'zenith-fitness');
-  const [activeTab, setActiveTab] = useState<'insights' | 'bot_config' | 'knowledge_base' | 'leads' | 'calendar' | 'simulator' | 'whatsapp_integration' | 'workspace_hub'>('insights');
+  const [activeTab, setActiveTabState] = useState<'insights' | 'bot_config' | 'knowledge_base' | 'leads' | 'calendar' | 'simulator' | 'whatsapp_integration' | 'workspace_hub'>(() => {
+    return (localStorage.getItem('saas_active_tab') as any) || 'insights';
+  });
+
+  const setActiveTab = (tab: typeof activeTab) => {
+    setActiveTabState(tab);
+    localStorage.setItem('saas_active_tab', tab);
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'support'>('admin');
+
+  // Live Chat Takeover States
+  const [takeoverConvos, setTakeoverConvos] = useState<Record<string, { messages: any[] }>>({});
+  const [selectedConvoKey, setSelectedConvoKey] = useState<string | null>(null);
+  const [takeoverReplyText, setTakeoverReplyText] = useState('');
+  const [isSendingTakeoverReply, setIsSendingTakeoverReply] = useState(false);
+  const [isFetchingTakeoverConvos, setIsFetchingTakeoverConvos] = useState(false);
 
   // Load new signup tenant if supplied
   useEffect(() => {
@@ -103,6 +121,13 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
       setSelectedTenantId(newSignUpTenant.id);
     }
   }, [newSignUpTenant]);
+
+  // Sync state when initialTenantId changes
+  useEffect(() => {
+    if (initialTenantId) {
+      setSelectedTenantId(initialTenantId);
+    }
+  }, [initialTenantId]);
 
   // Unified Selected Tenant Helper
   const currentTenantIndex = tenants.findIndex(t => t.id === selectedTenantId);
@@ -709,41 +734,71 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
     }, 600);
   };
 
-  const handleStartSimulatedCrawl = () => {
+  const handleStartSimulatedCrawl = async () => {
     if (!kbUrlInput.trim()) return;
     setKbCrawlStatus('running');
-    setKbCrawlProgress(10);
-    setKbCrawlLogs([`[11:14:02 AM] 🚀 Starting crawler spider target: ${kbUrlInput}`]);
+    setKbCrawlProgress(15);
+    const nowStr = new Date().toLocaleTimeString();
+    setKbCrawlLogs([`[${nowStr}] 🚀 Initializing backend scraper for: ${kbUrlInput}`]);
 
-    const steps = [
-      { progress: 20, log: `[11:14:03 AM] 🕷️ Initializing crawling engine utilizing headless Chromium...` },
-      { progress: 35, log: `[11:14:04 AM] 🔗 Crawling root domain page and discovering outbound pathways...` },
-      { progress: 50, log: `[11:14:05 AM] 📂 Discovered ${kbCrawlSource === 'web' ? '12 internal pages' : '5 dynamic profile feeds & logs'} to crawl depth limit (${kbCrawlDepth})` },
-      { progress: 65, log: `[11:14:06 AM] 📝 Processing content extraction of Page 1: /home ... OK (920 words)` },
-      { progress: 80, log: `[11:14:07 AM] 📝 Processing content extraction of Page 2: /services-pricing ... OK (1,240 words)` },
-      { progress: 90, log: `[11:14:08 AM] 📝 Processing bio terms and contact details ... OK` },
-      { progress: 100, log: `[11:14:09 AM] 🎉 Successfully completed crawler spider for ${kbCrawlSource === 'web' ? 'Website Portal' : `${kbCrawlSource.toUpperCase()} Social handle`}! Total words index: 4,120.` }
-    ];
+    try {
+      const response = await fetch(`/api/tenant/${selectedTenant.id}/crawl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: kbUrlInput.trim(),
+          source: kbCrawlSource,
+          depth: kbCrawlDepth,
+          pagesBudget: kbCrawlPages
+        })
+      });
 
-    steps.forEach((stepItem, index) => {
-      setTimeout(() => {
-        setKbCrawlProgress(stepItem.progress);
-        setKbCrawlLogs(prev => [...prev, stepItem.log]);
-        
-        if (index === steps.length - 1) {
-          setKbCrawlStatus('completed');
-          
-          const platformLabelShort = kbCrawlSource === 'web' ? 'Web Index' : `${kbCrawlSource.charAt(0).toUpperCase() + kbCrawlSource.slice(1)} Scrape`;
-          setKbTitleInput(`${platformLabelShort}: ${kbUrlInput.replace(/^https?:\/\/(www\.)?/, '')}`);
-          
-          const textSeed = kbCrawlSource === 'web' 
-            ? `[WEB CORPUS: ${kbUrlInput}]\nRoot url: ${kbUrlInput}\nTotal scanned pages: 8. Total depth: ${kbCrawlDepth}\n\nSummary of text crawled:\n- HOME CONTROLLER: Welcome to ${selectedTenant.name}! Our dedicated staff is here to help. Business location is 100 Main St, Suite 400. Services are active Tuesday through Sunday.\n- PRICING & SLOTS: Initial consultations are fully free! Full program enrollments start at $49/mo. We accept card and digital wallet payments.\n- CANCELLATION CHARTERS: Users can opt out of any contract or subscription by providing a 1-month request statement.`
-            : `[SOCIAL MEDIA INDEX: ${kbUrlInput}]\nChannel Platform: ${kbCrawlSource.toUpperCase()}\nTarget Profile handle: ${kbUrlInput}\nParsed posts countdown: 12 posts\n\nContent transcript from feed stream:\n- BIO: Official social profile of ${selectedTenant.name}. Providing high quality updates for ${selectedTenant.industry}. Description: ${selectedTenant.description}.\n- LATEST UPDATE: Special 15% discount for first-time customers who sign up via our verified WhatsApp Business channel! Experience autonomous scheduling instantly with our bot, ${selectedTenant.botName}.\n- CUSTOMER COMMENT: "The best customer support I've ever experienced, direct scheduling on Google Calendar works like magic!"`;
-            
-          setKbContentInput(textSeed);
+      if (!response.ok) {
+        throw new Error(`Crawler backend returned status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        setKbCrawlProgress(60);
+        setKbCrawlLogs(prev => [
+          ...prev,
+          `[${new Date().toLocaleTimeString()}] 🕷️ Scraped page successfully. Title: "${data.kbItem.title}"`,
+          `[${new Date().toLocaleTimeString()}] 📝 Chunked content into ${data.kbItem.chunks?.length || 1} parts. Generating Gemini embeddings...`
+        ]);
+
+        // Reload tenants
+        const tenantRes = await fetch('/api/tenants');
+        if (tenantRes.ok) {
+          const store = await tenantRes.json();
+          const freshList = Object.values(store) as Tenant[];
+          if (freshList.length > 0) {
+            setTenants(freshList);
+          }
         }
-      }, (index + 1) * 600);
-    });
+
+        setKbCrawlProgress(100);
+        setKbCrawlStatus('completed');
+        
+        // Prefill add KB fields
+        setKbTitleInput(data.kbItem.title);
+        setKbContentInput(data.kbItem.content);
+        setKbTypeInput('crawl');
+        
+        setKbCrawlLogs(prev => [
+          ...prev,
+          `[${new Date().toLocaleTimeString()}] 🎉 Web/Social sync finalized. Document indexed successfully in Knowledge Base!`
+        ]);
+      } else {
+        throw new Error(data.error || 'Unknown crawler error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setKbCrawlStatus('failed');
+      setKbCrawlLogs(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] ❌ Crawl Failed: ${err.message || err}`
+      ]);
+    }
   };
 
   const handleAddKbItem = (e: React.FormEvent) => {
@@ -1511,6 +1566,94 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
     }
   };
 
+  const handleAutopilotToggle = async (enabled: boolean) => {
+    if (!selectedTenant) return;
+    try {
+      const response = await fetch(`/api/tenant/${selectedTenant.id}/autopilot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      if (response.ok) {
+        setTenants(prev => prev.map(t => {
+          if (t.id === selectedTenant.id) {
+            return { ...t, autopilotEnabled: enabled };
+          }
+          return t;
+        }));
+      } else {
+        console.error("Failed to toggle autopilot");
+      }
+    } catch (err) {
+      console.error("Error toggling autopilot:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'leads' || !selectedTenant) return;
+    
+    const fetchConvos = async () => {
+      setIsFetchingTakeoverConvos(true);
+      try {
+        const res = await fetch(`/api/conversations/${selectedTenant.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTakeoverConvos(data);
+          const keys = Object.keys(data);
+          if (keys.length > 0 && !selectedConvoKey) {
+            setSelectedConvoKey(keys[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching takeover conversations:", err);
+      } finally {
+        setIsFetchingTakeoverConvos(false);
+      }
+    };
+    
+    fetchConvos();
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/conversations/${selectedTenant.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTakeoverConvos(data);
+        }
+      } catch (err) {
+        console.error("Error polling conversations:", err);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [activeTab, selectedTenant?.id, selectedConvoKey]);
+
+  const handleSendTakeoverReply = async (customerId: string) => {
+    if (!takeoverReplyText.trim() || !selectedTenant) return;
+    setIsSendingTakeoverReply(true);
+    try {
+      const response = await fetch(`/api/conversations/${selectedTenant.id}/${customerId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: takeoverReplyText })
+      });
+      if (response.ok) {
+        setTakeoverReplyText('');
+        const convRes = await fetch(`/api/conversations/${selectedTenant.id}`);
+        if (convRes.ok) {
+          const data = await convRes.json();
+          setTakeoverConvos(data);
+        }
+      } else {
+        console.error("Failed to send takeover reply");
+      }
+    } catch (err) {
+      console.error("Error sending takeover reply:", err);
+    } finally {
+      setIsSendingTakeoverReply(false);
+    }
+  };
+
   const handleSaveWelcomeTemplate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateNameInput.trim() || !templateTextInput.trim()) return;
@@ -2059,13 +2202,19 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
       <SaasHeader
         tenants={tenants}
         selectedTenant={selectedTenant}
-        onSelectTenant={(tenant) => setSelectedTenantId(tenant.id)}
+        onSelectTenant={(tenant) => {
+          setSelectedTenantId(tenant.id);
+          if (onSelectTenantId) {
+            onSelectTenantId(tenant.id);
+          }
+        }}
         user={user}
         needsAuth={needsAuth}
         onLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
         isSyncingCalendar={isSyncingCalendar}
         onCalendarSyncRefresh={() => googleToken && loadGoogleCalendar(googleToken)}
+        onAutopilotToggle={handleAutopilotToggle}
       />
 
       {/* Main SaaS Frame */}
@@ -2390,6 +2539,24 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                     <span>Lock Admin Session</span>
                   </button>
                 )}
+
+                {/* Mobile User Role Selector */}
+                <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
+                  <span className="text-[9px] text-slate-505 font-mono uppercase tracking-wider block">Access Role:</span>
+                  <button
+                    onClick={() => setUserRole(prev => prev === 'admin' ? 'support' : 'admin')}
+                    className={`w-full py-2.5 px-3.5 rounded-xl border text-xs font-mono font-bold flex items-center justify-between cursor-pointer transition-all ${
+                      userRole === 'admin' 
+                        ? 'bg-blue-950/20 border-blue-500/35 text-blue-400' 
+                        : 'bg-amber-950/20 border-amber-500/35 text-amber-400'
+                    }`}
+                    id="mobile-role-toggle-btn"
+                    type="button"
+                  >
+                    <span>{userRole === 'admin' ? '🔑 ADMIN' : '🎧 SUPPORT AGENT'}</span>
+                    <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded font-sans font-normal">Toggle</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2525,6 +2692,23 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                 </button>
               </>
             )}
+
+            {/* User Role Selector */}
+            <div className="hidden md:flex flex-col mt-4 pt-4 border-t border-white/5 w-full space-y-2">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Access Role:</span>
+              <button
+                onClick={() => setUserRole(prev => prev === 'admin' ? 'support' : 'admin')}
+                className={`w-full py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-between cursor-pointer transition-all ${
+                  userRole === 'admin' 
+                    ? 'bg-blue-950/20 border-blue-500/35 text-blue-400 hover:border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.1)]' 
+                    : 'bg-amber-950/20 border-amber-500/35 text-amber-400 hover:border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.1)]'
+                }`}
+                id="role-toggle-btn"
+              >
+                <span>{userRole === 'admin' ? '🔑 ADMIN' : '🎧 SUPPORT AGENT'}</span>
+                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest font-sans font-normal">Toggle</span>
+              </button>
+            </div>
 
             {/* Persistent WhatsApp Telemetry Status Widget */}
             <div className="hidden md:flex flex-col mt-4 pt-4 border-t border-white/5 w-full">
@@ -2889,12 +3073,16 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                       >
                         Cancel
                       </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md cursor-pointer transition-colors font-mono"
-                      >
-                        {editingAgentId ? "Save Agent Changes" : "Deploy Specialty Bot"}
-                      </button>
+                      {userRole !== 'support' ? (
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md cursor-pointer transition-colors font-mono"
+                        >
+                          {editingAgentId ? "Save Agent Changes" : "Deploy Specialty Bot"}
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 font-mono italic">Prompt updates restricted for Support role</span>
+                      )}
                     </div>
                   </form>
                 )}
@@ -2985,7 +3173,7 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                             </button>
                             
                             {/* Only allow deletion if total count > 1 */}
-                            {getTenantAgents(selectedTenant).length > 1 && (
+                            {getTenantAgents(selectedTenant).length > 1 && userRole !== 'support' && (
                               <button
                                 onClick={() => handleDeleteAgent(agent.id)}
                                 type="button"
@@ -3142,14 +3330,25 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                       </div>
 
                       {/* Deploy update button */}
-                      <button
-                        onClick={handleApplyPlaygroundInstructionsToAgent}
-                        type="button"
-                        className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-mono shadow-md hover:shadow-indigo-500/10 cursor-pointer flex items-center justify-center gap-2 transition-all font-medium"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Apply Tested Prompt to Live Specialty Agent
-                      </button>
+                      {userRole !== 'support' ? (
+                        <button
+                          onClick={handleApplyPlaygroundInstructionsToAgent}
+                          type="button"
+                          className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-mono shadow-md hover:shadow-indigo-500/10 cursor-pointer flex items-center justify-center gap-2 transition-all font-medium"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Apply Tested Prompt to Live Specialty Agent
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          type="button"
+                          className="w-full py-2.5 px-4 bg-slate-800 text-slate-500 rounded-xl text-xs font-mono cursor-not-allowed flex items-center justify-center gap-2 transition-all font-medium"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Prompt Editing Restricted (Support Agent)
+                        </button>
+                      )}
                     </div>
 
                     {/* Chat Sandbox Stream Column */}
@@ -4042,8 +4241,13 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                                 knowledgeBase: selectedTenant.knowledgeBase.filter(kb => kb.id !== item.id)
                               });
                             }}
-                            className="text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 p-1.5 rounded-lg flex items-center gap-1 font-mono cursor-pointer transition-all shrink-0"
-                            title="Remove Source"
+                            disabled={userRole === 'support'}
+                            className={`text-xs p-1.5 rounded-lg flex items-center gap-1 font-mono transition-all shrink-0 ${
+                              userRole === 'support'
+                                ? 'text-slate-505 opacity-50 cursor-not-allowed'
+                                : 'text-red-400 hover:bg-red-500/10 hover:text-red-300 cursor-pointer'
+                            }`}
+                            title={userRole === 'support' ? "Restricted to Admin role" : "Remove Source"}
                             id={`delete-kb-btn-${item.id}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -4261,6 +4465,209 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                     </form>
                   )}
 
+                  {/* Live Takeover Chat Console Panel */}
+                  <div className="bg-[#080b12] border border-white/5 p-6 rounded-2xl space-y-4 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider font-mono flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4" />
+                          <span>Live Chat Takeover Console</span>
+                        </h3>
+                        <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                          Pause AI Autopilot to manually text customers. Conversations synchronize instantly.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Status badge */}
+                        <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono border ${
+                          selectedTenant.autopilotEnabled !== false
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-450'
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-450'
+                        }`}>
+                          {selectedTenant.autopilotEnabled !== false ? '● AI AUTOPILOT ACTIVE' : '● MANUAL TAKEOVER MODE'}
+                        </div>
+                        <button
+                          onClick={() => handleAutopilotToggle(selectedTenant.autopilotEnabled === false)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold font-mono border cursor-pointer transition-all ${
+                            selectedTenant.autopilotEnabled !== false
+                              ? 'bg-amber-600/10 border-amber-500/20 text-amber-400 hover:bg-amber-600/20'
+                              : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20'
+                          }`}
+                        >
+                          {selectedTenant.autopilotEnabled !== false ? 'Pause Autopilot' : 'Resume Autopilot'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {selectedTenant.autopilotEnabled !== false ? (
+                      <div className="p-8 text-center bg-[#0d121d]/50 rounded-xl border border-white/5 space-y-3">
+                        <Bot className="h-8 w-8 text-slate-500 mx-auto animate-pulse" />
+                        <p className="text-xs font-semibold text-slate-300">Autopilot is Currently Handling Chats</p>
+                        <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                          The Gemini AI Bot is autonomously answering customer questions, qualifying leads, and syncing bookings. Pause Autopilot to unlock manual chat takeover.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[400px]">
+                        {/* Sidebar: Conversation Threads */}
+                        <div className="lg:col-span-4 border border-white/5 rounded-xl bg-[#090d16] flex flex-col max-h-[450px]">
+                          <div className="p-3 border-b border-white/5 flex items-center justify-between bg-[#0d121d]">
+                            <span className="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">Active Channels</span>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/conversations/${selectedTenant.id}`);
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    setTakeoverConvos(data);
+                                  }
+                                } catch (e) {}
+                              }}
+                              className="text-[9px] font-mono text-blue-400 hover:underline cursor-pointer"
+                            >
+                              Refresh
+                            </button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+                            {Object.keys(takeoverConvos).length === 0 ? (
+                              <p className="text-center text-slate-600 font-mono text-[10px] py-8 select-none">No active threads</p>
+                            ) : (
+                              Object.keys(takeoverConvos).map(key => {
+                                const isSelected = selectedConvoKey === key;
+                                const customerId = key.substring(selectedTenant.id.length + 1);
+                                const thread = takeoverConvos[key];
+                                const lastMsg = thread.messages?.[thread.messages.length - 1];
+                                const matchedLead = selectedTenant.leads?.find(l => l.phone === customerId || l.id === customerId);
+                                const displayName = matchedLead ? matchedLead.name : customerId;
+
+                                return (
+                                  <button
+                                    key={key}
+                                    onClick={() => setSelectedConvoKey(key)}
+                                    className={`w-full text-left p-3 rounded-lg border transition-all flex flex-col gap-1 cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-blue-600/10 border-blue-500/30 text-blue-450'
+                                        : 'bg-[#0d121d]/50 border-transparent hover:bg-white/5 text-slate-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-xs truncate max-w-[140px]">{displayName}</span>
+                                      <span className="text-[9px] font-mono text-slate-500">
+                                        {lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 truncate block">
+                                      {lastMsg ? lastMsg.text : 'No messages'}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chat Window */}
+                        <div className="lg:col-span-8 border border-white/5 rounded-xl bg-[#090d16] flex flex-col max-h-[450px]">
+                          {selectedConvoKey && takeoverConvos[selectedConvoKey] ? (() => {
+                            const customerId = selectedConvoKey.substring(selectedTenant.id.length + 1);
+                            const thread = takeoverConvos[selectedConvoKey];
+                            const matchedLead = selectedTenant.leads?.find(l => l.phone === customerId || l.id === customerId);
+                            const displayName = matchedLead ? matchedLead.name : customerId;
+
+                            return (
+                              <>
+                                {/* Chat Header */}
+                                <div className="p-3 border-b border-white/5 flex items-center justify-between bg-[#0d121d] rounded-t-xl shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                    <span className="font-semibold text-xs text-slate-200">{displayName}</span>
+                                    {matchedLead && (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono">
+                                        {matchedLead.status.toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[9px] font-mono text-slate-500">ID: {customerId}</span>
+                                </div>
+
+                                {/* Messages list */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin flex flex-col bg-[#05070a]/40">
+                                  {thread.messages.map((msg, index) => {
+                                    const isUser = msg.sender === 'user';
+                                    const isManual = msg.isManualTakeover;
+
+                                    return (
+                                      <div
+                                        key={index}
+                                        className={`flex flex-col max-w-[80%] ${isUser ? 'self-start' : 'self-end items-end'}`}
+                                      >
+                                        <div
+                                          className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                                            isUser
+                                              ? 'bg-slate-800 text-slate-200 rounded-tl-none'
+                                              : isManual
+                                                ? 'bg-teal-600 text-white rounded-tr-none shadow-[0_0_10px_rgba(20,184,166,0.2)]'
+                                                : 'bg-blue-600 text-white rounded-tr-none shadow-[0_0_10px_rgba(37,99,235,0.2)]'
+                                          }`}
+                                        >
+                                          {msg.text}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 mt-1 text-[8.5px] font-mono text-slate-500">
+                                          <span>
+                                            {isUser
+                                              ? 'User'
+                                              : isManual
+                                                ? '👤 Human Support'
+                                                : '🤖 AI Agent'}
+                                          </span>
+                                          <span>•</span>
+                                          <span>
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Send Input Form */}
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleSendTakeoverReply(customerId);
+                                  }}
+                                  className="p-3 border-t border-white/5 bg-[#0d121d] flex gap-2 rounded-b-xl shrink-0"
+                                >
+                                  <input
+                                    type="text"
+                                    value={takeoverReplyText}
+                                    onChange={(e) => setTakeoverReplyText(e.target.value)}
+                                    placeholder="Type a manual reply response to send..."
+                                    className="flex-1 bg-[#090d16] text-slate-100 placeholder-slate-500 text-xs px-3.5 py-2 border border-white/5 focus:border-blue-500/50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 font-mono transition-all"
+                                    disabled={isSendingTakeoverReply}
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={isSendingTakeoverReply || !takeoverReplyText.trim()}
+                                    className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl cursor-pointer transition-all shadow-[0_0_12px_rgba(37,99,235,0.4)] shrink-0"
+                                  >
+                                    {isSendingTakeoverReply ? 'Sending...' : 'Send'}
+                                  </button>
+                                </form>
+                              </>
+                            );
+                          })() : (
+                            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-655 font-mono text-xs">
+                              <MessageSquare className="h-8 w-8 text-slate-700 animate-bounce mb-2" />
+                              Select an active channel thread on the sidebar to begin manual takeover text session.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Leads Grid list table of contacts */}
                   <div className="overflow-x-auto border border-white/5 rounded-2xl shadow-2xl bg-[#080b12]">
                     <table className="w-full text-left text-xs border-collapse min-w-[700px]">
@@ -4339,8 +4746,13 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                                       leads: selectedTenant.leads.filter(l => l.id !== lead.id)
                                     });
                                   }}
-                                  className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-colors cursor-pointer"
-                                  title="Remove Lead"
+                                  disabled={userRole === 'support'}
+                                  className={`p-2 rounded-lg transition-colors ${
+                                    userRole === 'support'
+                                      ? 'text-slate-505 opacity-50 cursor-not-allowed'
+                                      : 'hover:bg-red-500/10 text-red-400 cursor-pointer'
+                                  }`}
+                                  title={userRole === 'support' ? "Restricted to Admin role" : "Remove Lead"}
                                   id={`delete-lead-btn-${lead.id}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -5798,10 +6210,11 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                           id="wa-sid-input"
                           type="text"
                           required
-                          value={waSid}
+                          value={userRole === 'support' ? '••••••••••••••••' : waSid}
+                          disabled={userRole === 'support'}
                           onChange={(e) => setWaSid(e.target.value)}
                           placeholder="e.g., phone_3217222_prod"
-                          className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all"
+                          className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <span className="text-[10px] text-slate-500 block">Copy this ID directly from the WhatsApp Technical Setup pane on Facebook Developers.</span>
                       </div>
@@ -5817,10 +6230,11 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                             id="wa-token-input"
                             type={waShowToken ? "text" : "password"}
                             required
-                            value={waToken}
+                            value={userRole === 'support' ? '••••••••••••••••' : waToken}
+                            disabled={userRole === 'support'}
                             onChange={(e) => setWaToken(e.target.value)}
                             placeholder="EAAGb3v...218Xv7M"
-                            className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-16 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all"
+                            className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-16 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                           <button
                             type="button"
@@ -6184,8 +6598,98 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                       </div>
                     </div>
                   )}
-                </div>
+                  {/* Twilio voice bridge dashboard */}
+                  <div className="p-6 rounded-3xl border border-indigo-500/20 bg-[#080d19]/80 shadow-[0_0_25px_rgba(99,102,241,0.15)] relative overflow-hidden space-y-6">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+                    
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2.5 w-2.5">
+                            {selectedTenant.twilioVoiceActive ? (
+                              <>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                              </>
+                            ) : (
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-500"></span>
+                            )}
+                          </span>
+                          <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                            🎙️ Twilio VoIP Voice Config Control
+                          </h3>
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-mono">
+                          Bridge inbound telephone lines to the Gemini Live AI voice websocket.
+                        </p>
+                      </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Left Column: Voice Options */}
+                      <div className="space-y-4 font-mono text-xs text-slate-300">
+                        <div className="flex items-center justify-between p-3.5 bg-[#0c1222] border border-white/5 rounded-xl">
+                          <div>
+                            <span className="font-bold text-white block">Twilio Voice Active:</span>
+                            <span className="text-[10px] text-slate-500 block leading-tight pt-0.5">Route incoming voice calls to Gemini.</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateTenantFields({
+                                twilioVoiceActive: !selectedTenant.twilioVoiceActive
+                              });
+                            }}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                              selectedTenant.twilioVoiceActive
+                                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                : 'bg-white/5 border-white/10 text-slate-400'
+                            }`}
+                          >
+                            {selectedTenant.twilioVoiceActive ? 'ACTIVE' : 'INACTIVE'}
+                          </button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-455 block font-mono">Gemini Live Voice Selector:</label>
+                          <select
+                            value={selectedTenant.twilioVoiceName || 'Zephyr'}
+                            onChange={(e) => {
+                              updateTenantFields({
+                                twilioVoiceName: e.target.value
+                              });
+                            }}
+                            className="w-full bg-[#0c1222] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-indigo-500/40 rounded-xl outline-none focus:ring-1 focus:ring-indigo-500/50 font-sans cursor-pointer transition-all"
+                          >
+                            <option value="Zephyr">Zephyr (Warm Male - Default)</option>
+                            <option value="Puck">Puck (Energetic Male)</option>
+                            <option value="Charon">Charon (Deep Voice Male)</option>
+                            <option value="Kore">Kore (Warm Female)</option>
+                            <option value="Fenrir">Fenrir (Deep Voice Female)</option>
+                            <option value="Aoede">Aoede (Clear Female)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Webhook Setup info */}
+                      <div className="space-y-4 font-mono text-xs text-slate-355 bg-[#0c1222] p-4.5 border border-white/5 rounded-2xl">
+                        <div className="space-y-1">
+                          <span className="text-slate-400 block text-[11px] font-semibold font-mono">
+                            Twilio TwiML Webhook Callback URL:
+                          </span>
+                          <div className="bg-[#04060b] text-indigo-300 border border-white/5 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-mono text-[10.5px]">
+                            <span className="truncate select-all leading-normal text-indigo-400 font-bold">
+                              {window.location.origin}/api/twilio/voice?tenantId={selectedTenant.id}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 block leading-tight pt-1">
+                            ⚡ Copy this URL and paste it under the "A Call Comes In" section of your Twilio Active Phone Number configurations.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -6229,10 +6733,11 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                           <input
                             id="messenger-page-id-input"
                             type="text"
-                            value={messengerPageId}
+                            value={userRole === 'support' ? '••••••••••••••••' : messengerPageId}
+                            disabled={userRole === 'support'}
                             onChange={(e) => setMessengerPageId(e.target.value)}
                             placeholder="E.g., 108392182039281"
-                            className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                            className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
 
@@ -6242,10 +6747,11 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                             <input
                               id="messenger-token-input"
                               type={messengerShowToken ? 'text' : 'password'}
-                              value={messengerToken}
+                              value={userRole === 'support' ? '••••••••••••••••' : messengerToken}
+                              disabled={userRole === 'support'}
                               onChange={(e) => setMessengerToken(e.target.value)}
                               placeholder="EAArY..."
-                              className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-10 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                              className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-10 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                             <button
                               type="button"

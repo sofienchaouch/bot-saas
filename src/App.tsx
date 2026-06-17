@@ -5,17 +5,43 @@ import { SaaSLayout } from './components/SaaSLayout';
 import { SaaSOwnerDashboard } from './components/SaaSOwnerDashboard';
 import { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent } from './types';
 import { DEFAULT_TENANTS } from './defaultData';
+import { CalendarBookingPage } from './components/CalendarBookingPage';
 
 export default function App() {
   // Navigation Routing States
-  const [view, setView] = useState<'landing' | 'auth' | 'admin' | 'owner'>('landing');
+  const [view, setView] = useState<'landing' | 'auth' | 'admin' | 'owner'>(() => {
+    const saved = localStorage.getItem('saas_view');
+    return (saved as 'landing' | 'auth' | 'admin' | 'owner') || 'landing';
+  });
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   
   // Custom states
   const [tenants, setTenants] = useState<Tenant[]>(DEFAULT_TENANTS);
-  const [selectedTenantId, setSelectedTenantId] = useState<string>('zenith-fitness');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>(() => {
+    return localStorage.getItem('saas_selected_tenant_id') || 'zenith-fitness';
+  });
   const [newlyRegisteredTenant, setNewlyRegisteredTenant] = useState<Tenant | null>(null);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(() => {
+    return localStorage.getItem('saas_session_email');
+  });
+  const hasLoaded = React.useRef(false);
+
+  // Sync to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('saas_view', view);
+  }, [view]);
+
+  React.useEffect(() => {
+    localStorage.setItem('saas_selected_tenant_id', selectedTenantId);
+  }, [selectedTenantId]);
+
+  React.useEffect(() => {
+    if (sessionEmail) {
+      localStorage.setItem('saas_session_email', sessionEmail);
+    } else {
+      localStorage.removeItem('saas_session_email');
+    }
+  }, [sessionEmail]);
 
   // Synchronize state with backend
   React.useEffect(() => {
@@ -27,6 +53,9 @@ export default function App() {
           const list = Object.values(store) as Tenant[];
           if (list.length > 0) {
             setTenants(list);
+            setTimeout(() => {
+              hasLoaded.current = true;
+            }, 1000);
           } else {
             // If server store is empty, capture the presets to server
             await fetch('/api/tenants/sync-all', {
@@ -34,6 +63,7 @@ export default function App() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(DEFAULT_TENANTS)
             });
+            hasLoaded.current = true;
           }
         }
       } catch (err) {
@@ -44,6 +74,9 @@ export default function App() {
   }, []);
 
   React.useEffect(() => {
+    if (!hasLoaded.current) {
+      return;
+    }
     const syncTenants = async () => {
       try {
         await fetch('/api/tenants/sync-all', {
@@ -92,14 +125,20 @@ export default function App() {
 
   // Helper to generate descriptive vertical instruction text
   const generateInstruction = (companyName: string, industry: string, botName: string, tone: string) => {
-    return `You are ${botName}, the virtual representative for ${companyName}.
+    let base = `You are ${botName}, the virtual representative for ${companyName}.
 Your tone is ${tone} and encouraging.
 You operate in the ${industry} niche. 
 Your key performance indices are to:
 1. Warmly answer FAQs from our Private Knowledge Base.
 2. Formulate and record new lead opportunities (name, phone, mail).
-3. Securely check availability and book reservations directly on our Google Calendar.
-Avoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
+3. Securely check availability and book reservations directly on our Google Calendar.`;
+
+    if (industry === 'ECommerce') {
+      base += `\n4. For digital purchases: identify if the user wants to buy/order a product. Quote prices accurately from the Knowledge Base and trigger a purchase action callback.`;
+    }
+
+    base += `\nAvoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
+    return base;
   };
 
   // Auth: Signed up custom company successfully (Dynamic multi-tenant instantiation!)
@@ -115,7 +154,13 @@ Avoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
     const slug = config.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'custom-tenant';
     const finalId = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const industryEmoji = config.industry === 'Fitness' ? '💪' : config.industry === 'Healthcare' ? '🥼' : config.industry === 'Legal' ? '⚖️' : '🛒';
+    const industryEmoji = 
+      config.industry === 'Fitness' ? '💪' : 
+      config.industry === 'Healthcare' ? '🥼' : 
+      config.industry === 'Legal' ? '⚖️' : 
+      config.industry === 'ECommerce' ? '🛒' :
+      config.industry === 'Real Estate' ? '🏡' :
+      config.industry === 'Education' ? '🎓' : '🛠️';
 
     // Tailor starting assets based on vertical selection
     let mockLeads: Lead[] = [];
@@ -268,6 +313,145 @@ Avoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
           syncedWithGoogle: false
         }
       ];
+    } else if (config.industry === 'ECommerce') {
+      descriptionText = `High-conversion digital storefront and checkout assistant.`;
+
+      mockLeads = [
+        {
+          id: `lead-1-${finalId}`,
+          name: 'Bruce Banner',
+          phone: '+1 (555) 500-1234',
+          email: 'banner@avengers-shop.com',
+          status: 'Qualified',
+          dateCaptured: `${nowIso}T10:15:30Z`,
+          note: 'Inquired about premium wireless earbuds availability and batch order.'
+        }
+      ];
+
+      mockKb = [
+        {
+          id: `kb-1-${finalId}`,
+          type: 'faq',
+          title: 'Product Catalog & Pricing',
+          content: `- Premium Smart Watch: $199. Features water resistance, biological heart tracker.
+- Active Wireless Earbuds: $89. Features active noise cancellation, 12-hour battery life.
+- Super-charging Dock: $49. Fast charger for multiple devices simultaneously.`,
+          dateAdded: nowIso
+        },
+        {
+          id: `kb-2-${finalId}`,
+          type: 'document',
+          title: 'Shipping Rates & 30-Day Returns',
+          content: `Standard shipping is free for orders over $50, otherwise flat rate $4.99. Express delivery is available for $14.99.
+Items can be returned within 30 days of purchase if they are in original packaging and unused. Customers must contact support@store.com to receive a return shipping label.`,
+          dateAdded: nowIso
+        }
+      ];
+
+      mockAppointments = [
+        {
+          id: `appt-1-${finalId}`,
+          customerName: 'Tony Stark',
+          customerPhone: '+1 (555) 3000-456',
+          email: 'tony@stark-tech.com',
+          start: `${nowIso}T13:00:00`,
+          end: `${nowIso}T14:00:00`,
+          summary: 'Bulk hardware invoice discussion',
+          syncedWithGoogle: false
+        }
+      ];
+    } else if (config.industry === 'Real Estate') {
+      descriptionText = `Modern realty advisory and property scheduling engine.`;
+
+      mockLeads = [
+        {
+          id: `lead-1-${finalId}`,
+          name: 'Peter Parker',
+          phone: '+1 (555) 769-3221',
+          email: 'peter.parker@dailybugle.com',
+          status: 'Interested',
+          dateCaptured: `${nowIso}T11:20:00Z`,
+          note: 'Looking for a 2-bedroom rental apartment near downtown.'
+        }
+      ];
+
+      mockKb = [
+        {
+          id: `kb-1-${finalId}`,
+          type: 'faq',
+          title: 'Available Properties & Pricing',
+          content: `- Modern Downtown Loft: 2 beds, 2 baths, $450,000. Features exposed brick, open floor plan.
+- Suburban Family Haven: 4 beds, 3 baths, $680,000. Features large backyard, school district.
+- Luxury Penthouse: 3 beds, 3.5 baths, $1,250,000. Rooftop terrace, skyline view.`,
+          dateAdded: nowIso
+        },
+        {
+          id: `kb-2-${finalId}`,
+          type: 'document',
+          title: 'Home Buyer & Showing Guidelines',
+          content: `Showings must be scheduled at least 24 hours in advance. Buyers must present a pre-approval mortgage letter for properties valued over $500,000. Standard broker commission is 2.5% per transaction.`,
+          dateAdded: nowIso
+        }
+      ];
+
+      mockAppointments = [
+        {
+          id: `appt-1-${finalId}`,
+          customerName: 'Mary Jane',
+          customerPhone: '+1 (555) 987-6543',
+          email: 'mj@broadway-act.com',
+          start: `${nowIso}T15:30:00`,
+          end: `${nowIso}T16:30:00`,
+          summary: 'Showing: Modern Downtown Loft',
+          syncedWithGoogle: false
+        }
+      ];
+    } else if (config.industry === 'Education') {
+      descriptionText = `Private tutoring platform and course scheduling advisor.`;
+
+      mockLeads = [
+        {
+          id: `lead-1-${finalId}`,
+          name: 'Diana Prince',
+          phone: '+1 (555) 821-4500',
+          email: 'diana@themyscira-museum.org',
+          status: 'Qualified',
+          dateCaptured: `${nowIso}T16:05:00Z`,
+          note: 'Wants to book private advanced history tutoring classes for her children.'
+        }
+      ];
+
+      mockKb = [
+        {
+          id: `kb-1-${finalId}`,
+          type: 'faq',
+          title: 'Courses & Pricing Details',
+          content: `- Mathematics (Algebra to Calculus): $60/hour. Individualized study plan, custom worksheets.
+- Chemistry & Physics Prep: $65/hour. Laboratory prep and problem-solving focus.
+- Advanced History & Classics: $55/hour. Essay reviews and reading comprehension.`,
+          dateAdded: nowIso
+        },
+        {
+          id: `kb-2-${finalId}`,
+          type: 'document',
+          title: 'Class Cancellations & Homework Policy',
+          content: `Cancellations must be done 12 hours prior to the slot to reschedule free of charge. Homework assignments are uploaded on Sundays and must be submitted via email before the Friday session. Parents receive bi-weekly reports.`,
+          dateAdded: nowIso
+        }
+      ];
+
+      mockAppointments = [
+        {
+          id: `appt-1-${finalId}`,
+          customerName: 'Steve Rogers',
+          customerPhone: '+1 (555) 1941-776',
+          email: 'cap@brooklyn-tutoring.com',
+          start: `${nowIso}T16:00:00`,
+          end: `${nowIso}T17:00:00`,
+          summary: 'Algebra prep consultation',
+          syncedWithGoogle: false
+        }
+      ];
     } else {
       // Custom Shop
       descriptionText = `Bespoke artisanal studio and local dispatch workshop.`;
@@ -367,6 +551,12 @@ Avoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
     setSessionEmail(null);
   };
 
+  const path = window.location.pathname;
+  if (path.startsWith('/book/')) {
+    const bookingTenantId = path.split('/')[2] || 'zenith-fitness';
+    return <CalendarBookingPage tenantId={bookingTenantId} tenants={tenants} />;
+  }
+
   return (
     <>
       {view === 'landing' && (
@@ -412,6 +602,7 @@ Avoid lecturing the customer. Keep your answers brief and to-the-point layout.`;
           sessionEmail={sessionEmail}
           onGoToOwnerConsole={() => setView('owner')}
           onLogoutAdmin={handleLogoutAdmin}
+          onSelectTenantId={setSelectedTenantId}
         />
       )}
     </>

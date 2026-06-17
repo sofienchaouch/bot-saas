@@ -131,6 +131,15 @@ export const SaaSAuth: React.FC<SaaSAuthProps> = ({
     } else if (selected === 'Legal') {
       setBotName('Aurora Docket Counsel');
       setBotTone('professional');
+    } else if (selected === 'ECommerce') {
+      setBotName('Smart Shop Butler');
+      setBotTone('friendly');
+    } else if (selected === 'Real Estate') {
+      setBotName('Aura Realty Agent');
+      setBotTone('professional');
+    } else if (selected === 'Education') {
+      setBotName('Aura Class Advisor');
+      setBotTone('friendly');
     } else if (selected === 'Custom Shop') {
       setBotName('Smart Shop Butler');
       setBotTone('casual');
@@ -380,7 +389,10 @@ export const SaaSAuth: React.FC<SaaSAuthProps> = ({
                     <option value="Fitness">💪 Fitness & Coaching</option>
                     <option value="Healthcare">🥼 Clinic & Wellness</option>
                     <option value="Legal">⚖️ Legal & Dossier Practice</option>
-                    <option value="Custom Shop">🛒 Custom Workshop / Retail</option>
+                    <option value="ECommerce">🛒 E-Commerce & Retail</option>
+                    <option value="Real Estate">🏡 Real Estate & Brokerage</option>
+                    <option value="Education">🎓 Education & Tutoring</option>
+                    <option value="Custom Shop">🛠️ Custom Workshop / Retail</option>
                   </select>
                 </div>
               </div>
