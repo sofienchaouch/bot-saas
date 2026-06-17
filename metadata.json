@@ -1,0 +1,8 @@
+{
+  "name": "WhatsApp AI Agent SaaS Platform",
+  "description": "Multi-tenant SaaS dashboard managing WhatsApp AI agents, capturing leads, answering customer queries with custom knowledge bases, and scheduling meetings synced with Google Calendar.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      // Suppress expected/benign WebSocket and HMR errors in sandbox environment
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason) {
+          const reasonStr = String(event.reason);
+          const message = event.reason.message ? String(event.reason.message) : '';
+          if (
+            message.indexOf('WebSocket') !== -1 || 
+            message.indexOf('websocket') !== -1 || 
+            reasonStr.indexOf('WebSocket') !== -1 || 
+            reasonStr.indexOf('websocket') !== -1 ||
+            reasonStr.indexOf('WebSocket closed without opened') !== -1
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      }, true);
+
+      window.addEventListener('error', function(event) {
+        const message = event.message ? String(event.message) : '';
+        const errorStr = event.error ? String(event.error) : '';
+        if (
+          message.indexOf('WebSocket') !== -1 || 
+          message.indexOf('websocket') !== -1 || 
+          errorStr.indexOf('WebSocket') !== -1 || 
+          errorStr.indexOf('websocket') !== -1
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

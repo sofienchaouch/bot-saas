@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global safety net default-deny catch-all rule block
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Core helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper to extract incoming state data
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Helper to extract existing document state data
+    function existing() {
+      return resource.data;
+    }
+
+    // Tenant model validation helper
+    function isValidTenant(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && (!('industry' in data) || data.industry is string)
+        && (!('description' in data) || data.description is string)
+        && (!('status' in data) || data.status is string)
+        && (!('whatsAppPhoneNumber' in data) || data.whatsAppPhoneNumber is string)
+        && (!('whatsAppVerifiedSid' in data) || data.whatsAppVerifiedSid is string);
+    }
+
+    // Webhook Conversation model validation helper
+    function isValidConversation(data) {
+      return data.tenantId is string && data.tenantId.size() <= 128
+        && data.customerPhone is string && data.customerPhone.size() <= 64;
+    }
+
+    // Rules for /tenants/{tenantId}
+    match /tenants/{tenantId} {
+      allow get: if isSignedIn() && isValidId(tenantId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(tenantId) && isValidTenant(incoming());
+      
+      allow update: if isSignedIn() && isValidId(tenantId) && isValidTenant(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAny([
+          'name', 'industry', 'description', 'avatar', 'botName', 'tone', 'status', 
+          'systemInstruction', 'welcomeTemplates', 'activeWelcomeTemplateId', 'knowledgeBase', 
+          'leads', 'appointments', 'agents', 'activeAgentId', 'whatsAppPhoneNumber', 
+          'whatsAppVerifiedSid', 'whatsAppStatus', 'whatsAppApiKey', 'whatsAppSandboxActive', 
+          'whatsAppSandboxNumbers'
+        ])
+      );
+      
+      allow delete: if isSignedIn() && isValidId(tenantId);
+    }
+
+    // Rules for /conversations/{conversationKey}
+    match /conversations/{conversationKey} {
+      allow get: if isSignedIn() && isValidId(conversationKey);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(conversationKey) && isValidConversation(incoming());
+      
+      allow update: if isSignedIn() && isValidId(conversationKey) && isValidConversation(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAny(['messages'])
+      );
+      
+      allow delete: if isSignedIn() && isValidId(conversationKey);
+    }
+  }
+}

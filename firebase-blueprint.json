@@ -1,0 +1,140 @@
+{
+  "entities": {
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Information and configuration about a tenant company using the SaaS",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique UUID identification of the tenant"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tenant business"
+        },
+        "industry": {
+          "type": "string",
+          "description": "Industry niche of the business"
+        },
+        "description": {
+          "type": "string",
+          "description": "General business concept summary"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "SVG visual icon presentation identifier"
+        },
+        "botName": {
+          "type": "string",
+          "description": "WhatsApp chatbot handle identity"
+        },
+        "tone": {
+          "type": "string",
+          "description": "AI core conversational tone style"
+        },
+        "status": {
+          "type": "string",
+          "description": "Active or paused automation status"
+        },
+        "systemInstruction": {
+          "type": "string",
+          "description": "Custom global instruction directives for the language model"
+        },
+        "welcomeTemplates": {
+          "type": "array",
+          "description": "List of welcome template scripts"
+        },
+        "activeWelcomeTemplateId": {
+          "type": "string",
+          "description": "Currently activated greeting template ID"
+        },
+        "knowledgeBase": {
+          "type": "array",
+          "description": "Full collection of FAQ items, uploaded text, URL pages, etc."
+        },
+        "leads": {
+          "type": "array",
+          "description": "Leads acquired by the WhatsApp assistant flow"
+        },
+        "appointments": {
+          "type": "array",
+          "description": "Calendar bookings synchronized to Google and local schedule slots"
+        },
+        "agents": {
+          "type": "array",
+          "description": "Pre-configured specialized agents details"
+        },
+        "activeAgentId": {
+          "type": "string",
+          "description": "ID of the current active agent persona"
+        },
+        "whatsAppPhoneNumber": {
+          "type": "string",
+          "description": "WhatsApp business physical number"
+        },
+        "whatsAppVerifiedSid": {
+          "type": "string",
+          "description": "Meta verified Phone ID string (WABA)"
+        },
+        "whatsAppStatus": {
+          "type": "string",
+          "description": "Integration verification and connectivity states"
+        },
+        "whatsAppApiKey": {
+          "type": "string",
+          "description": "Optional tenant-specific token"
+        },
+        "whatsAppSandboxActive": {
+          "type": "boolean",
+          "description": "Safe verification sandbox mode active boolean"
+        },
+        "whatsAppSandboxNumbers": {
+          "type": "array",
+          "description": "Allowed sandbox tester telephone numbers"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A WhatsApp messaging thread between a bot and target customer",
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "description": "The target organization reference"
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Customer standard format phone number"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Order array of exchanges containing prompt text, bot answers, timestamp and actions tracker logs"
+        }
+      },
+      "required": [
+        "tenantId",
+        "customerPhone"
+      ]
+    }
+  },
+  "firestore": {
+    "/tenants/{tenantId}": {
+      "schema": {
+        "$ref": "#/entities/Tenant"
+      },
+      "description": "Core documents storing the SaaS tenants state maps and configuration records."
+    },
+    "/conversations/{conversationKey}": {
+      "schema": {
+        "$ref": "#/entities/Conversation"
+      },
+      "description": "A message log mapped with composite identifier keys containing dialogue history exchanges."
+    }
+  }
+}
