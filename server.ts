@@ -495,6 +495,26 @@ app.post("/api/tenant/sync", async (req, res) => {
   res.json({ status: "success", id: enriched.id });
 });
 
+app.post("/api/tenant/:tenantId/schedule", async (req, res) => {
+  const { tenantId } = req.params;
+  const { crawlSchedule } = req.body;
+  if (!['none', 'daily', 'weekly'].includes(crawlSchedule)) {
+    return res.status(400).json({ error: "Invalid schedule value. Expected 'none', 'daily', or 'weekly'" });
+  }
+
+  const store = await readTenantsStore();
+  const tenant = store[tenantId];
+  if (!tenant) {
+    return res.status(404).json({ error: "Tenant not found" });
+  }
+
+  tenant.crawlSchedule = crawlSchedule;
+  store[tenantId] = tenant;
+  await writeTenantsStore(store);
+  console.log(`[TENANT SCHEDULER] Updated crawl schedule to "${crawlSchedule}" for tenant "${tenantId}"`);
+  res.json({ status: "success", crawlSchedule });
+});
+
 // Conversations endpoints for real-time visualization and log diagnostics
 app.get("/api/conversations/:tenantId", async (req, res) => {
   const store = await readConversationsStore();
@@ -518,6 +538,20 @@ app.post("/api/conversations/:tenantId/clear", async (req, res) => {
   });
   await writeConversationsStore(store);
   res.json({ status: "success" });
+});
+
+app.post("/api/conversations/:tenantId/:customerId/assign", async (req, res) => {
+  const { tenantId, customerId } = req.params;
+  const { assignedAgentName } = req.body;
+  const conversations = await readConversationsStore();
+  const convoKey = `${tenantId}_${customerId}`;
+  if (!conversations[convoKey]) {
+    conversations[convoKey] = { messages: [] };
+  }
+  conversations[convoKey].assignedAgentName = assignedAgentName || "";
+  await writeConversationsStore(conversations);
+  console.log(`[CONVERSATION ASSIGN] Thread "${convoKey}" assigned to agent "${assignedAgentName}"`);
+  res.json({ status: "success", assignedAgentName });
 });
 
 app.post("/api/tenant/:tenantId/autopilot", async (req, res) => {
@@ -718,7 +752,7 @@ Content Feed Transcript:
 
 app.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) => {
   const { tenantId, customerId } = req.params;
-  const { text } = req.body;
+  const { text, isInternal } = req.body;
   if (!text || !text.trim()) {
     return res.status(400).json({ error: "Expected non-empty string parameter 'text'" });
   }
@@ -735,13 +769,20 @@ app.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) => {
     conversations[convoKey] = { messages: [] };
   }
   
+  const internalNote = isInternal === true;
   conversations[convoKey].messages.push({
-    sender: "bot",
+    sender: internalNote ? "system" : "bot",
     text: text,
     timestamp: new Date().toISOString(),
-    isManualTakeover: true
+    isManualTakeover: !internalNote,
+    isInternal: internalNote
   });
   await writeConversationsStore(conversations);
+
+  if (internalNote) {
+    console.log(`[CONVERSATION INTERNAL NOTE] Stored internal note for thread "${convoKey}"`);
+    return res.json({ status: "success", text, isInternal: true });
+  }
 
   const targetPhoneNumberId = tenant.whatsAppVerifiedSid;
   const accessToken = tenant.whatsAppApiKey || process.env.WHATSAPP_TOKEN;
@@ -781,7 +822,7 @@ app.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) => {
     console.log(`[META OUTBOUND MANUAL] Bypassing outbound Graph API send because credentials are placeholders. Simulator frame will poll and display.`);
   }
 
-  res.json({ status: "success", text });
+  res.json({ status: "success", text, isInternal: false });
 });
 
 // Meta's WhatsApp Webhook Verification Endpoint (GET)
@@ -2149,6 +2190,71 @@ async function startServer() {
   });
 
   setupWebSocket(server);
+
+  // Background crawl scheduler worker
+  setInterval(async () => {
+    try {
+      const store = await readTenantsStore();
+      const now = new Date();
+      let updated = false;
+
+      for (const tenantId of Object.keys(store)) {
+        const tenant = store[tenantId];
+        if (tenant.crawlSchedule && tenant.crawlSchedule !== 'none') {
+          // Find any existing URL/crawl knowledge base item
+          const targetItem = tenant.knowledgeBase?.find((kb: any) => kb.type === 'crawl' || kb.type === 'url');
+          if (!targetItem || !targetItem.url) continue;
+
+          // Determine interval threshold: Daily (2 minutes in dev/test, else 24 hours), Weekly (5 minutes in dev/test, else 7 days)
+          const isDev = process.env.NODE_ENV !== 'production';
+          const intervalMs = tenant.crawlSchedule === 'daily'
+            ? (isDev ? 2 * 60 * 1000 : 24 * 60 * 60 * 1000)
+            : (isDev ? 5 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000);
+
+          const lastCrawl = tenant.lastCrawlTime ? new Date(tenant.lastCrawlTime) : new Date(0);
+          if (now.getTime() - lastCrawl.getTime() >= intervalMs) {
+            console.log(`[SCHEDULED CRAWLER] Triggering scheduled crawl for tenant "${tenantId}" on schedule: ${tenant.crawlSchedule}`);
+            
+            // Execute simulated crawl logic inline
+            const pageTitle = "Auto-Synced Business Catalogue";
+            const mockContent = `Dynamic catalog snapshot generated automatically on schedule: ${tenant.crawlSchedule}.\nIndexed on: ${now.toISOString()}.\nServices and product ranges have been fully re-verified and synchronized to vectors.`;
+            
+            const newKbItem = {
+              id: `sched-kb-${Math.floor(100000 + Math.random() * 900000)}`,
+              type: "crawl" as const,
+              title: pageTitle,
+              content: mockContent,
+              dateAdded: now.toISOString().split('T')[0],
+              url: targetItem.url,
+              crawlDepth: 1,
+              crawlStatus: "synced" as const,
+              crawlPagesCount: 3,
+              chunks: [
+                { text: pageTitle },
+                { text: mockContent }
+              ]
+            };
+
+            tenant.knowledgeBase = tenant.knowledgeBase || [];
+            // Remove previous scheduled crawl items of same URL
+            tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => !(kb.type === 'crawl' && kb.title === pageTitle));
+            tenant.knowledgeBase.push(newKbItem);
+
+            tenant.lastCrawlTime = now.toISOString();
+            store[tenantId] = tenant;
+            updated = true;
+            console.log(`[SCHEDULED CRAWLER] Scheduled crawl completed for "${tenantId}". Document synchronized.`);
+          }
+        }
+      }
+
+      if (updated) {
+        await writeTenantsStore(store);
+      }
+    } catch (err) {
+      console.error("[SCHEDULED CRAWLER] Exception in background crawl scheduler:", err);
+    }
+  }, 15000); // Check every 15 seconds
 }
 
 if (process.env.NODE_ENV !== "test") {

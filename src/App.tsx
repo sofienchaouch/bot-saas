@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { SaaSLandingPage } from './components/SaaSLandingPage';
-import { SaaSAuth } from './components/SaaSAuth';
-import { SaaSLayout } from './components/SaaSLayout';
-import { SaaSOwnerDashboard } from './components/SaaSOwnerDashboard';
 import { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent } from './types';
 import { DEFAULT_TENANTS } from './defaultData';
 import { CalendarBookingPage } from './components/CalendarBookingPage';
+
+const SaaSLandingPage = React.lazy(() => import('./components/SaaSLandingPage').then(m => ({ default: m.SaaSLandingPage })));
+const SaaSAuth = React.lazy(() => import('./components/SaaSAuth').then(m => ({ default: m.SaaSAuth })));
+const SaaSLayout = React.lazy(() => import('./components/SaaSLayout').then(m => ({ default: m.SaaSLayout })));
+const SaaSOwnerDashboard = React.lazy(() => import('./components/SaaSOwnerDashboard').then(m => ({ default: m.SaaSOwnerDashboard })));
+
 
 export default function App() {
   // Navigation Routing States
@@ -558,7 +560,17 @@ Items can be returned within 30 days of purchase if they are in original packagi
   }
 
   return (
-    <>
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#020509] flex flex-col items-center justify-center text-slate-100 font-mono space-y-4">
+        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white animate-bounce shadow-[0_0_20px_rgba(37,99,235,0.5)]">
+          <span className="font-bold text-sm">AI</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping"></span>
+          <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Synchronizing SaaS Workspace...</span>
+        </div>
+      </div>
+    }>
       {view === 'landing' && (
         <SaaSLandingPage 
           onNavigateToAuth={handleNavigateToAuth}
@@ -605,6 +617,6 @@ Items can be returned within 30 days of purchase if they are in original packagi
           onSelectTenantId={setSelectedTenantId}
         />
       )}
-    </>
+    </React.Suspense>
   );
 }

@@ -92,11 +92,13 @@ export interface Tenant {
   googleCalendarAutoSchedule?: boolean;
   twilioVoiceActive?: boolean;
   twilioVoiceName?: string;
+  crawlSchedule?: 'none' | 'daily' | 'weekly';
+  lastCrawlTime?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  sender: 'bot' | 'customer';
+  sender: 'bot' | 'customer' | 'system';
   text: string;
   timestamp: string;
   status?: 'sent' | 'delivered' | 'read';
@@ -104,6 +106,8 @@ export interface ChatMessage {
     type: 'capture_lead' | 'book_appointment' | 'consult_kb' | 'purchase_item';
     details: string;
   };
+  isInternal?: boolean;
+  assignedAgentName?: string;
 }
 
 export interface SimulationSession {
@@ -113,4 +117,5 @@ export interface SimulationSession {
   messages: ChatMessage[];
   isTyping: boolean;
   status: 'active' | 'completed';
+  assignedAgentName?: string;
 }

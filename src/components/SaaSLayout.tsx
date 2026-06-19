@@ -108,6 +108,12 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
   const [takeoverReplyText, setTakeoverReplyText] = useState('');
   const [isSendingTakeoverReply, setIsSendingTakeoverReply] = useState(false);
   const [isFetchingTakeoverConvos, setIsFetchingTakeoverConvos] = useState(false);
+  const [isDialerModalOpen, setIsDialerModalOpen] = useState(false);
+  const [dialerCustomerNumber, setDialerCustomerNumber] = useState('');
+  const [dialerCustomerName, setDialerCustomerName] = useState('');
+  const [dialerState, setDialerState] = useState<'dialing' | 'connected' | 'ended'>('dialing');
+  const [dialerTimer, setDialerTimer] = useState(0);
+  const [isInternalNote, setIsInternalNote] = useState(false);
 
   // Load new signup tenant if supplied
   useEffect(() => {
@@ -1628,6 +1634,27 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
     return () => clearInterval(interval);
   }, [activeTab, selectedTenant?.id, selectedConvoKey]);
 
+  // Dialer call timer tick hook
+  useEffect(() => {
+    let interval: any;
+    if (isDialerModalOpen && dialerState === 'connected') {
+      interval = setInterval(() => {
+        setDialerTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isDialerModalOpen, dialerState]);
+
+  // Simulate call progression: dialing -> connected after 2.5 seconds
+  useEffect(() => {
+    if (isDialerModalOpen && dialerState === 'dialing') {
+      const timer = setTimeout(() => {
+        setDialerState('connected');
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDialerModalOpen, dialerState]);
+
   const handleSendTakeoverReply = async (customerId: string) => {
     if (!takeoverReplyText.trim() || !selectedTenant) return;
     setIsSendingTakeoverReply(true);
@@ -1635,10 +1662,11 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
       const response = await fetch(`/api/conversations/${selectedTenant.id}/${customerId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: takeoverReplyText })
+        body: JSON.stringify({ text: takeoverReplyText, isInternal: isInternalNote })
       });
       if (response.ok) {
         setTakeoverReplyText('');
+        setIsInternalNote(false);
         const convRes = await fetch(`/api/conversations/${selectedTenant.id}`);
         if (convRes.ok) {
           const data = await convRes.json();
@@ -3987,6 +4015,41 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                             </div>
                           </div>
 
+                          {/* Crawl Sync Scheduler UI */}
+                          <div className="p-4 bg-slate-900/40 border border-white/5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono">
+                            <div className="space-y-1 text-left">
+                              <label htmlFor="crawler-schedule-select" className="text-xs font-bold text-slate-300">Crawl Auto-Sync Schedule:</label>
+                              <p className="text-[10px] text-slate-500">Automatically re-scrape targets periodically to maintain RAG vector database alignment.</p>
+                            </div>
+                            <select
+                              id="crawler-schedule-select"
+                              value={selectedTenant.crawlSchedule || 'none'}
+                              onChange={async (e) => {
+                                const sched = e.target.value;
+                                try {
+                                  const res = await fetch(`/api/tenant/${selectedTenant.id}/schedule`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ crawlSchedule: sched })
+                                  });
+                                  if (res.ok) {
+                                    setTenants(prev => prev.map(t => {
+                                      if (t.id === selectedTenant.id) {
+                                        return { ...t, crawlSchedule: sched as any };
+                                      }
+                                      return t;
+                                    }));
+                                  }
+                                } catch (err) {}
+                              }}
+                              className="bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer w-full sm:w-auto shrink-0"
+                            >
+                              <option value="none" className="bg-[#0b0e14]">❌ Manual Refresh Only</option>
+                              <option value="daily" className="bg-[#0b0e14]">📆 Daily Crawler Sync</option>
+                              <option value="weekly" className="bg-[#0b0e14]">🔁 Weekly Crawler Sync</option>
+                            </select>
+                          </div>
+
                           <div className="space-y-1.5">
                             <label htmlFor="crawler-address-input" className="text-xs font-semibold text-slate-400 font-mono">
                               {kbCrawlSource === 'web' ? 'Target website URL (Homepage):' : `${kbCrawlSource.charAt(0).toUpperCase() + kbCrawlSource.slice(1)} handle profile link:`}
@@ -4578,7 +4641,7 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                             return (
                               <>
                                 {/* Chat Header */}
-                                <div className="p-3 border-b border-white/5 flex items-center justify-between bg-[#0d121d] rounded-t-xl shrink-0">
+                                <div className="p-3 border-b border-white/5 flex flex-wrap items-center justify-between bg-[#0d121d] rounded-t-xl gap-2 shrink-0">
                                   <div className="flex items-center gap-2">
                                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                                     <span className="font-semibold text-xs text-slate-200">{displayName}</span>
@@ -4587,8 +4650,58 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                                         {matchedLead.status.toUpperCase()}
                                       </span>
                                     )}
+
+                                    {/* Agent Assignment Selection */}
+                                    <div className="flex items-center gap-1.5 ml-3 font-mono text-[9px]">
+                                      <span className="text-slate-500">ASSIGN:</span>
+                                      <select
+                                        value={thread.assignedAgentName || ''}
+                                        onChange={async (e) => {
+                                          const val = e.target.value;
+                                          try {
+                                            const res = await fetch(`/api/conversations/${selectedTenant.id}/${customerId}/assign`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ assignedAgentName: val })
+                                            });
+                                            if (res.ok) {
+                                              setTakeoverConvos(prev => ({
+                                                ...prev,
+                                                [selectedConvoKey]: {
+                                                  ...prev[selectedConvoKey],
+                                                  assignedAgentName: val
+                                                }
+                                              }));
+                                            }
+                                          } catch (err) {}
+                                        }}
+                                        className="bg-[#090d16] border border-white/10 rounded px-1.5 py-0.5 text-slate-350 cursor-pointer outline-none focus:border-blue-500/50 text-[9px]"
+                                      >
+                                        <option value="">Unassigned</option>
+                                        {selectedTenant.agents?.map(a => (
+                                          <option key={a.id} value={a.name}>{a.name} ({a.role})</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   </div>
-                                  <span className="text-[9px] font-mono text-slate-500">ID: {customerId}</span>
+
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDialerCustomerNumber(matchedLead?.phone || customerId);
+                                        setDialerCustomerName(displayName);
+                                        setIsDialerModalOpen(true);
+                                        setDialerState('dialing');
+                                        setDialerTimer(0);
+                                      }}
+                                      className="px-2.5 py-1 bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-600/30 text-emerald-400 hover:text-white rounded-lg text-[9px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow"
+                                    >
+                                      <Phone className="h-3 w-3 animate-pulse" />
+                                      <span>📞 Click-to-Call</span>
+                                    </button>
+                                    <span className="text-[9px] font-mono text-slate-500">ID: {customerId}</span>
+                                  </div>
                                 </div>
 
                                 {/* Messages list */}
@@ -4596,6 +4709,21 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                                   {thread.messages.map((msg, index) => {
                                     const isUser = msg.sender === 'user';
                                     const isManual = msg.isManualTakeover;
+                                    const isInternal = msg.isInternal === true;
+
+                                    if (isInternal) {
+                                      return (
+                                        <div key={index} className="flex flex-col w-full max-w-[85%] self-center items-center py-1">
+                                          <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl text-xs font-mono w-full text-center shadow-sm select-none">
+                                            <span className="font-bold text-[9px] uppercase tracking-wider text-amber-400 block mb-1">⚠️ INTERNAL TEAM NOTE</span>
+                                            {msg.text}
+                                          </div>
+                                          <div className="text-[8.5px] font-mono text-slate-500 mt-1">
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
 
                                     return (
                                       <div
@@ -4637,23 +4765,41 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                                     e.preventDefault();
                                     handleSendTakeoverReply(customerId);
                                   }}
-                                  className="p-3 border-t border-white/5 bg-[#0d121d] flex gap-2 rounded-b-xl shrink-0"
+                                  className="p-3 border-t border-white/5 bg-[#0d121d] flex flex-col gap-2 rounded-b-xl shrink-0"
                                 >
-                                  <input
-                                    type="text"
-                                    value={takeoverReplyText}
-                                    onChange={(e) => setTakeoverReplyText(e.target.value)}
-                                    placeholder="Type a manual reply response to send..."
-                                    className="flex-1 bg-[#090d16] text-slate-100 placeholder-slate-500 text-xs px-3.5 py-2 border border-white/5 focus:border-blue-500/50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 font-mono transition-all"
-                                    disabled={isSendingTakeoverReply}
-                                  />
-                                  <button
-                                    type="submit"
-                                    disabled={isSendingTakeoverReply || !takeoverReplyText.trim()}
-                                    className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl cursor-pointer transition-all shadow-[0_0_12px_rgba(37,99,235,0.4)] shrink-0"
-                                  >
-                                    {isSendingTakeoverReply ? 'Sending...' : 'Send'}
-                                  </button>
+                                  <div className="flex gap-2 w-full">
+                                    <input
+                                      type="text"
+                                      value={takeoverReplyText}
+                                      onChange={(e) => setTakeoverReplyText(e.target.value)}
+                                      placeholder={isInternalNote ? "Type internal team note..." : "Type a manual reply response to send..."}
+                                      className="flex-1 bg-[#090d16] text-slate-100 placeholder-slate-500 text-xs px-3.5 py-2 border border-white/5 focus:border-blue-500/50 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 font-mono transition-all"
+                                      disabled={isSendingTakeoverReply}
+                                    />
+                                    <button
+                                      type="submit"
+                                      disabled={isSendingTakeoverReply || !takeoverReplyText.trim()}
+                                      className={`inline-flex items-center justify-center px-4 py-2 disabled:opacity-40 text-white text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 ${
+                                        isInternalNote 
+                                          ? 'bg-amber-600 hover:bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.4)]' 
+                                          : 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.4)]'
+                                      }`}
+                                    >
+                                      {isSendingTakeoverReply ? 'Sending...' : 'Send'}
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 font-mono text-[9px] text-slate-400 select-none">
+                                    <input
+                                      type="checkbox"
+                                      id="takeover-internal-note-check"
+                                      checked={isInternalNote}
+                                      onChange={(e) => setIsInternalNote(e.target.checked)}
+                                      className="h-3.5 w-3.5 bg-[#090d16] border-white/10 rounded cursor-pointer accent-blue-600"
+                                    />
+                                    <label htmlFor="takeover-internal-note-check" className="cursor-pointer font-bold hover:text-white transition-colors flex items-center gap-1 text-slate-400">
+                                      <span>⚠️ Send as Internal Team Note (Support Eyes Only)</span>
+                                    </label>
+                                  </div>
                                 </form>
                               </>
                             );
@@ -7399,6 +7545,113 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
       <footer className="mt-auto px-6 py-10 border-t border-white/5 bg-transparent text-center text-xs text-slate-500 font-mono">
         <p>&copy; 2026 OmniBot SaaS Platform. Autonomous AI Messaging Solutions. Synced for Google Workspace.</p>
       </footer>
+
+      {/* Dialer Modal Overlay */}
+      {isDialerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-[#020509]/80 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => setIsDialerModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-[#080b12]/95 border border-white/10 p-6 rounded-2xl shadow-2xl z-10 overflow-hidden flex flex-col items-center space-y-6 font-mono">
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="w-full flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <Phone className={`h-4 w-4 ${dialerState === 'dialing' ? 'text-blue-400 animate-pulse' : dialerState === 'connected' ? 'text-emerald-400 animate-bounce' : 'text-slate-400'}`} />
+                <span className="text-xs font-semibold text-slate-350 tracking-wider uppercase">Twilio Outbound VoIP</span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsDialerModalOpen(false)}
+                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center text-center space-y-2">
+              <div className="relative">
+                <div className={`w-20 h-20 rounded-full bg-slate-900 border-2 flex items-center justify-center shadow-lg transition-all ${
+                  dialerState === 'dialing' ? 'border-blue-500 animate-pulse' : 
+                  dialerState === 'connected' ? 'border-emerald-500 shadow-emerald-500/10' : 
+                  'border-slate-700'
+                }`}>
+                  <User className={`h-10 w-10 ${dialerState === 'dialing' ? 'text-blue-400' : dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                </div>
+                {dialerState === 'connected' && (
+                  <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-white font-display font-medium text-base tracking-tight">{dialerCustomerName || 'Customer'}</h3>
+                <p className="text-xs text-slate-400 font-mono">{dialerCustomerNumber}</p>
+              </div>
+            </div>
+
+            <div className="w-full bg-[#0d121d] border border-white/5 rounded-xl p-3.5 text-center flex flex-col items-center justify-center space-y-1 shadow-inner">
+              <div className="text-[10px] text-slate-450 uppercase tracking-widest font-bold">
+                {dialerState === 'dialing' && 'Establishing Connection via Twilio...'}
+                {dialerState === 'connected' && 'Call Connected'}
+                {dialerState === 'ended' && 'Call Terminated'}
+              </div>
+              <div className={`text-2xl font-bold font-mono tracking-wider ${dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-350'}`}>
+                {Math.floor(dialerTimer / 60).toString().padStart(2, '0')}:{(dialerTimer % 60).toString().padStart(2, '0')}
+              </div>
+            </div>
+
+            {(dialerState === 'dialing' || dialerState === 'connected') && (
+              <div className="flex items-center gap-[3px] h-10 w-full justify-center py-2 px-6">
+                {[1, 2, 3, 4, 3, 2, 3, 4, 5, 4, 3, 2, 3, 4, 5, 6, 5, 4, 3, 2, 3, 4, 3, 2, 1].map((h, i) => {
+                  let activeHeight = `${h * 4}px`;
+                  if (dialerState === 'dialing') {
+                    activeHeight = `${3 + Math.sin((dialerTimer * 5) + i) * 10}px`;
+                  } else if (dialerState === 'connected') {
+                    activeHeight = `${Math.max(4, Math.sin(i * 0.8) * 12 + 10 + (Math.random() * 8))}px`;
+                  }
+                  return (
+                    <span 
+                      key={i} 
+                      className={`w-[3px] rounded-full transition-all duration-150 ${
+                        dialerState === 'dialing' ? 'bg-blue-500/40' : 'bg-emerald-500/70 shadow-sm shadow-emerald-500/20'
+                      }`}
+                      style={{ height: activeHeight }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="w-full flex justify-center pt-2">
+              {dialerState !== 'ended' ? (
+                <button
+                  type="button"
+                  onClick={() => setDialerState('ended')}
+                  className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-600/25 hover:shadow-rose-600/40 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-rose-500/30 animate-pulse"
+                  title="End Call"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDialerModalOpen(false);
+                  }}
+                  className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold tracking-wide border border-white/5 shadow cursor-pointer transition-all"
+                >
+                  Close Dialer
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
