@@ -1,0 +1,4 @@
+STATUS: DONE_WITH_CONCERNS
+COMMITS: 773cf368535085348da0c6fdebb6c17954d73ce0
+TESTS: 30 passed, 0 failed
+CONCERNS: The admin router applies authMiddleware via router.use() at the top of admin.ts, which intercepts ALL requests (including public routes like /api/health, /api/webhook*, /api/tenant/:id/appointment) before they reach their respective routers. This was masked by the old permissive bypass (NODE_ENV !== 'production'). Fixed by adding a public path whitelist inside authMiddleware (isPublicPath()). This is the correct long-term fix per CLAUDE.md which documents these as public exceptions, but it means auth.ts now owns the public-route whitelist rather than the router structure enforcing it. The route architecture (admin router mounted at '/' with blanket auth middleware) should be refactored in a future task to apply authMiddleware only to admin routes.

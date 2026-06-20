@@ -108,6 +108,7 @@ export interface ChatMessage {
   };
   isInternal?: boolean;
   assignedAgentName?: string;
+  citations?: string[];
 }
 
 export interface SimulationSession {

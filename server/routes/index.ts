@@ -9,4 +9,9 @@ router.use("/", adminRouter);
 router.use("/", webhooksRouter);
 router.use("/", integrationsRouter);
 
+// Test route to trigger the global error handler in test environment
+router.get("/api/test-error", (req, res) => {
+  throw new Error("Test Route Exception");
+});
+
 export default router;

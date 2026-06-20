@@ -1,0 +1,37 @@
+# ─── Build output ─────────────────────────────────────────────────────────────
+dist/
+build/
+
+# ─── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ─── Dev / infra files (not needed inside production image) ───────────────────
+Dockerfile.dev
+docker-compose.yml
+nginx/
+.github/
+.eslintrc.cjs
+.prettierrc
+
+
+# ─── Runtime data files (excluded from image) ─────────────────────────────────
+tenants_store.json
+webhook_conversations.json
+tenants_store.test.json
+webhook_conversations.test.json
+analytics_store/
+analytics_test/
+webhook_events/
+webhook_events_test/
+
+# ─── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── OS / IDE ─────────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+*.swp

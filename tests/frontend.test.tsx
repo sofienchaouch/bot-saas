@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { SaaSLayout } from '../src/components/SaaSLayout';
 import { SaaSAuth } from '../src/components/SaaSAuth';
 import { LanguageProvider } from '../src/LanguageContext';
@@ -91,13 +92,19 @@ describe('Frontend Component Integration & RBAC Tests', () => {
   describe('SaaSLayout RBAC Restrictions', () => {
     it('allows editing credentials and deleting items when role is Admin', async () => {
       render(
-        <LanguageProvider>
-          <SaaSLayout
-            initialTenantId="test-vertical-fitness"
-            tenants={mockTenants}
-            sessionEmail="admin@aura-saas.com"
-          />
-        </LanguageProvider>
+        <MemoryRouter initialEntries={['/admin/test-vertical-fitness']}>
+          <Routes>
+            <Route path="/admin/:tenantId/:tab?" element={
+              <LanguageProvider>
+                <SaaSLayout
+                  initialTenantId="test-vertical-fitness"
+                  tenants={mockTenants}
+                  sessionEmail="admin@aura-saas.com"
+                />
+              </LanguageProvider>
+            } />
+          </Routes>
+        </MemoryRouter>
       );
 
       // Verify page loaded
@@ -123,13 +130,19 @@ describe('Frontend Component Integration & RBAC Tests', () => {
 
     it('masks secrets, disables config inputs, and hides/disables delete actions when role is Support Agent', async () => {
       render(
-        <LanguageProvider>
-          <SaaSLayout
-            initialTenantId="test-vertical-fitness"
-            tenants={mockTenants}
-            sessionEmail="admin@aura-saas.com"
-          />
-        </LanguageProvider>
+        <MemoryRouter initialEntries={['/admin/test-vertical-fitness']}>
+          <Routes>
+            <Route path="/admin/:tenantId/:tab?" element={
+              <LanguageProvider>
+                <SaaSLayout
+                  initialTenantId="test-vertical-fitness"
+                  tenants={mockTenants}
+                  sessionEmail="admin@aura-saas.com"
+                />
+              </LanguageProvider>
+            } />
+          </Routes>
+        </MemoryRouter>
       );
 
       // Find the toggle button which has the initial value 'ADMIN' (with key emoji)

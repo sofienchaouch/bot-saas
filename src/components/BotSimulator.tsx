@@ -2003,6 +2003,14 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                       )}
 
                       <p className="whitespace-pre-line leading-relaxed">{m.text}</p>
+                      {m.citations && m.citations.length > 0 && (
+                        <div className="mt-2 pt-1.5 border-t border-black/5 flex flex-wrap gap-1 items-center text-[9.5px] font-mono text-slate-500">
+                          <span className="font-bold text-teal-600">Sources:</span>
+                          {m.citations.map((cite: string, idx: number) => (
+                            <span key={idx} className="bg-slate-100 px-1 py-0.2 rounded border border-slate-200 text-slate-650">{cite}</span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* AI NLP & Real-time Telemetry Trace Pill */}
                       <div className="mt-2 pt-1 border-t border-black/5 flex flex-wrap gap-1 items-center justify-between select-none font-mono text-[8.5px]">

@@ -9,3 +9,17 @@ coverage/
 
 tenants_store.json
 webhook_conversations.json
+tenants_store.test.json
+webhook_conversations.test.json
+
+# Analytics & webhook event runtime data
+analytics_store/
+analytics_test/
+webhook_events/
+webhook_events_test/
+
+# TLS certificates (never commit private keys)
+nginx/certs/*.pem
+nginx/certs/*.crt
+nginx/certs/*.key
+

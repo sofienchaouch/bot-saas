@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent } from './types';
 import { DEFAULT_TENANTS } from './defaultData';
 import { CalendarBookingPage } from './components/CalendarBookingPage';
@@ -9,13 +10,10 @@ const SaaSLayout = React.lazy(() => import('./components/SaaSLayout').then(m => 
 const SaaSOwnerDashboard = React.lazy(() => import('./components/SaaSOwnerDashboard').then(m => ({ default: m.SaaSOwnerDashboard })));
 
 
-export default function App() {
+function AppContent() {
+  const navigate = useNavigate();
   // Navigation Routing States
-  const [view, setView] = useState<'landing' | 'auth' | 'admin' | 'owner'>(() => {
-    const saved = localStorage.getItem('saas_view');
-    return (saved as 'landing' | 'auth' | 'admin' | 'owner') || 'landing';
-  });
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  // (Using react-router-dom)
   
   // Theme state and synchronization
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -43,10 +41,7 @@ export default function App() {
   });
   const hasLoaded = React.useRef(false);
 
-  // Sync to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('saas_view', view);
-  }, [view]);
+
 
   React.useEffect(() => {
     localStorage.setItem('saas_selected_tenant_id', selectedTenantId);
@@ -115,29 +110,24 @@ export default function App() {
   const handleQuickDemo = (tenantId: string) => {
     setSelectedTenantId(tenantId);
     setSessionEmail('demo.superuser@gmail.com');
-    setView('admin');
+    navigate(`/admin/${tenantId}/insights`);
   };
 
   // Auth: Navigating inside signin or signup
   const handleNavigateToAuth = (mode: 'signin' | 'signup') => {
-    setAuthMode(mode);
-    setView('auth');
+    navigate(`/auth?mode=${mode}`);
   };
 
   // Auth: Logged in successfully
   const handleLoginSuccess = (email: string, tenantId?: string) => {
     setSessionEmail(email);
     if (email === 'owner@saas.com' || tenantId === 'platform-owner-override') {
-      setView('owner');
+      navigate('/owner');
       return;
     }
-    if (tenantId) {
-      setSelectedTenantId(tenantId);
-    } else {
-      // Default fallback
-      setSelectedTenantId('zenith-fitness');
-    }
-    setView('admin');
+    const targetTenant = tenantId || 'zenith-fitness';
+    setSelectedTenantId(targetTenant);
+    navigate(`/admin/${targetTenant}/insights`);
   };
 
   // Helper to generate descriptive vertical instruction text
@@ -560,19 +550,13 @@ Items can be returned within 30 days of purchase if they are in original packagi
     });
     setNewlyRegisteredTenant(myTenant);
     setSelectedTenantId(myTenant.id);
-    setView('admin');
+    navigate(`/admin/${myTenant.id}/insights`);
   };
 
   const handleLogoutAdmin = () => {
-    setView('landing');
     setSessionEmail(null);
+    navigate('/');
   };
-
-  const path = window.location.pathname;
-  if (path.startsWith('/book/')) {
-    const bookingTenantId = path.split('/')[2] || 'zenith-fitness';
-    return <CalendarBookingPage tenantId={bookingTenantId} tenants={tenants} />;
-  }
 
   return (
     <React.Suspense fallback={
@@ -586,58 +570,148 @@ Items can be returned within 30 days of purchase if they are in original packagi
         </div>
       </div>
     }>
-      {view === 'landing' && (
-        <SaaSLandingPage 
-          onNavigateToAuth={handleNavigateToAuth}
-          onQuickDemo={handleQuickDemo}
-          theme={theme}
-          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+      <Routes>
+        <Route 
+          path="/" 
+          element={
+            <SaaSLandingPage 
+              onNavigateToAuth={handleNavigateToAuth}
+              onQuickDemo={handleQuickDemo}
+              theme={theme}
+              onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+            />
+          } 
         />
-      )}
-
-      {view === 'auth' && (
-        <SaaSAuth 
-          initialMode={authMode}
-          onNavigateBack={() => setView('landing')}
-          onLoginSuccess={handleLoginSuccess}
-          onSignUpSuccess={handleSignUpSuccess}
+        <Route 
+          path="/auth" 
+          element={
+            <SaaSAuthWrapper 
+              onLoginSuccess={handleLoginSuccess}
+              onSignUpSuccess={handleSignUpSuccess}
+            />
+          } 
         />
-      )}
-
-      {view === 'owner' && (
-        <SaaSOwnerDashboard 
-          tenants={tenants}
-          onUpdateTenantStatus={(tenantId, status) => {
-            setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status } : t));
-          }}
-          onDeleteTenant={(tenantId) => {
-            setTenants(prev => prev.filter(t => t.id !== tenantId));
-          }}
-          onImpersonateTenant={(tenantId) => {
-            setSelectedTenantId(tenantId);
-            setView('admin');
-          }}
-          onLogout={handleLogoutAdmin}
-          onGoToPortal={() => setView('landing')}
-          theme={theme}
-          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        <Route 
+          path="/owner" 
+          element={
+            sessionEmail === 'owner@saas.com' ? (
+              <SaaSOwnerDashboard 
+                tenants={tenants}
+                onUpdateTenantStatus={(tenantId, status) => {
+                  setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status } : t));
+                }}
+                onDeleteTenant={(tenantId) => {
+                  setTenants(prev => prev.filter(t => t.id !== tenantId));
+                }}
+                onImpersonateTenant={(tenantId) => {
+                  setSelectedTenantId(tenantId);
+                  navigate(`/admin/${tenantId}/insights`);
+                }}
+                onLogout={handleLogoutAdmin}
+                onGoToPortal={() => navigate('/')}
+                theme={theme}
+                onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+              />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          } 
         />
-      )}
-
-      {view === 'admin' && (
-        <SaaSLayout 
-          initialTenantId={selectedTenantId}
-          newSignUpTenant={newlyRegisteredTenant}
-          tenants={tenants}
-          setTenants={setTenants}
-          sessionEmail={sessionEmail}
-          onGoToOwnerConsole={() => setView('owner')}
-          onLogoutAdmin={handleLogoutAdmin}
-          onSelectTenantId={setSelectedTenantId}
-          theme={theme}
-          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        <Route 
+          path="/admin/:tenantId/:tab?" 
+          element={
+            <SaaSLayoutWrapper 
+              tenants={tenants}
+              setTenants={setTenants}
+              newlyRegisteredTenant={newlyRegisteredTenant}
+              sessionEmail={sessionEmail}
+              onGoToOwnerConsole={() => navigate('/owner')}
+              onLogoutAdmin={handleLogoutAdmin}
+              setSelectedTenantId={setSelectedTenantId}
+              theme={theme}
+              onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+            />
+          } 
         />
-      )}
+        <Route 
+          path="/book/:tenantId" 
+          element={<BookingWrapper tenants={tenants} />} 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </React.Suspense>
+  );
+}
+
+function SaaSAuthWrapper({ 
+  onLoginSuccess, 
+  onSignUpSuccess 
+}: { 
+  onLoginSuccess: (email: string, tenantId?: string) => void;
+  onSignUpSuccess: (config: any) => void;
+}) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const authMode = (searchParams.get('mode') as 'signin' | 'signup') || 'signin';
+  
+  return (
+    <SaaSAuth 
+      initialMode={authMode}
+      onNavigateBack={() => navigate('/')}
+      onLoginSuccess={onLoginSuccess}
+      onSignUpSuccess={onSignUpSuccess}
+    />
+  );
+}
+
+function SaaSLayoutWrapper({
+  tenants,
+  setTenants,
+  newlyRegisteredTenant,
+  sessionEmail,
+  theme,
+  onToggleTheme,
+  onLogoutAdmin,
+  onGoToOwnerConsole,
+  setSelectedTenantId
+}: {
+  tenants: Tenant[];
+  setTenants: React.Dispatch<React.SetStateAction<Tenant[]>>;
+  newlyRegisteredTenant: Tenant | null;
+  sessionEmail: string | null;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
+  onLogoutAdmin: () => void;
+  onGoToOwnerConsole: () => void;
+  setSelectedTenantId: (tenantId: string) => void;
+}) {
+  const { tenantId } = useParams();
+  
+  return (
+    <SaaSLayout 
+      initialTenantId={tenantId}
+      newSignUpTenant={newlyRegisteredTenant}
+      tenants={tenants}
+      setTenants={setTenants}
+      sessionEmail={sessionEmail}
+      onGoToOwnerConsole={onGoToOwnerConsole}
+      onLogoutAdmin={onLogoutAdmin}
+      onSelectTenantId={setSelectedTenantId}
+      theme={theme}
+      onToggleTheme={onToggleTheme}
+    />
+  );
+}
+
+function BookingWrapper({ tenants }: { tenants: Tenant[] }) {
+  const { tenantId } = useParams();
+  return <CalendarBookingPage tenantId={tenantId || 'zenith-fitness'} tenants={tenants} />;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }

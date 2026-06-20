@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import * as Sentry from "@sentry/node";
 import { logger } from "../lib/logger";
 
 // Asynchronous route handler wrapper to catch unhandled promise rejections
@@ -9,6 +10,10 @@ export const asyncHandler = (fn: Function) => (req: Request, res: Response, next
 // Global Express error handling middleware
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error({ err, path: req.path, method: req.method }, "Unhandled error");
+
+  if (process.env.NODE_ENV === "production") {
+    Sentry.captureException(err);
+  }
 
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";

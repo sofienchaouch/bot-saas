@@ -1,10 +1,15 @@
+import * as Sentry from "@sentry/node";
+import { SENTRY_DSN, NODE_ENV, PORT } from "./server/config";
+
+if (SENTRY_DSN && NODE_ENV === "production") {
+  Sentry.init({ dsn: SENTRY_DSN, environment: NODE_ENV });
+}
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import helmet from "helmet";
 import cors from "cors";
-
-import { PORT } from "./server/config";
 import { requestIdMiddleware } from "./server/middleware/requestId";
 import { apiLimiter, webhookLimiter } from "./server/middleware/rateLimit";
 import { readTenantsStore, writeTenantsStore } from "./server/services/db";

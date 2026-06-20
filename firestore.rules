@@ -47,15 +47,17 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow get: if isSignedIn() && isValidId(tenantId);
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(tenantId) && isValidTenant(incoming());
+      allow create: if isSignedIn() && isValidId(tenantId) && incoming().id == tenantId && isValidTenant(incoming());
       
-      allow update: if isSignedIn() && isValidId(tenantId) && isValidTenant(incoming()) && (
-        incoming().diff(existing()).affectedKeys().hasAny([
+      allow update: if isSignedIn() && isValidId(tenantId) && incoming().id == tenantId && isValidTenant(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly([
           'name', 'industry', 'description', 'avatar', 'botName', 'tone', 'status', 
           'systemInstruction', 'welcomeTemplates', 'activeWelcomeTemplateId', 'knowledgeBase', 
           'leads', 'appointments', 'agents', 'activeAgentId', 'whatsAppPhoneNumber', 
           'whatsAppVerifiedSid', 'whatsAppStatus', 'whatsAppApiKey', 'whatsAppSandboxActive', 
-          'whatsAppSandboxNumbers'
+          'whatsAppSandboxNumbers', 'whatsAppTestMode', 'messengerPageId', 'messengerToken',
+          'messengerStatus', 'messengerSandboxActive', 'messengerSandboxNumbers', 'messengerVoiceEnabled',
+          'googleCalendarAutoSchedule', 'twilioVoiceActive', 'twilioVoiceName', 'crawlSchedule', 'lastCrawlTime'
         ])
       );
       
@@ -69,7 +71,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidId(conversationKey) && isValidConversation(incoming());
       
       allow update: if isSignedIn() && isValidId(conversationKey) && isValidConversation(incoming()) && (
-        incoming().diff(existing()).affectedKeys().hasAny(['messages'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['messages', 'assignedAgentName'])
       );
       
       allow delete: if isSignedIn() && isValidId(conversationKey);

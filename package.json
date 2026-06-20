@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@sentry/node": "^10.59.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.2",
