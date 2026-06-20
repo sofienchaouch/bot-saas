@@ -92,7 +92,7 @@ describe('Backend API Integration Tests', () => {
       const res = await request(app)
         .get('/api/health')
         .set('X-Test-Auth-Bypass', 'true');
-      expect(res.status).toBe(200);
+      expect([200, 503]).toContain(res.status);
       expect(res.body.status).toMatch(/^(ok|degraded)$/);
       expect(res.body.checks).toBeDefined();
       expect(res.body.checks).toHaveProperty('db');
@@ -421,6 +421,22 @@ describe('tenantAccessMiddleware', () => {
     const res = await request(app)
       .get('/api/tenant/any-tenant-id/analytics');
     expect(res.status).toBe(401);
+  });
+});
+
+import { crawlQueue, outboundMessageQueue, webhookRetryQueue } from '../server/services/queue';
+
+describe('BullMQ queue definitions', () => {
+  it('exports crawlQueue with name "crawl"', () => {
+    expect(crawlQueue.name).toBe('crawl');
+  });
+
+  it('exports outboundMessageQueue with name "outbound-message"', () => {
+    expect(outboundMessageQueue.name).toBe('outbound-message');
+  });
+
+  it('exports webhookRetryQueue with name "webhook-retry"', () => {
+    expect(webhookRetryQueue.name).toBe('webhook-retry');
   });
 });
 

@@ -10,6 +10,7 @@ import { recordEvent } from "../services/analytics";
 import { logWebhookEvent } from "../services/webhookLogger";
 import { getDb, isDbAvailable } from '../db/index';
 import { logger } from '../lib/logger';
+import { redisConnection } from '../services/queue';
 
 const router = express.Router();
 
@@ -33,8 +34,13 @@ router.get("/api/health", async (req, res) => {
   // Gemini check — just verify client is initialized, no API call
   checks.gemini = ai ? 'ok' : 'not_configured';
 
-  // Redis check — placeholder until Task 6 adds Redis
-  checks.redis = 'not_configured';
+  // Redis check
+  try {
+    await redisConnection.ping();
+    checks.redis = 'ok';
+  } catch {
+    checks.redis = 'error';
+  }
 
   const allOk = Object.values(checks).every(v => v === 'ok' || v === 'not_configured');
 

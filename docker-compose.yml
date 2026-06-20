@@ -34,6 +34,23 @@ services:
     networks:
       - aura-net
 
+  # ── Redis (BullMQ job queue) ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: aura-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aura-net
+
   # ── App (Production) ────────────────────────────────────────────────────────
   app:
     build:
@@ -53,6 +70,8 @@ services:
       - aura-data:/app/data
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
@@ -88,6 +107,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -121,6 +142,8 @@ volumes:
   pgdata:
     driver: local
   aura-data:
+    driver: local
+  redis-data:
     driver: local
 
 # ── Networks ──────────────────────────────────────────────────────────────────
