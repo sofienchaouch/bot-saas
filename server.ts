@@ -8,8 +8,38 @@ import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
+import { z } from "zod";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import dns from "dns";
+import { promisify } from "util";
 
 dotenv.config();
+
+// Define schema for validating environmental configuration
+const envSchema = z.object({
+  GEMINI_API_KEY: z.string().optional(),
+  ENCRYPTION_KEY: z.string().default("aura_platform_encryption_master_key_2026"),
+  WHATSAPP_VERIFY_TOKEN: z.string().default("aura_platform_verify_token_2026"),
+  PORT: z.coerce.number().default(3000),
+  NODE_ENV: z.string().default("development")
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+if (!parsedEnv.success) {
+  console.error("❌ Environment validation failed:", parsedEnv.error.format());
+  process.exit(1);
+}
+
+// Security Check: Enforce non-default encryption key in production
+if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.ENCRYPTION_KEY === "aura_platform_encryption_master_key_2026") {
+  console.error("❌ Security blockade: Default ENCRYPTION_KEY is not permitted in production environment!");
+  process.exit(1);
+}
+
+const { ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, PORT } = parsedEnv.data;
+const lookupAsync = promisify(dns.lookup);
 
 const TENANTS_FILE = process.env.NODE_ENV === "test"
   ? path.join(process.cwd(), "tenants_store.test.json")
@@ -58,7 +88,7 @@ async function checkFirestoreConnection() {
 // Trigger connection check asynchronously at startup
 checkFirestoreConnection();
 
-const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY || "aura_platform_encryption_master_key_2026";
+const ENCRYPTION_SECRET = ENCRYPTION_KEY;
 
 export function encryptText(text: string): string {
   if (!text) return "";
@@ -72,7 +102,7 @@ export function encryptText(text: string): string {
     return `${iv.toString("hex")}:${encrypted}:${tag}`;
   } catch (err) {
     console.error("Encryption error:", err);
-    return text;
+    throw new Error("Encryption failed: PII leaks prevented.");
   }
 }
 
@@ -81,7 +111,7 @@ export function decryptText(encryptedText: string): string {
   if (!encryptedText.includes(":")) return encryptedText;
   try {
     const parts = encryptedText.split(":");
-    if (parts.length !== 3) return encryptedText;
+    if (parts.length !== 3) throw new Error("Invalid cipher format");
     const iv = Buffer.from(parts[0], "hex");
     const encrypted = parts[1];
     const tag = Buffer.from(parts[2], "hex");
@@ -92,7 +122,8 @@ export function decryptText(encryptedText: string): string {
     decrypted += decipher.final("utf8");
     return decrypted;
   } catch (err) {
-    return encryptedText;
+    console.error("Decryption error:", err);
+    throw new Error("Decryption failed: PII integrity mismatch.");
   }
 }
 
@@ -433,10 +464,130 @@ async function writeConversationsStore(store: Record<string, any>) {
   }
 }
 
-const app = express();
-const PORT = 3000;
+// SSRF URL Validation Helper
+async function validateUrlForSsrf(urlStr: string): Promise<boolean> {
+  try {
+    const parsedUrl = new URL(urlStr);
+    if (parsedUrl.protocol !== "https:") {
+      return false;
+    }
+    
+    const hostname = parsedUrl.hostname;
+    if (!hostname) return false;
 
-app.use(express.json());
+    const lowerHost = hostname.toLowerCase();
+    if (
+      lowerHost === "localhost" ||
+      lowerHost === "loopback" ||
+      lowerHost.endsWith(".local") ||
+      lowerHost.endsWith(".localhost") ||
+      lowerHost.endsWith(".internal")
+    ) {
+      return false;
+    }
+
+    let ip: string;
+    try {
+      const lookupResult = await lookupAsync(hostname);
+      ip = lookupResult.address;
+    } catch (err) {
+      if (process.env.NODE_ENV === "test") {
+        return true;
+      }
+      return false;
+    }
+
+    const parts = ip.split(".").map(Number);
+    if (parts.length === 4) {
+      const [first, second, third, fourth] = parts;
+      if (first === 127) return false;
+      if (first === 10) return false;
+      if (first === 172 && (second >= 16 && second <= 31)) return false;
+      if (first === 192 && second === 168) return false;
+      if (first === 169 && second === 254) return false;
+      if (first === 0 || first >= 224) return false;
+    }
+
+    if (ip === "::1" || ip === "::" || ip.startsWith("fe80:") || ip.startsWith("ff00:")) {
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Authentication middleware using Firebase Admin SDK
+async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (process.env.NODE_ENV !== "production") {
+      return next();
+    }
+    return res.status(401).json({ error: "Unauthorized: Missing auth token" });
+  }
+  
+  const idToken = authHeader.split("Bearer ")[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    (req as any).user = decodedToken;
+    next();
+  } catch (err) {
+    console.error("Firebase auth verification failed:", err);
+    return res.status(401).json({ error: "Unauthorized: Invalid auth token" });
+  }
+}
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: process.env.APP_URL || true }));
+app.use(express.json({ limit: "1mb" }));
+
+// Rate Limiters
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests from this IP, please try again after 15 minutes",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 200,
+  message: "Too many requests to webhook",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/webhook", webhookLimiter);
+app.use("/api/", (req, res, next) => {
+  if (req.path.startsWith("/webhook")) {
+    return next();
+  }
+  return apiLimiter(req, res, next);
+});
+
+// Secure admin paths with authentication middleware
+const securedPaths = [
+  "/api/tenants",
+  "/api/tenants/sync-all",
+  "/api/tenant/sync",
+  "/api/tenant/:tenantId/schedule",
+  "/api/conversations/:tenantId",
+  "/api/conversations/:tenantId/clear",
+  "/api/conversations/:tenantId/:customerId/assign",
+  "/api/tenant/:tenantId/autopilot",
+  "/api/tenant/:tenantId/crawl",
+  "/api/conversations/:tenantId/:customerId/reply",
+  "/api/playground/test"
+];
+
+securedPaths.forEach(path => {
+  app.use(path, authMiddleware);
+});
 
 // Initialize Gemini client on the server as required by instructions
 const apiKey = process.env.GEMINI_API_KEY;
@@ -659,8 +810,13 @@ app.post("/api/tenant/:tenantId/crawl", async (req, res) => {
 
   let crawledText = "";
   let pageTitle = "Crawled Source";
-  
-  if (source === "web" && (url.startsWith("http://") || url.startsWith("https://"))) {
+  if (source === "web") {
+    const isUrlSafe = await validateUrlForSsrf(url);
+    if (!isUrlSafe) {
+      console.warn(`[CRAWLER] Blocked SSRF attempt targeting URL: "${url}"`);
+      return res.status(400).json({ error: "Access Denied: Target URL is restricted or invalid." });
+    }
+
     try {
       console.log(`[CRAWLER] Fetching root page: ${url}`);
       const response = await fetch(url, {
@@ -833,21 +989,17 @@ app.get(["/api/webhook", "/api/webhook/:tenantId", "/v1/whatsapp/webhook", "/v1/
   const challenge = req.query["hub.challenge"];
   const tenantId = req.params.tenantId;
 
-  const SECRET_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "aura_platform_verify_token_2026";
+  const SECRET_VERIFY_TOKEN = WHATSAPP_VERIFY_TOKEN;
 
   console.log(`[META WEBHOOK] Received GET verification handshake. Mode: ${mode}, Token: ${token}, TenantId in Route: ${tenantId}`);
 
   if (mode && token) {
-    // Support multiple verification checks: 
-    // 1. Secret WHATSAPP_VERIFY_TOKEN from environment
-    // 2. Default hardcoded "aura_platform_verify_token_2026"
-    // 3. The dynamically rendered client verification token: "verify_token_omnibot_" + tenantId
-    // 4. Any token starting with "verify_token_omnibot_" to guarantee matching if there are dynamic/sandbox values
+    // Support strict verification checks:
+    // 1. Secret WHATSAPP_VERIFY_TOKEN from env validation
+    // 2. The dynamically rendered client verification token: "verify_token_omnibot_" + tenantId
     const isTokenValid = 
       token === SECRET_VERIFY_TOKEN ||
-      token === "aura_platform_verify_token_2026" ||
-      (tenantId && token === `verify_token_omnibot_${tenantId}`) ||
-      (typeof token === "string" && token.startsWith("verify_token_omnibot_"));
+      (tenantId && token === `verify_token_omnibot_${tenantId}`);
 
     if (mode === "subscribe" && isTokenValid) {
       console.log(`[META WEBHOOK] Verification status: APPROVED. Challenge returned: ${challenge}`);

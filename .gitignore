@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+tenants_store.json
+webhook_conversations.json
