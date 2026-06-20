@@ -27,11 +27,48 @@ import {
   Activity,
   Flame,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  Globe,
+  Clock,
+  Compass,
+  Cpu,
+  Coins,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
+
+// Import New Modular Widgets
+import { 
+  LiveActivityFeed, 
+  ActiveConversationsCounter, 
+  SystemHealthMonitor, 
+  SLATimer 
+} from './widgets/RealTimeOpsWidgets';
+import { 
+  SentimentGauge, 
+  ResponseTimeDistribution, 
+  CustomerJourneyMap, 
+  GeographicHeatmap 
+} from './widgets/CustomerIntelligenceWidgets';
+import { 
+  RevenueAttribution, 
+  SubscriptionUsageMeter, 
+  ROICalculator 
+} from './widgets/BusinessWidgets';
+import { 
+  RAGConfidence, 
+  BotContainmentRate, 
+  TokenCostTracker 
+} from './widgets/BotPerformanceWidgets';
+import { 
+  AgentAvailability, 
+  EscalationQueue, 
+  TeamLeaderboard 
+} from './widgets/TeamWidgets';
 
 interface SaaSChartsProps {
   tenant: Tenant;
+  onTakeoverConvo?: (convoId: string) => void;
 }
 
 interface DailyMetric {
@@ -74,10 +111,12 @@ const CustomTooltip = ({ active, payload, label, rateMode = false }: any) => {
   return null;
 };
 
-export const SaaSCharts: React.FC<SaaSChartsProps> = ({ tenant }) => {
+export const SaaSCharts: React.FC<SaaSChartsProps> = ({ tenant, onTakeoverConvo }) => {
   const [dataWindow, setDataWindow] = useState<'30d' | '15d' | '7d'>('30d');
   const [hoveredMetrics, setHoveredMetrics] = useState<string | null>(null);
   const [alertThreshold, setAlertThreshold] = useState<number>(85);
+  // Add state for sub-sections inside insights
+  const [insightsSection, setInsightsSection] = useState<'overview' | 'realtime' | 'intelligence' | 'performance' | 'roi' | 'team'>('overview');
 
   // Helper to resolve agents dynamically to keep it resilient
   const agents = useMemo(() => {
@@ -333,8 +372,38 @@ export const SaaSCharts: React.FC<SaaSChartsProps> = ({ tenant }) => {
         </div>
       </div>
 
-      {/* KPI Cards section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Sub-tab Navigation */}
+      <div className="flex items-center gap-2 bg-[#080b12] border border-white/5 p-2 rounded-2xl overflow-x-auto scrollbar-none font-mono text-[11px] select-none">
+        {(
+          [
+            { id: 'overview', label: 'Overview', icon: <ChartIcon className="h-3.5 w-3.5" /> },
+            { id: 'realtime', label: 'Real-Time Ops', icon: <Activity className="h-3.5 w-3.5" /> },
+            { id: 'intelligence', label: 'Customer Intelligence', icon: <Compass className="h-3.5 w-3.5" /> },
+            { id: 'performance', label: 'AI Performance', icon: <Cpu className="h-3.5 w-3.5" /> },
+            { id: 'roi', label: 'Business ROI', icon: <Layers className="h-3.5 w-3.5" /> },
+            { id: 'team', label: 'Team & Collab', icon: <Users className="h-3.5 w-3.5" /> },
+          ] as const
+        ).map((sec) => (
+          <button
+            key={sec.id}
+            type="button"
+            onClick={() => setInsightsSection(sec.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 cursor-pointer font-bold rounded-xl transition-all whitespace-nowrap ${
+              insightsSection === sec.id
+                ? 'bg-blue-600 text-white shadow'
+                : 'text-slate-450 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {sec.icon}
+            <span>{sec.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {insightsSection === 'overview' && (
+        <div className="space-y-6">
+          {/* KPI Cards section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI 1: Message volume */}
         <div 
@@ -662,9 +731,19 @@ export const SaaSCharts: React.FC<SaaSChartsProps> = ({ tenant }) => {
           </div>
         );
       })()}
+        </div>
+      )}
 
       {/* 3. Hourly Engagement Distribution & Hotspots */}
-      <div className="bg-[#080b12] border border-white/5 p-5 rounded-3xl space-y-4 shadow-xl">
+      {insightsSection === 'performance' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <RAGConfidence tenant={tenant} />
+            <BotContainmentRate tenant={tenant} />
+            <TokenCostTracker tenant={tenant} />
+          </div>
+
+          <div className="bg-[#080b12] border border-white/5 p-5 rounded-3xl space-y-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="space-y-0.5">
             <h3 className="text-xs font-bold uppercase font-mono tracking-wider text-white">Hourly Customer Engagement Peak Hotspots</h3>
@@ -1015,6 +1094,54 @@ export const SaaSCharts: React.FC<SaaSChartsProps> = ({ tenant }) => {
           </div>
         </div>
       </div>
+      </div>
+      )}
+
+      {/* Real-time Ops Section */}
+      {insightsSection === 'realtime' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <LiveActivityFeed tenant={tenant} />
+          </div>
+          <div className="space-y-6">
+            <ActiveConversationsCounter tenant={tenant} />
+            <SystemHealthMonitor />
+            <SLATimer tenant={tenant} />
+          </div>
+        </div>
+      )}
+
+      {/* Customer Intelligence Section */}
+      {insightsSection === 'intelligence' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SentimentGauge tenant={tenant} />
+          <ResponseTimeDistribution tenant={tenant} />
+          <CustomerJourneyMap />
+          <GeographicHeatmap tenant={tenant} />
+        </div>
+      )}
+
+      {/* Business ROI Section */}
+      {insightsSection === 'roi' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <RevenueAttribution tenant={tenant} />
+          <SubscriptionUsageMeter tenant={tenant} />
+          <ROICalculator tenant={tenant} />
+        </div>
+      )}
+
+      {/* Team & Collab Section */}
+      {insightsSection === 'team' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <EscalationQueue tenant={tenant} onTakeoverConvo={onTakeoverConvo} />
+          </div>
+          <div className="space-y-6">
+            <AgentAvailability />
+            <TeamLeaderboard />
+          </div>
+        </div>
+      )}
 
       {/* Helpful educational dashboard footer */}
       <div className="p-4 bg-[#0d121d] border border-white/5 rounded-2xl flex flex-col sm:flex-row items-center gap-3.5 justify-between">

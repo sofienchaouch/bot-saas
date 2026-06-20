@@ -25,18 +25,24 @@ import {
   Lock,
   Volume2,
   Database,
-  UserCheck
+  UserCheck,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SaaSLandingPageProps {
   onNavigateToAuth: (mode: 'signin' | 'signup') => void;
   onQuickDemo: (tenantId: string) => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const SaaSLandingPage: React.FC<SaaSLandingPageProps> = ({ 
   onNavigateToAuth, 
-  onQuickDemo 
+  onQuickDemo,
+  theme,
+  onToggleTheme
 }) => {
   // Demo interactive bot preview
   const [selectedDemoIndustry, setSelectedDemoIndustry] = useState<'ecommerce' | 'realestate' | 'education'>('ecommerce');
@@ -202,6 +208,17 @@ export const SaaSLandingPage: React.FC<SaaSLandingPageProps> = ({
 
         {/* CTAs */}
         <div className="flex items-center gap-3">
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg border border-white/5 cursor-pointer transition-all flex items-center justify-center"
+              title="Toggle Theme"
+              id="landing-theme-toggle"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
+          )}
+
           <button 
             onClick={() => onNavigateToAuth('signin')}
             className="px-4 py-1.5 text-xs font-mono font-bold text-slate-300 hover:text-white hover:bg-white/5 rounded-lg border border-white/5 cursor-pointer transition-all"

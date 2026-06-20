@@ -3,6 +3,7 @@ import { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent } from '../types';
 import { DEFAULT_TENANTS } from '../defaultData';
 import { SaasHeader } from './SaasHeader';
 import { BotSimulator } from './BotSimulator';
+import { CommandPalette } from './widgets/CommandPalette';
 import { useLanguage } from '../LanguageContext';
 import {
   TrendingUp,
@@ -72,6 +73,8 @@ interface SaaSLayoutProps {
   sessionEmail?: string | null;
   onGoToOwnerConsole?: () => void;
   onSelectTenantId?: (tenantId: string) => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
@@ -82,7 +85,9 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
   setTenants: propSetTenants,
   sessionEmail,
   onGoToOwnerConsole,
-  onSelectTenantId
+  onSelectTenantId,
+  theme,
+  onToggleTheme
 }) => {
   const { language, t } = useLanguage();
   // Global SaaS States fallback to DEFAULT_TENANTS
@@ -100,6 +105,20 @@ export const SaaSLayout: React.FC<SaaSLayoutProps> = ({
     localStorage.setItem('saas_active_tab', tab);
   };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Command Palette State
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
   const [userRole, setUserRole] = useState<'admin' | 'support'>('admin');
 
   // Live Chat Takeover States
@@ -2243,6 +2262,8 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
         isSyncingCalendar={isSyncingCalendar}
         onCalendarSyncRefresh={() => googleToken && loadGoogleCalendar(googleToken)}
         onAutopilotToggle={handleAutopilotToggle}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
       />
 
       {/* Main SaaS Frame */}
@@ -2790,7 +2811,19 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
                 </div>
 
                 {/* 30-Day Lead Conversion Rate and Message Volume Analytics section */}
-                <SaaSCharts tenant={selectedTenant} />
+                <SaaSCharts 
+                  tenant={selectedTenant} 
+                  onTakeoverConvo={(phone) => {
+                    const phoneClean = phone.replace(/[-]/g, '');
+                    const matchKey = Object.keys(takeoverConvos).find(k => k.endsWith(phoneClean) || k.includes(phoneClean) || k.includes(phone));
+                    setActiveTab('leads');
+                    if (matchKey) {
+                      setSelectedConvoKey(matchKey);
+                    } else {
+                      setSelectedConvoKey(`${selectedTenant.id}_${phone}`);
+                    }
+                  }}
+                />
 
                 {/* Sub panels double layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
@@ -7652,6 +7685,36 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
           </div>
         </div>
       )}
+
+      {/* Global Command Palette Overlay */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectTab={setActiveTab}
+        onAddLead={() => {
+          setActiveTab('leads');
+          setShowAddLead(true);
+        }}
+        onAddKB={() => {
+          setActiveTab('knowledge_base');
+          setShowAddKb(true);
+        }}
+        onSyncCalendar={async () => {
+          setIsSyncingCalendar(true);
+          setTimeout(() => {
+            setIsSyncingCalendar(false);
+            alert("Google Calendar force-synchronized successfully!");
+          }, 1500);
+        }}
+        onExportReport={() => {
+          const exportBtn = document.querySelector('button[title*="CSV"]') as HTMLButtonElement;
+          if (exportBtn) {
+            exportBtn.click();
+          } else {
+            alert("Please navigate to Insights -> AI Performance to export the report.");
+          }
+        }}
+      />
     </div>
   );
 };

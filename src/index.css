@@ -7,20 +7,7 @@
   --font-display: "Space Grotesk", sans-serif;
 }
 
-/* Custom gorgeous animations & utilities */
-@layer utilities {
-  .glass-card {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(229, 231, 235, 0.5);
-  }
-  .glass-dark {
-    background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-}
-
+/* Base Body Style */
 body {
   font-family: var(--font-sans);
   background-color: #05070a;
@@ -55,4 +42,142 @@ body {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+}
+
+/* --- LIGHT MODE VARIABLES & OVERRIDES --- */
+.light {
+  color-scheme: light;
+  --bg-page: #f1f5f9;      /* Slate 100 */
+  --bg-card: #ffffff;      /* White */
+  --bg-well: #f8fafc;      /* Slate 50 */
+  --border-light: rgba(15, 23, 42, 0.08);
+  --border-medium: rgba(15, 23, 42, 0.14);
+  --text-primary: #0f172a; /* Slate 900 */
+  --text-secondary: #334155; /* Slate 700 */
+  --text-muted: #64748b;     /* Slate 500 */
+}
+
+/* Light Mode Base Overrides */
+.light body {
+  background-color: var(--bg-page) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Background overrides */
+.light .bg-\[\#020509\] { background-color: #e2e8f0 !important; }
+.light .bg-\[\#02050a\] { background-color: #e2e8f0 !important; }
+.light .bg-\[\#05070a\] { background-color: var(--bg-page) !important; }
+.light .bg-\[\#080b12\] { background-color: var(--bg-card) !important; }
+.light .bg-\[\#0d121d\] { background-color: var(--bg-well) !important; }
+.light .bg-\[\#080d17\] { background-color: var(--bg-card) !important; }
+.light .bg-\[\#05080f\] { background-color: var(--bg-well) !important; }
+.light .bg-\[\#05080e\] { background-color: var(--bg-well) !important; }
+.light .bg-\[\#0a0d18\] { background-color: var(--bg-well) !important; }
+.light .bg-\[\#12192b\] { background-color: #cbd5e1 !important; }
+.light .bg-\[\#080b12\]\/95 { background-color: rgba(255, 255, 255, 0.95) !important; }
+.light .bg-\[\#080b12\]\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
+.light .bg-\[\#020509\]\/80 { background-color: rgba(241, 245, 249, 0.8) !important; }
+.light .bg-\[\#060a14\]\/60 { background-color: rgba(255, 255, 255, 0.8) !important; }
+.light .bg-\[\#0d121d\]\/40 { background-color: rgba(241, 245, 249, 0.4) !important; }
+.light .bg-\[\#0d121d\]\/80 { background-color: rgba(241, 245, 249, 0.8) !important; }
+.light .bg-\[\#0e1320\] { background-color: var(--bg-well) !important; }
+.light .bg-\[\#050912\]\/80 { background-color: var(--bg-card) !important; }
+
+/* Slate panels and utility backgrounds */
+.light .bg-slate-950 { background-color: var(--bg-page) !important; }
+.light .bg-slate-900 { background-color: var(--bg-card) !important; }
+.light .bg-slate-850 { background-color: var(--bg-well) !important; }
+.light .bg-slate-800 { background-color: var(--bg-well) !important; }
+.light .bg-slate-900\/40 { background-color: rgba(241, 245, 249, 0.4) !important; }
+.light .bg-card-dark { background-color: var(--bg-well) !important; }
+
+/* Border overrides */
+.light .border-white\/5 { border-color: var(--border-light) !important; }
+.light .border-white\/10 { border-color: var(--border-medium) !important; }
+.light .border-white\/20 { border-color: var(--border-medium) !important; }
+.light .border-white\/15 { border-color: var(--border-medium) !important; }
+.light .border-slate-800 { border-color: var(--border-light) !important; }
+.light .border-indigo-500\/10 { border-color: var(--border-medium) !important; }
+
+/* Text overrides */
+.light .text-white { color: var(--text-primary) !important; }
+.light .text-slate-100 { color: var(--text-primary) !important; }
+.light .text-slate-200 { color: var(--text-primary) !important; }
+.light .text-slate-300 { color: var(--text-secondary) !important; }
+.light .text-slate-350 { color: var(--text-secondary) !important; }
+.light .text-slate-400 { color: var(--text-muted) !important; }
+.light .text-slate-500 { color: var(--text-muted) !important; }
+
+/* Restore text-white for badges, primary colored buttons, etc. */
+.light .bg-blue-600 .text-white,
+.light .bg-blue-650 .text-white,
+.light .bg-blue-500 .text-white,
+.light .bg-emerald-600 .text-white,
+.light .bg-emerald-500 .text-white,
+.light .bg-indigo-650 .text-white,
+.light .bg-indigo-600 .text-white,
+.light .bg-indigo-500 .text-white,
+.light .bg-red-600 .text-white,
+.light .bg-red-500 .text-white,
+.light .bg-rose-600 .text-white,
+.light .bg-rose-500 .text-white,
+.light .bg-amber-600 .text-white,
+.light .bg-amber-500 .text-white,
+.light .bg-teal-600 .text-white,
+.light .bg-teal-500 .text-white,
+.light .bg-cyan-600 .text-white,
+.light .bg-purple-600 .text-white,
+.light .bg-purple-500 .text-white,
+.light .bg-gradient-to-r .text-white,
+.light .bg-gradient-to-br .text-white,
+.light button .text-white,
+.light .btn .text-white,
+.light button.text-white,
+.light a.text-white,
+.light span.text-white-force,
+.light .text-white-force {
+  color: #ffffff !important;
+}
+
+/* Inputs and select styling */
+.light input, .light select, .light textarea {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-well) !important;
+  border-color: var(--border-medium) !important;
+}
+.light select option {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Glass card overrides */
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light) !important;
+}
+.light .glass-dark {
+  background: rgba(248, 250, 252, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light) !important;
+}
+
+/* Recharts styling overrides for Light Mode */
+.light .recharts-cartesian-grid-horizontal line,
+.light .recharts-cartesian-grid-vertical line {
+  stroke: rgba(15, 23, 42, 0.08) !important;
+  stroke-opacity: 1 !important;
+}
+.light .recharts-text {
+  fill: var(--text-muted) !important;
+}
+.light .recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+}
+.light .recharts-default-tooltip {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-medium) !important;
+}
+.light .recharts-tooltip-item {
+  color: var(--text-primary) !important;
 }

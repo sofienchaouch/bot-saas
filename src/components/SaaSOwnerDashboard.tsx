@@ -27,7 +27,9 @@ import {
   BadgeAlert,
   Server,
   CloudLightning,
-  RefreshCw
+  RefreshCw,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface SaaSOwnerDashboardProps {
@@ -37,6 +39,8 @@ interface SaaSOwnerDashboardProps {
   onImpersonateTenant: (tenantId: string) => void;
   onLogout: () => void;
   onGoToPortal: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const SaaSOwnerDashboard: React.FC<SaaSOwnerDashboardProps> = ({
@@ -45,7 +49,9 @@ export const SaaSOwnerDashboard: React.FC<SaaSOwnerDashboardProps> = ({
   onDeleteTenant,
   onImpersonateTenant,
   onLogout,
-  onGoToPortal
+  onGoToPortal,
+  theme,
+  onToggleTheme
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState<string>('ALL');
@@ -149,6 +155,17 @@ export const SaaSOwnerDashboard: React.FC<SaaSOwnerDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 self-stretch sm:self-auto font-mono text-xs">
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              className="flex items-center justify-center p-2 bg-slate-900 hover:bg-[#12192c] border border-white/5 hover:border-slate-700 rounded-xl transition-all cursor-pointer text-slate-300 hover:text-white h-[38px] w-[38px]"
+              title="Toggle Theme"
+              id="owner-theme-toggle"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
+          )}
+
           <button
             onClick={onGoToPortal}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-[#12192c] border border-white/5 hover:border-slate-700 rounded-xl transition-all cursor-pointer text-slate-300 hover:text-white"

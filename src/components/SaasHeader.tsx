@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tenant } from '../types';
-import { Bot, Sparkles, LogOut, Check, RefreshCw, Globe } from 'lucide-react';
+import { Bot, Sparkles, LogOut, Check, RefreshCw, Globe, Sun, Moon } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { useLanguage, LanguageType } from '../LanguageContext';
 
@@ -15,6 +15,8 @@ interface SaasHeaderProps {
   isSyncingCalendar: boolean;
   onCalendarSyncRefresh: () => void;
   onAutopilotToggle?: (enabled: boolean) => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const SaasHeader: React.FC<SaasHeaderProps> = ({
@@ -27,7 +29,9 @@ export const SaasHeader: React.FC<SaasHeaderProps> = ({
   onLogout,
   isSyncingCalendar,
   onCalendarSyncRefresh,
-  onAutopilotToggle
+  onAutopilotToggle,
+  theme,
+  onToggleTheme
 }) => {
   const { language, setLanguage, t } = useLanguage();
 
@@ -132,6 +136,20 @@ export const SaasHeader: React.FC<SaasHeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Theme toggle */}
+        {onToggleTheme && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onToggleTheme}
+              className="p-2 bg-[#0d121d] hover:bg-white/5 text-slate-400 hover:text-white rounded-lg border border-white/5 cursor-pointer transition-all flex items-center justify-center h-[34px] w-[36px]"
+              title="Toggle Theme"
+              id="header-theme-toggle"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
+          </div>
+        )}
 
         {/* Autopilot toggle */}
         <div className="flex items-center gap-2 flex-1 md:flex-none">

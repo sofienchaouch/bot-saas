@@ -17,6 +17,21 @@ export default function App() {
   });
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   
+  // Theme state and synchronization
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('saas_theme') || 'dark';
+    return (saved as 'light' | 'dark') || 'dark';
+  });
+
+  React.useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('saas_theme', theme);
+  }, [theme]);
+  
   // Custom states
   const [tenants, setTenants] = useState<Tenant[]>(DEFAULT_TENANTS);
   const [selectedTenantId, setSelectedTenantId] = useState<string>(() => {
@@ -575,6 +590,8 @@ Items can be returned within 30 days of purchase if they are in original packagi
         <SaaSLandingPage 
           onNavigateToAuth={handleNavigateToAuth}
           onQuickDemo={handleQuickDemo}
+          theme={theme}
+          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
         />
       )}
 
@@ -602,6 +619,8 @@ Items can be returned within 30 days of purchase if they are in original packagi
           }}
           onLogout={handleLogoutAdmin}
           onGoToPortal={() => setView('landing')}
+          theme={theme}
+          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
         />
       )}
 
@@ -615,6 +634,8 @@ Items can be returned within 30 days of purchase if they are in original packagi
           onGoToOwnerConsole={() => setView('owner')}
           onLogoutAdmin={handleLogoutAdmin}
           onSelectTenantId={setSelectedTenantId}
+          theme={theme}
+          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
         />
       )}
     </React.Suspense>
