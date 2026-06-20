@@ -267,7 +267,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
             try {
               console.log(`[META MESSENGER AI] Generating response for sender PSID ${from}...`);
               const response = await currentAi.models.generateContent({
-                model: "gemini-3.5-flash",
+                model: "gemini-2.0-flash",
                 contents: contents,
                 config: {
                   systemInstruction: systemPrompt,
@@ -559,9 +559,9 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
 
           if (currentAi) {
             try {
-              console.log(`[META WEBHOOK AI] Invoking Gemini-3.5-flash for ${from}...`);
+              console.log(`[META WEBHOOK AI] Invoking Gemini-2.0-flash for ${from}...`);
               const response = await currentAi.models.generateContent({
-                model: "gemini-3.5-flash",
+                model: "gemini-2.0-flash",
                 contents: contents,
                 config: {
                   systemInstruction: systemPrompt,
@@ -860,7 +860,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
     if (currentAi) {
       try {
         const response = await currentAi.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-2.0-flash",
           contents: contents,
           config: {
             systemInstruction: systemPrompt,
@@ -1096,7 +1096,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
     if (currentAi) {
       try {
         const response = await currentAi.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-2.0-flash",
           contents: contents,
           config: {
             systemInstruction: systemPrompt,
