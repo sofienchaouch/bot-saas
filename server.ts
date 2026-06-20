@@ -15,6 +15,7 @@ import { apiLimiter, webhookLimiter } from "./server/middleware/rateLimit";
 import { setupWebSocket } from "./server/services/websocket";
 import { startScheduler } from "./server/services/scheduler";
 import { startCrawlWorker } from "./server/workers/crawlWorker";
+import { startMessageWorker } from "./server/workers/messageWorker";
 import { logger } from "./server/lib/logger";
 import router from "./server/routes";
 import { errorHandler } from "./server/middleware/errorHandler";
@@ -78,6 +79,7 @@ async function startServer() {
 
   startScheduler();
   startCrawlWorker();
+  startMessageWorker();
   logger.info('Background workers started');
 }
 

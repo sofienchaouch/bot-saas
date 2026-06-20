@@ -432,6 +432,14 @@ describe('crawlWorker', () => {
   });
 });
 
+import { startMessageWorker } from '../server/workers/messageWorker';
+
+describe('messageWorker', () => {
+  it('exports startMessageWorker function', () => {
+    expect(typeof startMessageWorker).toBe('function');
+  });
+});
+
 import { startScheduler, stopScheduler } from '../server/services/scheduler';
 
 describe('scheduler', () => {

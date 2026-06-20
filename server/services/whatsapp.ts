@@ -1,3 +1,5 @@
+import { logger } from '../lib/logger';
+
 export function isPlaceholderToken(token: string | undefined): boolean {
   if (!token) return true;
   return (
@@ -15,7 +17,7 @@ export async function sendWhatsAppMessage(
   text: string
 ): Promise<any> {
   if (isPlaceholderToken(accessToken)) {
-    console.log(`[META OUTBOUND] Bypassing outbound Graph API send because credentials are placeholders.`);
+    logger.info({ targetPhoneNumberId, to }, 'Bypassing outbound send: placeholder credentials');
     return { status: "bypassed" };
   }
 
@@ -48,7 +50,7 @@ export async function sendWhatsAppMessage(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error(`[META OUTBOUND ERROR] Failed to send Graph API message to ${to}:`, error);
+    logger.error({ to, err: error }, 'Meta Graph API send failed');
     throw error;
   }
 }
