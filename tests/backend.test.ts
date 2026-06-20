@@ -424,6 +424,23 @@ describe('tenantAccessMiddleware', () => {
   });
 });
 
+import { startCrawlWorker } from '../server/workers/crawlWorker';
+
+describe('crawlWorker', () => {
+  it('exports startCrawlWorker function', () => {
+    expect(typeof startCrawlWorker).toBe('function');
+  });
+});
+
+import { startScheduler, stopScheduler } from '../server/services/scheduler';
+
+describe('scheduler', () => {
+  it('exports startScheduler and stopScheduler', () => {
+    expect(typeof startScheduler).toBe('function');
+    expect(typeof stopScheduler).toBe('function');
+  });
+});
+
 import { crawlQueue, outboundMessageQueue, webhookRetryQueue } from '../server/services/queue';
 
 describe('BullMQ queue definitions', () => {
