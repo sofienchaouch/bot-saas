@@ -1,0 +1,129 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Aura Platform — Docker Compose
+#
+# Profiles:
+#   (default)  docker compose up               → production build + Nginx
+#   dev        docker compose --profile dev up → tsx dev server, hot-reload via volumes
+#
+# Quick start:
+#   1. cp .env.example .env && fill in secrets
+#   2. docker compose up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL + pgvector ───────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: aura-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aura
+      POSTGRES_USER: aura
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aura}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"          # expose for local dev/migrations
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aura -d aura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - aura-net
+
+  # ── App (Production) ────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: aura-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://aura:${DB_PASSWORD:-aura}@db:5432/aura
+    ports:
+      - "3000:3000"
+    volumes:
+      - aura-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - aura-net
+    profiles: ["", "prod"]
+
+  # ── App (Development — hot-reload) ──────────────────────────────────────────
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aura-app-dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DISABLE_HMR: "false"
+      DATABASE_URL: postgres://aura:${DB_PASSWORD:-aura}@db:5432/aura
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - aura-data:/app/data
+    command: npm run dev
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - aura-net
+    profiles: ["dev"]
+
+  # ── Nginx Reverse Proxy ──────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: aura-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - aura-net
+    profiles: ["prod", "nginx"]
+
+# ── Named Volumes ──────────────────────────────────────────────────────────────
+volumes:
+  pgdata:
+    driver: local
+  aura-data:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  aura-net:
+    driver: bridge

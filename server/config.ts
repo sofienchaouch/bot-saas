@@ -10,9 +10,11 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   ENCRYPTION_KEY: z.string().default("aura_platform_encryption_master_key_2026"),
   WHATSAPP_VERIFY_TOKEN: z.string().default("aura_platform_verify_token_2026"),
+  WHATSAPP_APP_SECRET: z.string().default("aura_whatsapp_app_secret_fallback_2026"),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.string().default("development"),
-  APP_URL: z.string().optional()
+  APP_URL: z.string().optional(),
+  DATABASE_URL: z.string().optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -26,7 +28,12 @@ if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.ENCRYPTION_KEY ==
   process.exit(1);
 }
 
-export const { ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, PORT, NODE_ENV, APP_URL, GEMINI_API_KEY } = parsedEnv.data;
+if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.WHATSAPP_APP_SECRET === "aura_whatsapp_app_secret_fallback_2026") {
+  console.error("❌ Security blockade: Default WHATSAPP_APP_SECRET is not permitted in production environment!");
+  process.exit(1);
+}
+
+export const { ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET, PORT, NODE_ENV, APP_URL, GEMINI_API_KEY, DATABASE_URL } = parsedEnv.data;
 export const lookupAsync = promisify(dns.lookup);
 
 export const TENANTS_FILE = NODE_ENV === "test"
