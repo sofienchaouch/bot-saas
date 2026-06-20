@@ -312,22 +312,12 @@ describe('Backend API Integration Tests', () => {
       expect(chunks[0]).toBe('First sentence here.');
     });
 
-    it('getRAGContext should execute hybrid search and return unique citations', async () => {
-      const mockKB = [
-        {
-          title: 'Pricing Document',
-          type: 'document',
-          content: 'We offer basic plans for $10 and premium plans for $99.',
-          chunks: [
-            { text: 'We offer basic plans for $10.', embedding: new Array(1536).fill(0.1) },
-            { text: 'Premium plans cost $99.', embedding: new Array(1536).fill(0.2) }
-          ]
-        }
-      ];
-
-      const result = await getRAGContext('pricing plans', mockKB);
+    it('getRAGContext should return graceful fallback when database is not configured', async () => {
+      // In test environment, DATABASE_URL is not set, so getRAGContext falls back gracefully
+      const result = await getRAGContext('pricing plans', 'test-tenant');
       expect(result).toHaveProperty('contextText');
-      expect(result.citations).toContain('Pricing Document');
+      expect(result).toHaveProperty('citations');
+      expect(Array.isArray(result.citations)).toBe(true);
     });
   });
 

@@ -605,12 +605,12 @@ router.post("/api/playground/test", asyncHandler(async (req, res) => {
       messages,
       botName,
       tone,
-      knowledgeBase,
       appointmentsList,
       tenantName,
       tenantIndustry,
       tenantDescription,
-      systemInstruction
+      systemInstruction,
+      tenantId: bodyTenantId
     } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -619,7 +619,7 @@ router.post("/api/playground/test", asyncHandler(async (req, res) => {
 
     const lastMessage = messages[messages.length - 1]?.text || "";
     const { getRAGContext } = await import("../services/rag");
-    const ragResult = await getRAGContext(lastMessage, knowledgeBase);
+    const ragResult = await getRAGContext(lastMessage, bodyTenantId || "playground");
     const kbContext = ragResult.contextText;
     const citations = ragResult.citations;
 

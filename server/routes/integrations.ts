@@ -2,8 +2,11 @@ import express from "express";
 import { Type } from "@google/genai";
 import { readTenantsStore, writeTenantsStore } from "../services/db";
 import { getRAGContext } from "../services/rag";
+import { asyncHandler } from "../middleware/errorHandler";
 import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
+import { recordEvent } from "../services/analytics";
+import { logWebhookEvent } from "../services/webhookLogger";
 
 const router = express.Router();
 
@@ -12,19 +15,19 @@ router.get("/api/health", (req, res) => {
   res.json({ status: "ok", aiEnabled: !!ai });
 });
 
-// Main autonomous WhatsApp Agent reasoning API Endpoint (Simulator Playground/Web Chat)
-router.post("/api/chat", async (req, res) => {
+router.post("/api/chat", asyncHandler(async (req, res) => {
+  const chatStartTime = Date.now();
   try {
     const {
       messages,
       botName,
       tone,
-      knowledgeBase,
       appointmentsList,
       tenantName,
       tenantIndustry,
       tenantDescription,
-      systemInstruction
+      systemInstruction,
+      tenantId
     } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -78,7 +81,9 @@ router.post("/api/chat", async (req, res) => {
 
     // Prepare system instructions for instructions reasoning
     const lastMessage = messages[messages.length - 1]?.text || "";
-    const kbContext = await getRAGContext(lastMessage, knowledgeBase);
+    const ragResult = await getRAGContext(lastMessage, tenantId || "simulator");
+    const kbContext = ragResult.contextText;
+    const citations = ragResult.citations;
 
     const scheduleContext = appointmentsList && appointmentsList.length > 0
       ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -169,7 +174,30 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       }
     }
 
-    res.json(parsedData);
+    const durationMs = Date.now() - chatStartTime;
+    const resolvedTenantId = tenantId || "simulator";
+
+    // Record simulator analytics + log event
+    recordEvent(resolvedTenantId, "message_received", "simulator", {});
+    recordEvent(resolvedTenantId, "message_sent", "simulator", { durationMs, usedRAG: citations.length > 0 });
+    if (citations.length > 0) {
+      recordEvent(resolvedTenantId, "rag_used", "simulator", { citations });
+    }
+    const lastMsg = messages[messages.length - 1]?.text || "";
+    logWebhookEvent(resolvedTenantId, {
+      channel: "simulator",
+      direction: "outbound",
+      status: "success",
+      durationMs,
+      payload: { reply: parsedData.reply?.slice(0, 200), citations },
+      messagePreview: lastMsg.slice(0, 120)
+    });
+
+    res.json({
+      reply: parsedData.reply,
+      actionTriggered: parsedData.actionTriggered,
+      citations: citations
+    });
   } catch (error: any) {
     console.error("Gemini SaaS Chat Engine Error:", error);
     res.status(500).json({
@@ -177,7 +205,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       error: error.message
     });
   }
-});
+}));
 
 // Twilio Voice Webhook TwiML response
 router.post(["/api/twilio/voice", "/api/twilio/voice/:tenantId"], async (req, res) => {
@@ -197,7 +225,7 @@ router.post(["/api/twilio/voice", "/api/twilio/voice/:tenantId"], async (req, re
 });
 
 // Public Appointment Booking Endpoint (bypasses authMiddleware)
-router.post("/api/tenant/:tenantId/appointment", async (req, res) => {
+router.post("/api/tenant/:tenantId/appointment", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const { customerName, customerPhone, email, start, end, summary } = req.body;
 
@@ -266,6 +294,6 @@ router.post("/api/tenant/:tenantId/appointment", async (req, res) => {
 
   console.log(`[ONLINE BOOKING] Registered appointment for "${customerName}" under tenant "${tenantId}"`);
   res.json({ status: "success", appointment: newAppt });
-});
+}));
 
 export default router;
