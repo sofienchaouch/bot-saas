@@ -1,17 +1,38 @@
 import express from "express";
 import admin from "firebase-admin";
 import { NODE_ENV } from "../config";
+import { logger } from "../lib/logger";
+
+// Public routes that bypass authentication
+const PUBLIC_PATHS = [
+  "/api/health",
+  "/api/chat",
+  "/api/twilio/",
+];
+
+function isPublicPath(path: string): boolean {
+  if (path.startsWith("/api/webhook")) return true;
+  if (path.match(/^\/api\/tenant\/[^/]+\/appointment$/)) return true;
+  return PUBLIC_PATHS.some((p) => path === p || path.startsWith(p));
+}
 
 export async function authMiddleware(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) {
+  // Skip auth for public routes
+  if (isPublicPath(req.path)) {
+    return next();
+  }
+
+  // Only bypass in test mode with explicit header
+  if (NODE_ENV === "test" && req.headers["x-test-auth-bypass"] === "true") {
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    if (NODE_ENV !== "production") {
-      return next();
-    }
     return res.status(401).json({ error: "Unauthorized: Missing auth token" });
   }
 
@@ -21,7 +42,7 @@ export async function authMiddleware(
     (req as any).user = decodedToken;
     next();
   } catch (err) {
-    console.error("Firebase auth verification failed:", err);
+    logger.warn({ err }, "Firebase auth verification failed");
     return res.status(401).json({ error: "Unauthorized: Invalid auth token" });
   }
 }

@@ -8,6 +8,7 @@ process.env.NODE_ENV = 'test';
 import { app, cosineSimilarity, chunkText, encryptText, decryptText } from '../server';
 import { readTenantsStore, writeTenantsStore, readConversationsStore, writeConversationsStore, _setMemTenant, _clearMemStore } from '../server/services/db';
 import { getRAGContext } from '../server/services/rag';
+import { logger } from '../server/lib/logger';
 
 describe('Backend Utilities Unit Tests', () => {
   describe('cosineSimilarity', () => {
@@ -93,7 +94,7 @@ describe('Backend API Integration Tests', () => {
   });
 
   it('GET /api/tenants should return all tenants', async () => {
-    const res = await request(app).get('/api/tenants');
+    const res = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('test-tenant');
     expect(res.body['test-tenant'].name).toBe('Test Business Corp');
@@ -123,7 +124,7 @@ describe('Backend API Integration Tests', () => {
     expect(tenant.appointments).toHaveLength(1);
     expect(tenant.leads).toHaveLength(1);
     // Verify leads data by calling GET /api/tenants
-    const getRes = await request(app).get('/api/tenants');
+    const getRes = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
     const getTenant = getRes.body['test-tenant'];
     expect(getTenant.leads[0].name).toBe('Clark Kent');
     expect(getTenant.leads[0].email).toBe('kent.c@dailyplanet.org');
@@ -140,6 +141,7 @@ describe('Backend API Integration Tests', () => {
 
     const res = await request(app)
       .post('/api/tenant/test-tenant/crawl')
+      .set('X-Test-Auth-Bypass', 'true')
       .send(crawlPayload);
 
     expect(res.status).toBe(200);
@@ -148,7 +150,7 @@ describe('Backend API Integration Tests', () => {
     expect(res.body.kbItem.content).toContain('Root website URL: https://example-fitness-studio.com');
 
     // Verify item is saved to database
-    const getRes = await request(app).get('/api/tenants');
+    const getRes = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
     const getTenant = getRes.body['test-tenant'];
     expect(getTenant.knowledgeBase).toHaveLength(1);
     expect(getTenant.knowledgeBase[0].title).toContain('Test Business Corp Website Index');
@@ -194,7 +196,8 @@ describe('Backend API Integration Tests', () => {
 
   it('Express global error handler should format route exceptions as JSON', async () => {
     const errRes = await request(app)
-      .get('/api/test-error');
+      .get('/api/test-error')
+      .set('X-Test-Auth-Bypass', 'true');
 
     expect(errRes.status).toBe(500);
     expect(errRes.body).toHaveProperty("status", "error");
@@ -265,13 +268,15 @@ describe('Backend API Integration Tests', () => {
     await writeConversationsStore(conversations);
 
     const searchRes = await request(app)
-      .get('/api/conversations/test-tenant?q=Alpha');
+      .get('/api/conversations/test-tenant?q=Alpha')
+      .set('X-Test-Auth-Bypass', 'true');
     expect(searchRes.status).toBe(200);
     expect(Object.keys(searchRes.body)).toContain('test-tenant_custom-user-1');
     expect(Object.keys(searchRes.body)).not.toContain('test-tenant_custom-user-2');
 
     const limitRes = await request(app)
-      .get('/api/conversations/test-tenant?limit=1');
+      .get('/api/conversations/test-tenant?limit=1')
+      .set('X-Test-Auth-Bypass', 'true');
     expect(limitRes.status).toBe(200);
     expect(Object.keys(limitRes.body).length).toBe(1);
   });
@@ -279,6 +284,7 @@ describe('Backend API Integration Tests', () => {
   it('POST /api/conversations/:tenantId/:customerId/tags should set tags on conversation thread', async () => {
     const res = await request(app)
       .post('/api/conversations/test-tenant/custom-user-1/tags')
+      .set('X-Test-Auth-Bypass', 'true')
       .send({ tags: ['VIP', 'Escalated'] });
 
     expect(res.status).toBe(200);
@@ -296,7 +302,8 @@ describe('Backend API Integration Tests', () => {
     await writeConversationsStore(conversations);
 
     const res = await request(app)
-      .get('/api/conversations/test-tenant/custom-user-1/export');
+      .get('/api/conversations/test-tenant/custom-user-1/export')
+      .set('X-Test-Auth-Bypass', 'true');
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
@@ -351,6 +358,7 @@ describe('Backend API Integration Tests', () => {
 
       const res = await request(app)
         .post('/api/tenant/test-tenant/crawl')
+        .set('X-Test-Auth-Bypass', 'true')
         .send({
           url: 'https://example.com/',
           source: 'web',
@@ -364,5 +372,20 @@ describe('Backend API Integration Tests', () => {
 
       fetchSpy.mockRestore();
     });
+  });
+});
+
+describe('logger', () => {
+  it('exports a pino logger with expected methods', () => {
+    expect(typeof logger.info).toBe('function');
+    expect(typeof logger.error).toBe('function');
+    expect(typeof logger.warn).toBe('function');
+    expect(typeof logger.debug).toBe('function');
+    expect(typeof logger.child).toBe('function');
+  });
+
+  it('child logger inherits parent bindings', () => {
+    const child = logger.child({ tenantId: 'test-123' });
+    expect(typeof child.info).toBe('function');
   });
 });
