@@ -20,6 +20,7 @@ import {
 import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
 import { authMiddleware } from "../middleware/auth";
+import { tenantAccessMiddleware } from "../middleware/tenantAccess";
 import { lookupAsync, NODE_ENV } from "../config";
 import { getAnalytics, clearAnalytics } from "../services/analytics";
 import { getWebhookEvents, clearWebhookEvents } from "../services/webhookLogger";
@@ -28,6 +29,17 @@ const router = express.Router();
 
 // Apply authorization middleware to all admin routes
 router.use(authMiddleware);
+
+// Apply tenant ownership guard to authenticated admin tenant routes.
+// Scoped to sub-paths that exist in this router so public routes in other
+// routers (e.g. /api/tenant/:id/appointment in integrations.ts) are not affected.
+router.use([
+  '/api/tenant/:id/analytics',
+  '/api/tenant/:id/webhook-events',
+  '/api/tenant/:id/crawl',
+  '/api/tenant/:id/autopilot',
+  '/api/tenant/:id/schedule',
+], tenantAccessMiddleware);
 
 // SSRF URL Validation Helper
 async function validateUrlForSsrf(urlStr: string): Promise<boolean> {

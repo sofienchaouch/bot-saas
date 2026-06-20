@@ -407,6 +407,23 @@ describe('logger', () => {
   });
 });
 
+describe('tenantAccessMiddleware', () => {
+  it('allows access in test mode with bypass header', async () => {
+    const res = await request(app)
+      .get('/api/tenant/test-tenant/analytics')
+      .set('X-Test-Auth-Bypass', 'true');
+    // Should not return 403 (may return 200 or 404 depending on test data)
+    expect(res.status).not.toBe(403);
+  });
+
+  it('blocks unauthenticated cross-tenant requests', async () => {
+    // No auth header, no bypass — should return 401
+    const res = await request(app)
+      .get('/api/tenant/any-tenant-id/analytics');
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('requestId middleware', () => {
   it('sets X-Request-Id response header', async () => {
     const res = await request(app)
