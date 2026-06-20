@@ -786,14 +786,14 @@ router.delete("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
 router.get("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const events = getWebhookEvents(tenantId, limit);
+  const events = await getWebhookEvents(tenantId, limit);
   res.json({ events, total: events.length });
 }));
 
 /** DELETE /api/tenant/:tenantId/webhook-events */
 router.delete("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
-  clearWebhookEvents(tenantId);
+  await clearWebhookEvents(tenantId);
   res.json({ success: true });
 }));
 
