@@ -21,6 +21,7 @@ import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
 import { authMiddleware } from "../middleware/auth";
 import { tenantAccessMiddleware } from "../middleware/tenantAccess";
+import { tenantRateLimiter } from "../middleware/rateLimit";
 import { lookupAsync, NODE_ENV } from "../config";
 import { getAnalytics, clearAnalytics } from "../services/analytics";
 import { getWebhookEvents, clearWebhookEvents } from "../services/webhookLogger";
@@ -29,6 +30,9 @@ const router = express.Router();
 
 // Apply authorization middleware to all admin routes
 router.use(authMiddleware);
+
+// Apply per-tenant rate limiting before tenant access checks
+router.use('/api/tenant/:id', tenantRateLimiter);
 
 // Apply tenant ownership guard to authenticated admin tenant routes.
 // Scoped to sub-paths that exist in this router so public routes in other
