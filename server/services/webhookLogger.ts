@@ -1,5 +1,6 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb, isDbAvailable, schema } from "../db/index";
+import { logger } from "../lib/logger";
 
 // ── Types (unchanged) ─────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ export function logWebhookEvent(
         )`
       );
     })
-    .catch((err) => console.error("[webhookLogger] logWebhookEvent error:", err));
+    .catch((err) => logger.error({ err }, "[webhookLogger] logWebhookEvent error"));
 }
 
 export async function getWebhookEvents(tenantId: string, limit = 50): Promise<WebhookEvent[]> {

@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb, isDbAvailable, schema } from "../db/index";
+import { logger } from "../lib/logger";
 
 // ── Types (unchanged) ─────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ export function recordEvent(
       channel,
       metadata,
     })
-    .catch((err) => console.error("[analytics] recordEvent error:", err));
+    .catch((err) => logger.error({ err }, "[analytics] recordEvent error"));
 }
 
 export async function getAnalytics(tenantId: string, days = 30): Promise<AggregatedAnalytics> {

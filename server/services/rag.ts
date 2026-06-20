@@ -2,6 +2,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { ai } from "./gemini";
 import { Type } from "@google/genai";
 import { getDb, isDbAvailable, schema } from "../db/index";
+import { logger } from "../lib/logger";
 
 // ── Pure utility functions (unchanged) ────────────────────────────────────────
 
@@ -42,7 +43,7 @@ export async function getEmbedding(text: string): Promise<number[] | undefined> 
     const response = await ai.models.embedContent({ model: "text-embedding-004", contents: text });
     return (response as any).embedding?.values || undefined;
   } catch (err) {
-    console.error("Gemini Embeddings error:", err);
+    logger.error({ err }, "Gemini Embeddings error");
     return undefined;
   }
 }
@@ -82,7 +83,7 @@ export async function enrichTenantEmbeddings(tenant: any): Promise<any> {
 
     if (existing.length > 0) continue;
 
-    console.log(`[RAG ENGINE] Embedding document "${item.title}"...`);
+    logger.info({ title: item.title }, `[RAG ENGINE] Embedding document`);
     const textChunks = chunkText(item.content);
 
     for (const txt of textChunks) {
@@ -216,10 +217,10 @@ ${candidates.map((c, i) => `[Chunk ${i}]:\nTitle: ${c.title}\nContent: ${c.chunk
           if (!seen.has(idx) && reRanked.length < 4) reRanked.push(c);
         });
         finalChunks = reRanked.slice(0, 4);
-        console.log(`[RAG ENGINE] Re-ranked candidates:`, finalChunks.map((c) => c.title));
+        logger.info({ titles: finalChunks.map((c) => c.title) }, "[RAG ENGINE] Re-ranked candidates");
       }
     } catch (reRankErr) {
-      console.warn("[RAG ENGINE] Re-ranking failed, using vector order:", reRankErr);
+      logger.warn({ err: reRankErr }, "[RAG ENGINE] Re-ranking failed, using vector order");
     }
   }
 

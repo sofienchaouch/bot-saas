@@ -201,7 +201,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
     try {
       parsedData = JSON.parse(rawText.trim());
     } catch (parseErr) {
-      console.error("Failed to parse JSON response from Gemini:", rawText);
+      logger.error({ rawText }, "Failed to parse JSON response from Gemini");
       const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
       if (match?.[1]) {
         parsedData = JSON.parse(match[1].trim());
@@ -235,7 +235,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       citations: citations
     });
   } catch (error: any) {
-    console.error("Gemini SaaS Chat Engine Error:", error);
+    logger.error({ err: error }, "Gemini SaaS Chat Engine Error");
     res.status(500).json({
       reply: "I am experiencing temporary connection latency with my core system. Let me verify that and answer you momentarily!",
       error: error.message
@@ -323,12 +323,12 @@ router.post("/api/tenant/:tenantId/appointment", asyncHandler(async (req, res) =
       note: `Auto-qualified via public calendar booking slot: ${new Date(start).toLocaleString()}`
     };
     tenant.leads.push(newLead);
-    console.log(`[ONLINE BOOKING] Auto-created qualified lead for "${customerName}"`);
+    logger.info({ customerName }, "[ONLINE BOOKING] Auto-created qualified lead");
   }
 
   await writeTenantsStore(store);
 
-  console.log(`[ONLINE BOOKING] Registered appointment for "${customerName}" under tenant "${tenantId}"`);
+  logger.info({ customerName, tenantId }, "[ONLINE BOOKING] Registered appointment for customer");
   res.json({ status: "success", appointment: newAppt });
 }));
 

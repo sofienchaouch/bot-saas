@@ -2,6 +2,7 @@ import express from "express";
 import { URL } from "url";
 import { Type } from "@google/genai";
 import { asyncHandler } from "../middleware/errorHandler";
+import { logger } from "../lib/logger";
 import {
   readTenantsStore,
   writeTenantsStore,
@@ -117,7 +118,7 @@ router.post("/api/tenants/sync-all", asyncHandler(async (req, res) => {
     }
   }
   await writeTenantsStore(store);
-  console.log(`[TENANTS SYNC-ALL] Successfully synchronized ${list.length} tenants with Firestore.`);
+  logger.info({ count: list.length }, "[TENANTS SYNC-ALL] Successfully synchronized tenants with Firestore");
   res.json({ status: "success", count: list.length });
 }));
 
@@ -130,7 +131,7 @@ router.post("/api/tenant/sync", asyncHandler(async (req, res) => {
   const store = await readTenantsStore();
   store[enriched.id] = enriched;
   await writeTenantsStore(store);
-  console.log(`[TENANT SYNC] Successfully synchronized tenant details for ${enriched.name} (${enriched.id}) to Firestore`);
+  logger.info({ tenantName: enriched.name, tenantId: enriched.id }, "[TENANT SYNC] Successfully synchronized tenant details to Firestore");
   res.json({ status: "success", id: enriched.id });
 }));
 
@@ -150,7 +151,7 @@ router.post("/api/tenant/:tenantId/schedule", asyncHandler(async (req, res) => {
   tenant.crawlSchedule = crawlSchedule;
   store[tenantId] = tenant;
   await writeTenantsStore(store);
-  console.log(`[TENANT SCHEDULER] Updated crawl schedule to "${crawlSchedule}" for tenant "${tenantId}"`);
+  logger.info({ crawlSchedule, tenantId }, "[TENANT SCHEDULER] Updated crawl schedule for tenant");
   res.json({ status: "success", crawlSchedule });
 }));
 
@@ -214,7 +215,7 @@ router.post("/api/conversations/:tenantId/:customerId/assign", asyncHandler(asyn
   }
   conversations[convoKey].assignedAgentName = assignedAgentName || "";
   await writeConversationsStore(conversations);
-  console.log(`[CONVERSATION ASSIGN] Thread "${convoKey}" assigned to agent "${assignedAgentName}"`);
+  logger.info({ convoKey, assignedAgentName }, "[CONVERSATION ASSIGN] Thread assigned to agent");
   res.json({ status: "success", assignedAgentName });
 }));
 
@@ -235,7 +236,7 @@ router.post("/api/conversations/:tenantId/:customerId/tags", asyncHandler(async 
   conversations[convoKey].tags = tags;
   await writeConversationsStore(conversations);
 
-  console.log(`[CONVERSATION TAGS] Updated tags for thread "${convoKey}" to:`, tags);
+  logger.info({ convoKey, tags }, "[CONVERSATION TAGS] Updated tags for thread");
   res.json({ status: "success", tags });
 }));
 
@@ -272,7 +273,7 @@ router.post("/api/tenant/:tenantId/autopilot", asyncHandler(async (req, res) => 
   }
   store[tenantId].autopilotEnabled = enabled;
   await writeTenantsStore(store);
-  console.log(`[AUTOPILOT UPDATE] Tenant "${tenantId}" set autopilotEnabled to ${enabled}`);
+  logger.info({ tenantId, autopilotEnabled: enabled }, "[AUTOPILOT UPDATE] Tenant autopilot setting changed");
   res.json({ status: "success", tenantId, autopilotEnabled: enabled });
 }));
 
@@ -329,7 +330,7 @@ async function getRobotsTxtRules(startUrl: string): Promise<{ disallows: string[
       return parseRobotsTxt(text, "AuraSaaSCrawler/1.0");
     }
   } catch (err) {
-    console.log(`[CRAWLER] No robots.txt found or fetch failed:`, err);
+    logger.info({ err }, "[CRAWLER] No robots.txt found or fetch failed");
   }
   return { disallows: [], sitemaps: [] };
 }
@@ -358,7 +359,7 @@ async function getSitemapUrls(sitemapUrl: string, host: string): Promise<string[
       }
     }
   } catch (err) {
-    console.log(`[CRAWLER] Sitemap fetch failed:`, err);
+    logger.info({ err }, "[CRAWLER] Sitemap fetch failed");
   }
   return urls;
 }
@@ -380,7 +381,7 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
   const maxPages = pagesBudget || 10;
   const maxDepth = depth || 1;
 
-  console.log(`[CRAWLER] Starting crawler for tenant "${tenantId}". URL: ${url}, source: ${source}, maxDepth: ${maxDepth}, maxPages: ${maxPages}`);
+  logger.info({ tenantId, url, source, maxDepth, maxPages }, "[CRAWLER] Starting crawler for tenant");
 
   let crawledText = "";
   let pageTitle = "Crawled Source";
@@ -389,7 +390,7 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
   if (source === "web") {
     const isUrlSafe = await validateUrlForSsrf(url);
     if (!isUrlSafe) {
-      console.warn(`[CRAWLER] Blocked SSRF attempt targeting URL: "${url}"`);
+      logger.warn({ url }, "[CRAWLER] Blocked SSRF attempt targeting URL");
       return res.status(400).json({ error: "Access Denied: Target URL is restricted or invalid." });
     }
 
@@ -399,7 +400,7 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
 
       // 1. Get robots.txt rules
       const { disallows, sitemaps } = await getRobotsTxtRules(url);
-      console.log(`[CRAWLER] Found ${disallows.length} disallows and ${sitemaps.length} sitemaps in robots.txt`);
+      logger.info({ disallowCount: disallows.length, sitemapCount: sitemaps.length }, "[CRAWLER] Parsed robots.txt");
 
       // 2. Initialize crawl queue
       const queue: string[] = [url];
@@ -411,7 +412,7 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
         for (const sitemap of sitemaps) {
           if (queue.length >= maxPages) break;
           const sitemapUrls = await getSitemapUrls(sitemap, host);
-          console.log(`[CRAWLER] Extracted ${sitemapUrls.length} urls from sitemap: ${sitemap}`);
+          logger.info({ urlCount: sitemapUrls.length, sitemap }, "[CRAWLER] Extracted URLs from sitemap");
           for (const sUrl of sitemapUrls) {
             if (!visited.has(sUrl) && !queue.includes(sUrl)) {
               queue.push(sUrl);
@@ -435,11 +436,11 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
         // robots.txt path check
         const path = new URL(currentUrl).pathname;
         if (isPathDisallowed(path, disallows)) {
-          console.log(`[CRAWLER] Skipping disallowed path: ${currentUrl}`);
+          logger.info({ currentUrl }, "[CRAWLER] Skipping disallowed path");
           continue;
         }
 
-        console.log(`[CRAWLER] Fetching page (${visited.size + 1}/${maxPages}): ${currentUrl}`);
+        logger.info({ page: visited.size + 1, maxPages, currentUrl }, "[CRAWLER] Fetching page");
         visited.add(currentUrl);
 
         try {
@@ -490,17 +491,17 @@ router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
             }
           }
         } catch (fetchErr: any) {
-          console.warn(`[CRAWLER] Fetch failed for ${currentUrl}:`, fetchErr.message);
+          logger.warn({ currentUrl, err: fetchErr.message }, "[CRAWLER] Fetch failed for URL");
         }
       }
     } catch (crawlErr: any) {
-      console.error("[CRAWLER] Web crawl error:", crawlErr);
+      logger.error({ err: crawlErr }, "[CRAWLER] Web crawl error");
     }
   }
 
   // Fallback if crawl yielded no content
   if (!crawledText) {
-    console.log(`[CRAWLER] Activating smart mock scrapers for ${source} profile: ${url}`);
+    logger.info({ source, url }, "[CRAWLER] Activating smart mock scrapers for profile");
     if (source === "web") {
       crawledText = `[WEB CORPUS: ${url}]
 Root website URL: ${url}
@@ -560,7 +561,7 @@ Content Feed Transcript:
   tenant.knowledgeBase.push(newKbItem);
   await writeTenantsStore(store);
 
-  console.log(`[CRAWLER] Crawl completed for "${tenantId}". Document "${pageTitle}" added to KB.`);
+  logger.info({ tenantId, pageTitle }, "[CRAWLER] Crawl completed, document added to KB");
   res.json({ status: "success", kbItem: newKbItem });
 }));
 
@@ -594,7 +595,7 @@ router.post("/api/conversations/:tenantId/:customerId/reply", asyncHandler(async
   await writeConversationsStore(conversations);
 
   if (internalNote) {
-    console.log(`[CONVERSATION INTERNAL NOTE] Stored internal note for thread "${convoKey}"`);
+    logger.info({ convoKey }, "[CONVERSATION INTERNAL NOTE] Stored internal note for thread");
     return res.json({ status: "success", text, isInternal: true });
   }
 
@@ -603,13 +604,13 @@ router.post("/api/conversations/:tenantId/:customerId/reply", asyncHandler(async
 
   if (targetPhoneNumberId && accessToken && !isPlaceholderToken(accessToken)) {
     try {
-      console.log(`[META OUTBOUND MANUAL] Sending manual Graph API reply to ${customerId} via SID ${targetPhoneNumberId}...`);
+      logger.info({ customerId, targetPhoneNumberId }, "[META OUTBOUND MANUAL] Sending manual Graph API reply");
       await sendWhatsAppMessage(targetPhoneNumberId, accessToken, customerId, text);
     } catch (graphErr) {
-      console.error("[META OUTBOUND MANUAL] Failed to send manual Graph API reply:", graphErr);
+      logger.error({ err: graphErr }, "[META OUTBOUND MANUAL] Failed to send manual Graph API reply");
     }
   } else {
-    console.log(`[META OUTBOUND MANUAL] Bypassing outbound Graph API send because credentials are placeholders. Simulator frame will poll and display.`);
+    logger.info("[META OUTBOUND MANUAL] Bypassing outbound Graph API send because credentials are placeholders. Simulator frame will poll and display.");
   }
 
   res.json({ status: "success", text, isInternal: false });
@@ -769,7 +770,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
     });
 
   } catch (error: any) {
-    console.error("Gemini SaaS Chat Playground Sandbox Error:", error);
+    logger.error({ err: error }, "Gemini SaaS Chat Playground Sandbox Error");
     res.status(500).json({
       reply: "Playground sandbox failed to generate content.",
       rawText: error.stack || error.message || "Unknown error",

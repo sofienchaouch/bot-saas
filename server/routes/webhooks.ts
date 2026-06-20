@@ -1,6 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 import { asyncHandler } from "../middleware/errorHandler";
+import { logger } from "../lib/logger";
 import { Type } from "@google/genai";
 import {
   readTenantsStore,
@@ -24,7 +25,7 @@ const verifyMetaSignature = (
   const signature = req.headers["x-hub-signature-256"] as string;
 
   if (!signature) {
-    console.warn("[META WEBHOOK] Missing X-Hub-Signature-256 header.");
+    logger.warn("[META WEBHOOK] Missing X-Hub-Signature-256 header.");
     return res.status(401).send("Unauthorized: Missing X-Hub-Signature-256 signature.");
   }
 
@@ -32,13 +33,13 @@ const verifyMetaSignature = (
   const expectedHash = parts[1];
   
   if (!expectedHash) {
-    console.warn("[META WEBHOOK] Invalid signature format.");
+    logger.warn("[META WEBHOOK] Invalid signature format.");
     return res.status(400).send("Bad Request: Invalid X-Hub-Signature-256 signature format.");
   }
 
   const rawBody = (req as any).rawBody;
   if (!rawBody) {
-    console.warn("[META WEBHOOK] Raw request body buffer is missing.");
+    logger.warn("[META WEBHOOK] Raw request body buffer is missing.");
     return res.status(400).send("Bad Request: Raw body not available for signature check.");
   }
 
@@ -47,7 +48,7 @@ const verifyMetaSignature = (
   const actualHash = hmac.digest("hex");
 
   if (actualHash !== expectedHash) {
-    console.warn(`[META WEBHOOK] Signature verification failed. Expected: ${expectedHash}, Actual: ${actualHash}`);
+    logger.warn({ expectedHash, actualHash }, "[META WEBHOOK] Signature verification failed");
     return res.status(403).send("Forbidden: Webhook signature verification failed.");
   }
 
@@ -71,7 +72,7 @@ router.get([
 
   const SECRET_VERIFY_TOKEN = WHATSAPP_VERIFY_TOKEN;
 
-  console.log(`[META WEBHOOK] Received GET verification handshake. Mode: ${mode}, Token: ${token}, TenantId in Route: ${tenantId}`);
+  logger.info({ mode, token, tenantId }, "[META WEBHOOK] Received GET verification handshake");
 
   if (mode && token) {
     // Support strict verification checks:
@@ -82,11 +83,11 @@ router.get([
       (tenantId && token === `verify_token_omnibot_${tenantId}`);
 
     if (mode === "subscribe" && isTokenValid) {
-      console.log(`[META WEBHOOK] Verification status: APPROVED. Challenge returned: ${challenge}`);
+      logger.info({ challenge }, "[META WEBHOOK] Verification status: APPROVED. Challenge returned");
       res.setHeader("Content-Type", "text/plain");
       return res.status(200).send(challenge);
     } else {
-      console.warn(`[META WEBHOOK] Verification status: DENIED. Token mismatch. Token received: "${token}"`);
+      logger.warn({ token }, "[META WEBHOOK] Verification status: DENIED. Token mismatch");
       return res.status(403).send("Forbidden: Verify token mismatch or mode unsupported.");
     }
   }
@@ -105,7 +106,7 @@ router.post([
 ], verifyMetaSignature, asyncHandler(async (req, res) => {
   try {
     const payload = req.body;
-    console.log("[META WEBHOOK] Received WhatsApp cloud payload:", JSON.stringify(payload, null, 2));
+    logger.info({ payload }, "[META WEBHOOK] Received WhatsApp cloud payload");
 
     // Resolve tenant to check quota before acknowledging receipt
     let tenantId = req.params.tenantId || "zenith-fitness";
@@ -149,7 +150,7 @@ router.post([
       else if (tier === "Business" && count >= 5000) isOverQuota = true;
 
       if (isOverQuota) {
-        console.warn(`[META WEBHOOK] Tenant "${tenantId}" is over quota (${count}/${tier}). Rejecting message.`);
+        logger.warn({ tenantId, count, tier }, "[META WEBHOOK] Tenant is over quota. Rejecting message");
         return res.status(403).json({ error: "Quota Exceeded. Please upgrade your subscription plan." });
       }
     }
@@ -169,7 +170,7 @@ router.post([
         const isAudio = message.isAudio || false;
         const senderName = req.query.sender_name || "Facebook Customer";
 
-        console.log(`[META MESSENGER HOOK] Inbound FB Messenger message from ${senderName} (${from}): "${textBody}"`);
+        logger.info({ senderName, from, textBody }, "[META MESSENGER HOOK] Inbound FB Messenger message");
         
         let tenantId = req.params.tenantId || "zenith-fitness";
         const store = await readTenantsStore();
@@ -192,7 +193,7 @@ router.post([
         }
 
         if (!tenant) {
-          console.warn(`[META MESSENGER HOOK] Bypassing because no active tenant matches ID: "${tenantId}".`);
+          logger.warn({ tenantId }, "[META MESSENGER HOOK] Bypassing because no active tenant matches ID");
           return;
         }
 
@@ -265,7 +266,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
 
           if (currentAi) {
             try {
-              console.log(`[META MESSENGER AI] Generating response for sender PSID ${from}...`);
+              logger.info({ from }, "[META MESSENGER AI] Generating response for sender PSID");
               const response = await currentAi.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: contents,
@@ -320,12 +321,12 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 actionTriggered = parsedData.actionTriggered;
               }
             } catch (aiErr) {
-              console.error("[META MESSENGER AI] Gemini generation error:", aiErr);
+              logger.error({ err: aiErr }, "[META MESSENGER AI] Gemini generation error");
             }
           }
 
           if (actionTriggered) {
-            console.log(`[META MESSENGER AI] Decided action:`, actionTriggered);
+            logger.info({ action: actionTriggered }, "[META MESSENGER AI] Decided action");
             try {
               const actDetails = JSON.parse(actionTriggered.details || "{}");
               let tenantModified = false;
@@ -343,7 +344,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 if (!tenant.leads) tenant.leads = [];
                 tenant.leads.push(newLead);
                 tenantModified = true;
-                console.log("[META MESSENGER CRM] Captured Lead autonomously:", newLead);
+                logger.info({ lead: newLead }, "[META MESSENGER CRM] Captured Lead autonomously");
               } else if (actionTriggered.type === 'book_appointment') {
                 const newAppt = {
                   id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -359,7 +360,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 if (!tenant.appointments) tenant.appointments = [];
                 tenant.appointments.push(newAppt);
                 tenantModified = true;
-                console.log("[META MESSENGER CALENDAR] Booked Appointment autonomously:", newAppt);
+                logger.info({ appointment: newAppt }, "[META MESSENGER CALENDAR] Booked Appointment autonomously");
               } else if (actionTriggered.type === 'purchase_item') {
                 if (!tenant.leads) tenant.leads = [];
                 const matchedLeadIndex = tenant.leads.findIndex((l: any) => 
@@ -384,7 +385,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                   tenant.leads.push(newLead);
                 }
                 tenantModified = true;
-                console.log("[META MESSENGER CRM] E-Commerce Purchase registered autonomously:", orderDetails);
+                logger.info({ orderDetails }, "[META MESSENGER CRM] E-Commerce Purchase registered autonomously");
               }
 
               tenant.messageCount = (tenant.messageCount || 0) + 1;
@@ -396,7 +397,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 await writeTenantsStore(storeWrite);
               }
             } catch (actErr) {
-              console.error("[META MESSENGER ACTION] Action error:", actErr);
+              logger.error({ err: actErr }, "[META MESSENGER ACTION] Action error");
             }
           }
 
@@ -410,7 +411,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
           });
           await writeConversationsStore(conversations);
         } else {
-          console.log(`[META MESSENGER TAKEOVER] Autopilot is disabled for tenant "${tenantId}". Session is in manual takeover mode.`);
+          logger.info({ tenantId }, "[META MESSENGER TAKEOVER] Autopilot is disabled for tenant. Session is in manual takeover mode.");
         }
       }
     }
@@ -429,7 +430,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
         const textBody = message.text?.body || "";
         const senderName = contact?.profile?.name || "WhatsApp User";
 
-        console.log(`[META WEBHOOK] Inbound WhatsApp message from ${senderName} (${from}): "${textBody}"`);
+        logger.info({ senderName, from, textBody }, "[META WEBHOOK] Inbound WhatsApp message");
         
         // Find matching tenantId
         let tenantId = req.params.tenantId || "zenith-fitness";
@@ -457,7 +458,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
         }
 
         if (!tenant) {
-          console.warn(`[META WEBHOOK LOG] Bypassing answer hook because no active tenant matches ID: "${tenantId}".`);
+          logger.warn({ tenantId }, "[META WEBHOOK LOG] Bypassing answer hook because no active tenant matches ID");
           return;
         }
 
@@ -559,7 +560,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
 
           if (currentAi) {
             try {
-              console.log(`[META WEBHOOK AI] Invoking Gemini-2.0-flash for ${from}...`);
+              logger.info({ from }, "[META WEBHOOK AI] Invoking Gemini-2.0-flash");
               const response = await currentAi.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: contents,
@@ -614,14 +615,14 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 actionTriggered = parsedData.actionTriggered;
               }
             } catch (aiErr) {
-              console.error("[META WEBHOOK AI] Error during AI content generation:", aiErr);
+              logger.error({ err: aiErr }, "[META WEBHOOK AI] Error during AI content generation");
             }
           } else {
-            console.warn("[META WEBHOOK AI] Bypassing Gemini inference because no AI API key is configured.");
+            logger.warn("[META WEBHOOK AI] Bypassing Gemini inference because no AI API key is configured.");
           }
 
           if (actionTriggered) {
-            console.log(`[META WEBHOOK AI] Action triggered autonomously:`, actionTriggered);
+            logger.info({ action: actionTriggered }, "[META WEBHOOK AI] Action triggered autonomously");
             try {
               const actDetails = JSON.parse(actionTriggered.details || "{}");
               let tenantModified = false;
@@ -639,7 +640,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 if (!tenant.leads) tenant.leads = [];
                 tenant.leads.push(newLead);
                 tenantModified = true;
-                console.log("[META WEBHOOK CRM] Captured new Lead autonomously in CRM store:", newLead);
+                logger.info({ lead: newLead }, "[META WEBHOOK CRM] Captured new Lead autonomously in CRM store");
               } else if (actionTriggered.type === 'book_appointment') {
                 const newAppt = {
                   id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -655,7 +656,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 if (!tenant.appointments) tenant.appointments = [];
                 tenant.appointments.push(newAppt);
                 tenantModified = true;
-                console.log("[META WEBHOOK CALENDAR] Booked new Appointment autonomously in CRM calendar:", newAppt);
+                logger.info({ appointment: newAppt }, "[META WEBHOOK CALENDAR] Booked new Appointment autonomously in CRM calendar");
               } else if (actionTriggered.type === 'purchase_item') {
                 if (!tenant.leads) tenant.leads = [];
                 const matchedLeadIndex = tenant.leads.findIndex((l: any) => 
@@ -680,7 +681,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                   tenant.leads.push(newLead);
                 }
                 tenantModified = true;
-                console.log("[META WEBHOOK CRM] E-Commerce Purchase registered autonomously:", orderDetails);
+                logger.info({ orderDetails }, "[META WEBHOOK CRM] E-Commerce Purchase registered autonomously");
               }
 
               tenant.messageCount = (tenant.messageCount || 0) + 1;
@@ -692,7 +693,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
                 await writeTenantsStore(storeWrite);
               }
             } catch (actErr) {
-              console.error("[META WEBHOOK ACTION] Error executing AI action:", actErr);
+              logger.error({ err: actErr }, "[META WEBHOOK ACTION] Error executing AI action");
             }
           }
 
@@ -725,21 +726,21 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
 
           if (targetPhoneNumberId && accessToken && !isPlaceholderToken(accessToken)) {
             try {
-              console.log(`[META WEBHOOK OUTBOUND] Sending real Graph API envelope to ${from} via SID ${targetPhoneNumberId}...`);
+              logger.info({ from, targetPhoneNumberId }, "[META WEBHOOK OUTBOUND] Sending real Graph API envelope");
               await sendWhatsAppMessage(targetPhoneNumberId, accessToken, from, botReply);
             } catch (graphErr) {
-              console.error("[META WEBHOOK OUTBOUND] Failed to post message via Meta Graph API:", graphErr);
+              logger.error({ err: graphErr }, "[META WEBHOOK OUTBOUND] Failed to post message via Meta Graph API");
             }
           } else {
-            console.warn(`[META WEBHOOK OUTBOUND] Bypassing Graph API delivery because Meta credentials for tenant "${tenantId}" are placeholders or set to defaults.`);
+            logger.warn({ tenantId }, "[META WEBHOOK OUTBOUND] Bypassing Graph API delivery because Meta credentials are placeholders or defaults");
           }
         } else {
-          console.log(`[META WHATSAPP TAKEOVER] Autopilot is disabled for tenant "${tenantId}". Session is in manual takeover mode.`);
+          logger.info({ tenantId }, "[META WHATSAPP TAKEOVER] Autopilot is disabled for tenant. Session is in manual takeover mode.");
         }
       }
     }
   } catch (err: any) {
-    console.error("[META WEBHOOK] Error routing Facebook/WhatsApp payload:", err);
+    logger.error({ err }, "[META WEBHOOK] Error routing Facebook/WhatsApp payload");
     // Suppress errors and send 200 OK to keep Meta webhook server active
     if (!res.headersSent) {
       res.status(200).send("Processed with error");
@@ -766,7 +767,7 @@ router.post("/api/webhook/telegram/:tenantId", asyncHandler(async (req, res) => 
   else if (tier === "Business" && count >= 5000) isOverQuota = true;
 
   if (isOverQuota) {
-    console.warn(`[TELEGRAM WEBHOOK] Tenant "${tenantId}" is over quota (${count}/${tier}). Rejecting message.`);
+    logger.warn({ tenantId, count, tier }, "[TELEGRAM WEBHOOK] Tenant is over quota. Rejecting message");
     return res.status(403).json({ error: "Quota Exceeded. Please upgrade your subscription plan." });
   }
 
@@ -783,7 +784,7 @@ router.post("/api/webhook/telegram/:tenantId", asyncHandler(async (req, res) => 
     return res.status(200).send("No text message to process");
   }
 
-  console.log(`[TELEGRAM WEBHOOK] Inbound message from ${senderName} (${fromId}): "${textBody}"`);
+  logger.info({ senderName, fromId, textBody }, "[TELEGRAM WEBHOOK] Inbound message");
 
   // Load conversation history
   const conversations = await readConversationsStore();
@@ -902,7 +903,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
           actionTriggered = parsedData.actionTriggered;
         }
       } catch (aiErr) {
-        console.error("[TELEGRAM AI ERROR]", aiErr);
+        logger.error({ err: aiErr }, "[TELEGRAM AI ERROR]");
       }
     }
   }
@@ -942,7 +943,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
         tenantModified = true;
       }
     } catch (actErr) {
-      console.error("[TELEGRAM ACTION ERROR]", actErr);
+      logger.error({ err: actErr }, "[TELEGRAM ACTION ERROR]");
     }
   }
 
@@ -969,17 +970,17 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
   const botToken = tenant.telegramBotToken;
   if (botToken && !isPlaceholderToken(botToken)) {
     try {
-      console.log(`[TELEGRAM OUTBOUND] Sending telegram message to chat ${fromId}...`);
+      logger.info({ fromId }, "[TELEGRAM OUTBOUND] Sending telegram message to chat");
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: fromId, text: botReply })
       });
     } catch (tgErr) {
-      console.error("[TELEGRAM OUTBOUND ERROR]", tgErr);
+      logger.error({ err: tgErr }, "[TELEGRAM OUTBOUND ERROR]");
     }
   } else {
-    console.warn(`[TELEGRAM OUTBOUND] Bypassing Telegram API send because token is empty/placeholder.`);
+    logger.warn("[TELEGRAM OUTBOUND] Bypassing Telegram API send because token is empty/placeholder.");
   }
 
   res.status(200).send("OK");
@@ -1005,7 +1006,7 @@ router.post("/api/webhook/twilio/sms/:tenantId", asyncHandler(async (req, res) =
   else if (tier === "Business" && count >= 5000) isOverQuota = true;
 
   if (isOverQuota) {
-    console.warn(`[TWILIO SMS] Tenant "${tenantId}" is over quota (${count}/${tier}). Rejecting message.`);
+    logger.warn({ tenantId, count, tier }, "[TWILIO SMS] Tenant is over quota. Rejecting message");
     res.type("text/xml");
     return res.status(403).send("<Response><Message>Quota Exceeded. Please upgrade your subscription plan.</Message></Response>");
   }
@@ -1019,7 +1020,7 @@ router.post("/api/webhook/twilio/sms/:tenantId", asyncHandler(async (req, res) =
     return res.status(200).send("<Response />");
   }
 
-  console.log(`[TWILIO SMS] Inbound message from ${from}: "${textBody}"`);
+  logger.info({ from, textBody }, "[TWILIO SMS] Inbound message");
 
   // Load conversation history
   const conversations = await readConversationsStore();
@@ -1138,7 +1139,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
           actionTriggered = parsedData.actionTriggered;
         }
       } catch (aiErr) {
-        console.error("[TWILIO SMS AI ERROR]", aiErr);
+        logger.error({ err: aiErr }, "[TWILIO SMS AI ERROR]");
       }
     }
   }
@@ -1178,7 +1179,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
         tenantModified = true;
       }
     } catch (actErr) {
-      console.error("[TWILIO SMS ACTION ERROR]", actErr);
+      logger.error({ err: actErr }, "[TWILIO SMS ACTION ERROR]");
     }
   }
 

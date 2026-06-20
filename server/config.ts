@@ -21,16 +21,19 @@ const envSchema = z.object({
 
 const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {
+  // eslint-disable-next-line no-console
   console.error("❌ Environment validation failed:", parsedEnv.error.format());
   process.exit(1);
 }
 
 if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.ENCRYPTION_KEY === "aura_platform_encryption_master_key_2026") {
+  // eslint-disable-next-line no-console
   console.error("❌ Security blockade: Default ENCRYPTION_KEY is not permitted in production environment!");
   process.exit(1);
 }
 
 if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.WHATSAPP_APP_SECRET === "aura_whatsapp_app_secret_fallback_2026") {
+  // eslint-disable-next-line no-console
   console.error("❌ Security blockade: Default WHATSAPP_APP_SECRET is not permitted in production environment!");
   process.exit(1);
 }

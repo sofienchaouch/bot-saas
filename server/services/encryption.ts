@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { ENCRYPTION_KEY } from "../config";
+import { logger } from "../lib/logger";
 
 const ENCRYPTION_SECRET = ENCRYPTION_KEY;
 
@@ -14,7 +15,7 @@ export function encryptText(text: string): string {
     const tag = cipher.getAuthTag().toString("hex");
     return `${iv.toString("hex")}:${encrypted}:${tag}`;
   } catch (err) {
-    console.error("Encryption error:", err);
+    logger.error({ err }, "Encryption error");
     throw new Error("Encryption failed: PII leaks prevented.");
   }
 }
@@ -35,7 +36,7 @@ export function decryptText(encryptedText: string): string {
     decrypted += decipher.final("utf8");
     return decrypted;
   } catch (err) {
-    console.error("Decryption error:", err);
+    logger.error({ err }, "Decryption error");
     throw new Error("Decryption failed: PII integrity mismatch.");
   }
 }

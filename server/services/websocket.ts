@@ -3,6 +3,7 @@ import { Modality } from "@google/genai";
 import { ai } from "./gemini";
 import { readTenantsStore } from "./db";
 import { buildSystemPrompt } from "./promptBuilder";
+import { logger } from "../lib/logger";
 
 // Transcoding helpers for Twilio VoIP G.711 mu-law <-> PCM 16kHz
 const muLawToPcmTable = new Int16Array(256);
@@ -89,7 +90,7 @@ export function setupWebSocket(server: any) {
 
   // Live Web client handler
   wss.on("connection", async (clientWs, req) => {
-    console.log("[LIVE WS] Client connected to real-time voice bridge");
+    logger.info("[LIVE WS] Client connected to real-time voice bridge");
     const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
     const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
     await handleVoiceBridgeConnection(clientWs, tenantId, false);
@@ -97,7 +98,7 @@ export function setupWebSocket(server: any) {
 
   // Twilio Voice handler
   twilioWss.on("connection", async (clientWs, req) => {
-    console.log("[TWILIO WS] Twilio stream connected to real-time voice bridge");
+    logger.info("[TWILIO WS] Twilio stream connected to real-time voice bridge");
     const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
     const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
     await handleVoiceBridgeConnection(clientWs, tenantId, true);
@@ -109,7 +110,7 @@ export function setupWebSocket(server: any) {
       const store = await readTenantsStore();
       tenant = store[tenantId] || {};
     } catch (err) {
-      console.error(`[VOICE WS] Failed to read tenants store for "${tenantId}":`, err);
+      logger.error({ err, tenantId }, "[VOICE WS] Failed to read tenants store");
     }
 
     const botName = tenant.botName || "Assistant";
@@ -164,7 +165,7 @@ Your direct objectives in the telephone call are:
     });
 
     if (!ai) {
-      console.warn("[VOICE WS] Gemini API client is uninitialized. Activating telemetry demo loop.");
+      logger.warn("[VOICE WS] Gemini API client is uninitialized. Activating telemetry demo loop.");
       clientWs.on("message", (msg: any) => {
         try {
           if (isTwilio) {
@@ -187,7 +188,7 @@ Your direct objectives in the telephone call are:
     }
 
     try {
-      console.log(`[VOICE WS] Starting real Gemini Live connection via .live.connect (Twilio=${isTwilio})...`);
+      logger.info({ isTwilio }, "[VOICE WS] Starting real Gemini Live connection via .live.connect");
       
       let streamSid = "";
 
@@ -244,11 +245,11 @@ Your direct objectives in the telephone call are:
             }
           },
           onclose: () => {
-            console.log("[VOICE WS] Gemini Live session finished.");
+            logger.info("[VOICE WS] Gemini Live session finished.");
             clientWs.close();
           },
           onerror: (err: any) => {
-            console.error("[VOICE WS] Gemini Live API core error:", err);
+            logger.error({ err }, "[VOICE WS] Gemini Live API core error");
             if (!isTwilio) {
               clientWs.send(JSON.stringify({ type: "error", error: err.message || "Gemini Live API failure" }));
             }
@@ -256,7 +257,7 @@ Your direct objectives in the telephone call are:
         }
       });
 
-      console.log("[VOICE WS] Gemini Live linked and synchronized.");
+      logger.info("[VOICE WS] Gemini Live linked and synchronized.");
 
       clientWs.on("message", (data: any) => {
         try {
@@ -264,7 +265,7 @@ Your direct objectives in the telephone call are:
             const parsed = JSON.parse(data.toString());
             if (parsed.event === "start") {
               streamSid = parsed.start.streamSid;
-              console.log(`[TWILIO WS] Call stream started. streamSid: ${streamSid}`);
+              logger.info({ streamSid }, "[TWILIO WS] Call stream started");
             } else if (parsed.event === "media" && parsed.media?.payload) {
               // Transcode inbound audio from Mu-law 8kHz to PCM 16kHz
               const muLawBuf = Buffer.from(parsed.media.payload, "base64");
@@ -275,7 +276,7 @@ Your direct objectives in the telephone call are:
                 audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" }
               });
             } else if (parsed.event === "stop") {
-              console.log(`[TWILIO WS] Call stream stopped. streamSid: ${streamSid}`);
+              logger.info({ streamSid }, "[TWILIO WS] Call stream stopped");
               session.close();
             }
           } else {
@@ -291,12 +292,12 @@ Your direct objectives in the telephone call are:
             }
           }
         } catch (mErr) {
-          console.error("[VOICE WS] Error processing socket message:", mErr);
+            logger.error({ err: mErr }, "[VOICE WS] Error processing socket message");
         }
       });
 
       clientWs.on("close", () => {
-        console.log("[VOICE WS] Socket connection shut down. Terminating Gemini Session.");
+        logger.info("[VOICE WS] Socket connection shut down. Terminating Gemini Session.");
         session.close();
       });
 
@@ -305,7 +306,7 @@ Your direct objectives in the telephone call are:
       });
 
     } catch (connErr: any) {
-      console.error("[VOICE WS] Handshake sequence aborted:", connErr);
+      logger.error({ err: connErr }, "[VOICE WS] Handshake sequence aborted");
       if (!isTwilio) {
         clientWs.send(JSON.stringify({ type: "error", error: connErr.message }));
       }
