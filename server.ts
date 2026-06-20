@@ -5,6 +5,7 @@ import helmet from "helmet";
 import cors from "cors";
 
 import { PORT } from "./server/config";
+import { requestIdMiddleware } from "./server/middleware/requestId";
 import { apiLimiter, webhookLimiter } from "./server/middleware/rateLimit";
 import { readTenantsStore, writeTenantsStore } from "./server/services/db";
 import { setupWebSocket } from "./server/services/websocket";
@@ -13,6 +14,8 @@ import { errorHandler } from "./server/middleware/errorHandler";
 import { runMigrations } from "./server/db/migrate";
 
 const app = express();
+
+app.use(requestIdMiddleware);
 
 app.use(helmet());
 app.use(cors({ origin: process.env.APP_URL || true }));

@@ -389,3 +389,21 @@ describe('logger', () => {
     expect(typeof child.info).toBe('function');
   });
 });
+
+describe('requestId middleware', () => {
+  it('sets X-Request-Id response header', async () => {
+    const res = await request(app)
+      .get('/api/health')
+      .set('X-Test-Auth-Bypass', 'true');
+    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('echoes client-provided X-Request-Id', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440000';
+    const res = await request(app)
+      .get('/api/health')
+      .set('X-Request-Id', id)
+      .set('X-Test-Auth-Bypass', 'true');
+    expect(res.headers['x-request-id']).toBe(id);
+  });
+});
