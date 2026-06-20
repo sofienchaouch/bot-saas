@@ -17,7 +17,11 @@
     "lint:fix": "eslint --fix src/ server/ --ext .ts,.tsx",
     "format": "prettier --write src/ server/ *.ts *.json",
     "format:check": "prettier --check src/ server/",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:import-json": "tsx scripts/migrate-json-to-pg.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

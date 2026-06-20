@@ -9,12 +9,19 @@ import { apiLimiter, webhookLimiter } from "./server/middleware/rateLimit";
 import { readTenantsStore, writeTenantsStore } from "./server/services/db";
 import { setupWebSocket } from "./server/services/websocket";
 import router from "./server/routes";
+import { errorHandler } from "./server/middleware/errorHandler";
+import { runMigrations } from "./server/db/migrate";
 
 const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: process.env.APP_URL || true }));
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ 
+  limit: "1mb",
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // Rate Limiters mounting
 app.use("/api/webhook", webhookLimiter);
@@ -28,12 +35,17 @@ app.use("/api/", (req, res, next) => {
 // Mount the modular routes index
 app.use("/", router);
 
+// Mount the global error handler middleware
+app.use(errorHandler);
+
 // Re-export utility functions imported by tests to preserve the public API
 export { encryptText, decryptText } from "./server/services/encryption";
 export { chunkText, cosineSimilarity } from "./server/services/rag";
 
 // Setup Vite Dev Server / Static Assets handling
 async function startServer() {
+  await runMigrations();
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
