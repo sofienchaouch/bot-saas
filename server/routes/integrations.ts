@@ -1,5 +1,6 @@
 import express from "express";
 import { Type } from "@google/genai";
+import { sql } from 'drizzle-orm';
 import { readTenantsStore, writeTenantsStore } from "../services/db";
 import { getRAGContext } from "../services/rag";
 import { asyncHandler } from "../middleware/errorHandler";
@@ -7,12 +8,41 @@ import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
 import { recordEvent } from "../services/analytics";
 import { logWebhookEvent } from "../services/webhookLogger";
+import { getDb, isDbAvailable } from '../db/index';
+import { logger } from '../lib/logger';
 
 const router = express.Router();
 
 // Health check endpoint
-router.get("/api/health", (req, res) => {
-  res.json({ status: "ok", aiEnabled: !!ai });
+router.get("/api/health", async (req, res) => {
+  const checks: Record<string, string> = {};
+
+  // DB check
+  if (isDbAvailable()) {
+    try {
+      await getDb().execute(sql`SELECT 1`);
+      checks.db = 'ok';
+    } catch (err) {
+      logger.warn({ err }, 'Health check: DB error');
+      checks.db = 'error';
+    }
+  } else {
+    checks.db = 'not_configured';
+  }
+
+  // Gemini check — just verify client is initialized, no API call
+  checks.gemini = ai ? 'ok' : 'not_configured';
+
+  // Redis check — placeholder until Task 6 adds Redis
+  checks.redis = 'not_configured';
+
+  const allOk = Object.values(checks).every(v => v === 'ok' || v === 'not_configured');
+
+  res.status(allOk ? 200 : 503).json({
+    status: allOk ? 'ok' : 'degraded',
+    checks,
+    aiEnabled: !!ai,
+  });
 });
 
 router.post("/api/chat", asyncHandler(async (req, res) => {
