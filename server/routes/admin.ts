@@ -1,6 +1,7 @@
 import express from "express";
 import { URL } from "url";
 import { Type } from "@google/genai";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
   readTenantsStore,
   writeTenantsStore,
@@ -20,6 +21,8 @@ import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
 import { authMiddleware } from "../middleware/auth";
 import { lookupAsync, NODE_ENV } from "../config";
+import { getAnalytics, clearAnalytics } from "../services/analytics";
+import { getWebhookEvents, clearWebhookEvents } from "../services/webhookLogger";
 
 const router = express.Router();
 
@@ -80,14 +83,12 @@ async function validateUrlForSsrf(urlStr: string): Promise<boolean> {
   }
 }
 
-// Get all tenants
-router.get("/api/tenants", async (req, res) => {
+router.get("/api/tenants", asyncHandler(async (req, res) => {
   const store = await readTenantsStore();
   res.json(store);
-});
+}));
 
-// Sync all tenants
-router.post("/api/tenants/sync-all", async (req, res) => {
+router.post("/api/tenants/sync-all", asyncHandler(async (req, res) => {
   const list = req.body;
   if (!Array.isArray(list)) {
     return res.status(400).json({ error: "Expected array of tenants" });
@@ -102,10 +103,9 @@ router.post("/api/tenants/sync-all", async (req, res) => {
   await writeTenantsStore(store);
   console.log(`[TENANTS SYNC-ALL] Successfully synchronized ${list.length} tenants with Firestore.`);
   res.json({ status: "success", count: list.length });
-});
+}));
 
-// Sync single tenant
-router.post("/api/tenant/sync", async (req, res) => {
+router.post("/api/tenant/sync", asyncHandler(async (req, res) => {
   const tenant = req.body;
   if (!tenant || !tenant.id) {
     return res.status(400).json({ error: "Expected tenant object with non-empty ID parameter." });
@@ -116,10 +116,9 @@ router.post("/api/tenant/sync", async (req, res) => {
   await writeTenantsStore(store);
   console.log(`[TENANT SYNC] Successfully synchronized tenant details for ${enriched.name} (${enriched.id}) to Firestore`);
   res.json({ status: "success", id: enriched.id });
-});
+}));
 
-// Update crawl schedule for a tenant
-router.post("/api/tenant/:tenantId/schedule", async (req, res) => {
+router.post("/api/tenant/:tenantId/schedule", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const { crawlSchedule } = req.body;
   if (!['none', 'daily', 'weekly'].includes(crawlSchedule)) {
@@ -137,23 +136,47 @@ router.post("/api/tenant/:tenantId/schedule", async (req, res) => {
   await writeTenantsStore(store);
   console.log(`[TENANT SCHEDULER] Updated crawl schedule to "${crawlSchedule}" for tenant "${tenantId}"`);
   res.json({ status: "success", crawlSchedule });
-});
+}));
 
-// Conversations endpoints for real-time visualization and log diagnostics
-router.get("/api/conversations/:tenantId", async (req, res) => {
+router.get("/api/conversations/:tenantId", asyncHandler(async (req, res) => {
   const store = await readConversationsStore();
   const tenantId = req.params.tenantId;
-  const filtered: Record<string, any> = {};
-  Object.keys(store).forEach(key => {
-    if (key.startsWith(`${tenantId}_`)) {
-      filtered[key] = store[key];
-    }
-  });
-  res.json(filtered);
-});
+  const limit = parseInt(req.query.limit as string) || 50;
+  const offset = parseInt(req.query.offset as string) || 0;
+  const q = (req.query.q as string || "").toLowerCase().trim();
 
-// Clear conversations for a tenant
-router.post("/api/conversations/:tenantId/clear", async (req, res) => {
+  let keys = Object.keys(store).filter(key => key.startsWith(`${tenantId}_`));
+
+  if (q) {
+    keys = keys.filter(key => {
+      const convo = store[key];
+      const customerId = key.substring(tenantId.length + 1).toLowerCase();
+      if (customerId.includes(q)) return true;
+      if (convo.assignedAgentName?.toLowerCase().includes(q)) return true;
+      if (convo.tags?.some((t: string) => t.toLowerCase().includes(q))) return true;
+      return convo.messages?.some((m: any) => m.text?.toLowerCase().includes(q));
+    });
+  }
+
+  // Sort keys by latest message timestamp (descending)
+  keys.sort((a, b) => {
+    const messagesA = store[a].messages || [];
+    const messagesB = store[b].messages || [];
+    const timeA = messagesA[messagesA.length - 1]?.timestamp || "";
+    const timeB = messagesB[messagesB.length - 1]?.timestamp || "";
+    return timeB.localeCompare(timeA);
+  });
+
+  const paginatedKeys = keys.slice(offset, offset + limit);
+  const filtered: Record<string, any> = {};
+  paginatedKeys.forEach(key => {
+    filtered[key] = store[key];
+  });
+
+  res.json(filtered);
+}));
+
+router.post("/api/conversations/:tenantId/clear", asyncHandler(async (req, res) => {
   const store = await readConversationsStore();
   const tenantId = req.params.tenantId;
   Object.keys(store).forEach(key => {
@@ -163,10 +186,9 @@ router.post("/api/conversations/:tenantId/clear", async (req, res) => {
   });
   await writeConversationsStore(store);
   res.json({ status: "success" });
-});
+}));
 
-// Assign conversation to an agent
-router.post("/api/conversations/:tenantId/:customerId/assign", async (req, res) => {
+router.post("/api/conversations/:tenantId/:customerId/assign", asyncHandler(async (req, res) => {
   const { tenantId, customerId } = req.params;
   const { assignedAgentName } = req.body;
   const conversations = await readConversationsStore();
@@ -178,10 +200,51 @@ router.post("/api/conversations/:tenantId/:customerId/assign", async (req, res) 
   await writeConversationsStore(conversations);
   console.log(`[CONVERSATION ASSIGN] Thread "${convoKey}" assigned to agent "${assignedAgentName}"`);
   res.json({ status: "success", assignedAgentName });
-});
+}));
 
-// Toggle autopilot
-router.post("/api/tenant/:tenantId/autopilot", async (req, res) => {
+router.post("/api/conversations/:tenantId/:customerId/tags", asyncHandler(async (req, res) => {
+  const { tenantId, customerId } = req.params;
+  const { tags } = req.body;
+
+  if (!Array.isArray(tags)) {
+    return res.status(400).json({ error: "Expected tags parameter to be an array of strings." });
+  }
+
+  const conversations = await readConversationsStore();
+  const convoKey = `${tenantId}_${customerId}`;
+  if (!conversations[convoKey]) {
+    conversations[convoKey] = { messages: [] };
+  }
+
+  conversations[convoKey].tags = tags;
+  await writeConversationsStore(conversations);
+
+  console.log(`[CONVERSATION TAGS] Updated tags for thread "${convoKey}" to:`, tags);
+  res.json({ status: "success", tags });
+}));
+
+router.get("/api/conversations/:tenantId/:customerId/export", asyncHandler(async (req, res) => {
+  const { tenantId, customerId } = req.params;
+  const conversations = await readConversationsStore();
+  const convoKey = `${tenantId}_${customerId}`;
+  const convo = conversations[convoKey];
+
+  if (!convo || !convo.messages || convo.messages.length === 0) {
+    return res.status(404).json({ error: "Conversation thread not found or empty." });
+  }
+
+  let csvContent = "sender,text,timestamp\n";
+  convo.messages.forEach((msg: any) => {
+    const cleanText = (msg.text || "").replace(/"/g, '""');
+    csvContent += `"${msg.sender}","${cleanText}","${msg.timestamp}"\n`;
+  });
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="conversation_${convoKey}.csv"`);
+  res.status(200).send(csvContent);
+}));
+
+router.post("/api/tenant/:tenantId/autopilot", asyncHandler(async (req, res) => {
   const tenantId = req.params.tenantId;
   const { enabled } = req.body;
   if (typeof enabled !== "boolean") {
@@ -195,10 +258,96 @@ router.post("/api/tenant/:tenantId/autopilot", async (req, res) => {
   await writeTenantsStore(store);
   console.log(`[AUTOPILOT UPDATE] Tenant "${tenantId}" set autopilotEnabled to ${enabled}`);
   res.json({ status: "success", tenantId, autopilotEnabled: enabled });
-});
+}));
 
-// Web crawler route
-router.post("/api/tenant/:tenantId/crawl", async (req, res) => {
+// Web Crawler Helper: parse robots.txt
+function parseRobotsTxt(robotsText: string, userAgent = "*"): { disallows: string[]; sitemaps: string[] } {
+  const disallows: string[] = [];
+  const sitemaps: string[] = [];
+  const lines = robotsText.split(/\r?\n/);
+  let inTargetAgentSection = false;
+
+  for (const line of lines) {
+    const cleanLine = line.trim();
+    if (!cleanLine || cleanLine.startsWith("#")) continue;
+
+    const parts = cleanLine.split(":");
+    const directive = parts[0].trim().toLowerCase();
+    const value = parts.slice(1).join(":").trim();
+
+    if (directive === "sitemap") {
+      sitemaps.push(value);
+    } else if (directive === "user-agent") {
+      const agent = value.toLowerCase();
+      inTargetAgentSection = (agent === userAgent.toLowerCase() || agent === "*");
+    } else if (directive === "disallow" && inTargetAgentSection) {
+      if (value) {
+        disallows.push(value);
+      }
+    }
+  }
+
+  return { disallows, sitemaps };
+}
+
+// Web Crawler Helper: check disallow rules
+function isPathDisallowed(path: string, disallows: string[]): boolean {
+  for (const rule of disallows) {
+    if (rule === "/") return true;
+    if (path.startsWith(rule)) return true;
+  }
+  return false;
+}
+
+// Web Crawler Helper: fetch and parse robots.txt
+async function getRobotsTxtRules(startUrl: string): Promise<{ disallows: string[]; sitemaps: string[] }> {
+  try {
+    const parsed = new URL(startUrl);
+    const robotsUrl = `${parsed.protocol}//${parsed.host}/robots.txt`;
+    const res = await fetch(robotsUrl, {
+      headers: { "User-Agent": "AuraSaaSCrawler/1.0" },
+      signal: AbortSignal.timeout(4000)
+    });
+    if (res.ok) {
+      const text = await res.text();
+      return parseRobotsTxt(text, "AuraSaaSCrawler/1.0");
+    }
+  } catch (err) {
+    console.log(`[CRAWLER] No robots.txt found or fetch failed:`, err);
+  }
+  return { disallows: [], sitemaps: [] };
+}
+
+// Web Crawler Helper: extract sitemap URLs
+async function getSitemapUrls(sitemapUrl: string, host: string): Promise<string[]> {
+  const urls: string[] = [];
+  try {
+    const res = await fetch(sitemapUrl, {
+      headers: { "User-Agent": "AuraSaaSCrawler/1.0" },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (res.ok) {
+      const xml = await res.text();
+      const matches = xml.match(/<loc>(https?:\/\/[^\s<]+)<\/loc>/gi);
+      if (matches) {
+        matches.forEach(m => {
+          const loc = m.replace(/<\/?loc>/gi, "").trim();
+          try {
+            const locUrl = new URL(loc);
+            if (locUrl.host === host) {
+              urls.push(loc);
+            }
+          } catch {}
+        });
+      }
+    }
+  } catch (err) {
+    console.log(`[CRAWLER] Sitemap fetch failed:`, err);
+  }
+  return urls;
+}
+
+router.post("/api/tenant/:tenantId/crawl", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const { url, source, depth, pagesBudget } = req.body;
 
@@ -212,10 +361,15 @@ router.post("/api/tenant/:tenantId/crawl", async (req, res) => {
     return res.status(404).json({ error: "Tenant not found." });
   }
 
-  console.log(`[CRAWLER] Starting crawler for tenant "${tenantId}". URL: ${url}, source: ${source}, depth: ${depth}, budget: ${pagesBudget}`);
+  const maxPages = pagesBudget || 10;
+  const maxDepth = depth || 1;
+
+  console.log(`[CRAWLER] Starting crawler for tenant "${tenantId}". URL: ${url}, source: ${source}, maxDepth: ${maxDepth}, maxPages: ${maxPages}`);
 
   let crawledText = "";
   let pageTitle = "Crawled Source";
+  let crawledCount = 0;
+
   if (source === "web") {
     const isUrlSafe = await validateUrlForSsrf(url);
     if (!isUrlSafe) {
@@ -224,31 +378,111 @@ router.post("/api/tenant/:tenantId/crawl", async (req, res) => {
     }
 
     try {
-      console.log(`[CRAWLER] Fetching root page: ${url}`);
-      const response = await fetch(url, {
-        headers: { "User-Agent": "AuraSaaSCrawler/1.0" },
-        signal: AbortSignal.timeout(6000)
-      });
-      if (response.ok) {
-        const html = await response.text();
-        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-        if (titleMatch) pageTitle = titleMatch[1];
+      const parsedStartUrl = new URL(url);
+      const host = parsedStartUrl.host;
 
-        let cleanText = html
-          .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
-          .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        
-        if (cleanText.length > 8000) cleanText = cleanText.substring(0, 8000);
-        crawledText = cleanText;
+      // 1. Get robots.txt rules
+      const { disallows, sitemaps } = await getRobotsTxtRules(url);
+      console.log(`[CRAWLER] Found ${disallows.length} disallows and ${sitemaps.length} sitemaps in robots.txt`);
+
+      // 2. Initialize crawl queue
+      const queue: string[] = [url];
+      const visited = new Set<string>();
+      const urlDepth: Record<string, number> = { [url]: 1 };
+
+      // 3. Parse sitemaps to preload queue if present
+      if (sitemaps.length > 0) {
+        for (const sitemap of sitemaps) {
+          if (queue.length >= maxPages) break;
+          const sitemapUrls = await getSitemapUrls(sitemap, host);
+          console.log(`[CRAWLER] Extracted ${sitemapUrls.length} urls from sitemap: ${sitemap}`);
+          for (const sUrl of sitemapUrls) {
+            if (!visited.has(sUrl) && !queue.includes(sUrl)) {
+              queue.push(sUrl);
+              urlDepth[sUrl] = 1;
+            }
+          }
+        }
       }
-    } catch (fetchErr: any) {
-      console.warn(`[CRAWLER] Fetch failed for ${url}:`, fetchErr.message);
+
+      // 4. Recursive Crawl loop
+      while (queue.length > 0 && visited.size < maxPages) {
+        const currentUrl = queue.shift()!;
+        if (visited.has(currentUrl)) continue;
+
+        const currDepth = urlDepth[currentUrl] || 1;
+        if (currDepth > maxDepth) continue;
+
+        // SSRF check on current URL
+        if (!(await validateUrlForSsrf(currentUrl))) continue;
+
+        // robots.txt path check
+        const path = new URL(currentUrl).pathname;
+        if (isPathDisallowed(path, disallows)) {
+          console.log(`[CRAWLER] Skipping disallowed path: ${currentUrl}`);
+          continue;
+        }
+
+        console.log(`[CRAWLER] Fetching page (${visited.size + 1}/${maxPages}): ${currentUrl}`);
+        visited.add(currentUrl);
+
+        try {
+          const response = await fetch(currentUrl, {
+            headers: { "User-Agent": "AuraSaaSCrawler/1.0" },
+            signal: AbortSignal.timeout(5000)
+          });
+
+          if (response.ok) {
+            const html = await response.text();
+            
+            // Extract title
+            const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+            if (titleMatch && visited.size === 1) {
+              pageTitle = titleMatch[1].trim();
+            }
+
+            // Extract clean text content
+            let cleanText = html
+              .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
+              .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+
+            if (cleanText.length > 5000) cleanText = cleanText.substring(0, 5000);
+
+            crawledText += `\n\n=== CRAWLED PAGE: ${currentUrl} ===\n${cleanText}\n`;
+            crawledCount++;
+
+            // Extract links for link following if we are not at max depth
+            if (currDepth < maxDepth) {
+              const hrefRegex = /<a[^>]+href=["']([^"']+)["']/gi;
+              let match;
+              while ((match = hrefRegex.exec(html)) !== null) {
+                const href = match[1];
+                try {
+                  const resolvedUrl = new URL(href, currentUrl).toString();
+                  const resolvedParsed = new URL(resolvedUrl);
+                  
+                  // Limit to same host/domain
+                  if (resolvedParsed.host === host && !visited.has(resolvedUrl) && !queue.includes(resolvedUrl)) {
+                    queue.push(resolvedUrl);
+                    urlDepth[resolvedUrl] = currDepth + 1;
+                  }
+                } catch {}
+              }
+            }
+          }
+        } catch (fetchErr: any) {
+          console.warn(`[CRAWLER] Fetch failed for ${currentUrl}:`, fetchErr.message);
+        }
+      }
+    } catch (crawlErr: any) {
+      console.error("[CRAWLER] Web crawl error:", crawlErr);
     }
   }
 
+  // Fallback if crawl yielded no content
   if (!crawledText) {
     console.log(`[CRAWLER] Activating smart mock scrapers for ${source} profile: ${url}`);
     if (source === "web") {
@@ -264,6 +498,7 @@ FAQ & Help Center:
 - Q: What payment terms are accepted? We accept standard credit cards and digital wallets.
 - Q: What is the cancel policy? Cancellations require a 24-hour notice.`;
       pageTitle = `${tenant.name} Website Index`;
+      crawledCount = 1;
     } else {
       crawledText = `[SOCIAL MEDIA INDEX: ${url}]
 Platform Channel: ${source.toUpperCase()}
@@ -275,6 +510,7 @@ Content Feed Transcript:
 - Post 2: Flash Promo: Mention this post for a 15% discount on all consultations booked this week!
 - Post 3: "Super easy to book and the responses are instantaneous!" - Customer Review.`;
       pageTitle = `${tenant.name} @${url.replace(/[^a-zA-Z0-9]/g, "")} Feed`;
+      crawledCount = 1;
     }
   }
 
@@ -298,7 +534,7 @@ Content Feed Transcript:
     dateAdded: new Date().toISOString().split("T")[0],
     url: url,
     crawlDepth: depth || 1,
-    crawlPagesCount: 1,
+    crawlPagesCount: crawledCount,
     crawlStatus: "synced" as const,
     socialNetwork: source,
     chunks: chunksWithEmbeddings
@@ -310,10 +546,9 @@ Content Feed Transcript:
 
   console.log(`[CRAWLER] Crawl completed for "${tenantId}". Document "${pageTitle}" added to KB.`);
   res.json({ status: "success", kbItem: newKbItem });
-});
+}));
 
-// Reply to customer message manually
-router.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) => {
+router.post("/api/conversations/:tenantId/:customerId/reply", asyncHandler(async (req, res) => {
   const { tenantId, customerId } = req.params;
   const { text, isInternal } = req.body;
   if (!text || !text.trim()) {
@@ -362,10 +597,9 @@ router.post("/api/conversations/:tenantId/:customerId/reply", async (req, res) =
   }
 
   res.json({ status: "success", text, isInternal: false });
-});
+}));
 
-// Interactive Agent Prompt/Instruction Playground Sandbox Endpoint
-router.post("/api/playground/test", async (req, res) => {
+router.post("/api/playground/test", asyncHandler(async (req, res) => {
   try {
     const {
       messages,
@@ -385,7 +619,9 @@ router.post("/api/playground/test", async (req, res) => {
 
     const lastMessage = messages[messages.length - 1]?.text || "";
     const { getRAGContext } = await import("../services/rag");
-    const kbContext = await getRAGContext(lastMessage, knowledgeBase);
+    const ragResult = await getRAGContext(lastMessage, knowledgeBase);
+    const kbContext = ragResult.contextText;
+    const citations = ragResult.citations;
 
     const scheduleContext = appointmentsList && appointmentsList.length > 0
       ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
@@ -512,7 +748,8 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       reply: parsedData.reply,
       actionTriggered: parsedData.actionTriggered,
       rawText: rawText,
-      systemPrompt: systemPrompt
+      systemPrompt: systemPrompt,
+      citations: citations
     });
 
   } catch (error: any) {
@@ -524,6 +761,40 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       error: error.message
     });
   }
-});
+}));
+
+// ─── Analytics Routes ────────────────────────────────────────────────────────
+
+/** GET /api/tenant/:tenantId/analytics?days=30 */
+router.get("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const days = Math.min(Number(req.query.days) || 30, 365);
+  const analytics = await getAnalytics(tenantId, days);
+  res.json(analytics);
+}));
+
+/** DELETE /api/tenant/:tenantId/analytics */
+router.delete("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  await clearAnalytics(tenantId);
+  res.json({ success: true });
+}));
+
+// ─── Webhook Event Log Routes ─────────────────────────────────────────────────
+
+/** GET /api/tenant/:tenantId/webhook-events?limit=50 */
+router.get("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const events = getWebhookEvents(tenantId, limit);
+  res.json({ events, total: events.length });
+}));
+
+/** DELETE /api/tenant/:tenantId/webhook-events */
+router.delete("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  clearWebhookEvents(tenantId);
+  res.json({ success: true });
+}));
 
 export default router;
