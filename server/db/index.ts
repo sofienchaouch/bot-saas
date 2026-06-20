@@ -9,7 +9,7 @@ export function isDbAvailable(): boolean {
 
 let _pool: pg.Pool | null = null;
 
-function getPool(): pg.Pool {
+export function getPool(): pg.Pool {
   if (!_pool) {
     _pool = new pg.Pool({ connectionString: DATABASE_URL! });
   }
