@@ -766,7 +766,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
 // ─── Analytics Routes ────────────────────────────────────────────────────────
 
 /** GET /api/tenant/:tenantId/analytics?days=30 */
-router.get("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
+router.get("/api/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const days = Math.min(Number(req.query.days) || 30, 365);
   const analytics = await getAnalytics(tenantId, days);
@@ -774,7 +774,7 @@ router.get("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
 }));
 
 /** DELETE /api/tenant/:tenantId/analytics */
-router.delete("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
+router.delete("/api/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   await clearAnalytics(tenantId);
   res.json({ success: true });
@@ -783,7 +783,7 @@ router.delete("/tenant/:tenantId/analytics", asyncHandler(async (req, res) => {
 // ─── Webhook Event Log Routes ─────────────────────────────────────────────────
 
 /** GET /api/tenant/:tenantId/webhook-events?limit=50 */
-router.get("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
+router.get("/api/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const events = await getWebhookEvents(tenantId, limit);
@@ -791,7 +791,7 @@ router.get("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => 
 }));
 
 /** DELETE /api/tenant/:tenantId/webhook-events */
-router.delete("/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
+router.delete("/api/tenant/:tenantId/webhook-events", asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   await clearWebhookEvents(tenantId);
   res.json({ success: true });

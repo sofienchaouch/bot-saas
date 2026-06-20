@@ -101,9 +101,9 @@ function rowToTenant(
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
-export async function readTenantsStore(): Promise<Record<string, Tenant>> {
+export async function readTenantsStore(): Promise<Record<string, any>> {
   if (!isDbAvailable()) {
-    const result: Record<string, Tenant> = {};
+    const result: Record<string, any> = {};
     _memTenants.forEach((v, k) => { result[k] = v; });
     return result;
   }
@@ -122,7 +122,7 @@ export async function readTenantsStore(): Promise<Record<string, Tenant>> {
     db.select().from(schema.kbDocuments).where(inArray(schema.kbDocuments.tenantId, ids)),
   ]);
 
-  const result: Record<string, Tenant> = {};
+  const result: Record<string, any> = {};
   for (const row of tenantRows) {
     result[row.id] = rowToTenant(
       row,
