@@ -125,7 +125,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
     });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.0-flash",
       contents: contents,
       config: {
         systemInstruction: systemPrompt,
