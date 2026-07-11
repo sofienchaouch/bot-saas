@@ -115,7 +115,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       fireEvent.click(integrationTab);
 
       // Verify WhatsApp API Key input is present and NOT masked
-      const apiKeyInput = screen.getByLabelText(/Meta GraphQL Permanent System Token/i);
+      const apiKeyInput = await screen.findByLabelText(/Meta GraphQL Permanent System Token/i);
       expect(apiKeyInput).not.toBeDisabled();
       expect(apiKeyInput).toHaveValue('my-secrets-unmasked');
 
@@ -124,7 +124,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       fireEvent.click(kbTab);
 
       // Verify "Remove" document button is present and not disabled
-      const removeButtons = screen.getAllByRole('button', { name: /Remove/i });
+      const removeButtons = await screen.findAllByRole('button', { name: /Remove/i });
       expect(removeButtons[0]).not.toBeDisabled();
     });
 
@@ -157,7 +157,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       fireEvent.click(integrationTab);
 
       // API Key input should be masked with dots and disabled
-      const apiKeyInput = screen.getByLabelText(/Meta GraphQL Permanent System Token/i);
+      const apiKeyInput = await screen.findByLabelText(/Meta GraphQL Permanent System Token/i);
       expect(apiKeyInput).toBeDisabled();
       expect(apiKeyInput).toHaveValue('••••••••••••••••');
 
@@ -166,7 +166,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       fireEvent.click(kbTab);
 
       // "Remove" document button should be disabled for Support Agent
-      const removeButtons = screen.getAllByRole('button', { name: /Remove/i });
+      const removeButtons = await screen.findAllByRole('button', { name: /Remove/i });
       expect(removeButtons[0]).toBeDisabled();
     });
   });

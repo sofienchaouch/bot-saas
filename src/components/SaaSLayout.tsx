@@ -1,23 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Tenant } from '../types';
 import { SaasHeader } from './SaasHeader';
-import { BotSimulator } from './BotSimulator';
 import { CommandPalette } from './widgets/CommandPalette';
 import { useLanguage } from '../LanguageContext';
 import { useSaaS, SaaSProvider } from '../context/SaaSContext';
 import { WorkspaceHub } from './WorkspaceHub';
 import { WhatsAppStatusIndicator } from './WhatsAppStatusIndicator';
 
-// Import newly refactored modular tab components
-import { InsightsTab } from './tabs/InsightsTab';
-import { BotConfigTab } from './tabs/BotConfigTab';
-import { KnowledgeBaseTab } from './tabs/KnowledgeBaseTab';
-import { LeadsTab } from './tabs/LeadsTab';
-import { CalendarTab } from './tabs/CalendarTab';
-import { WhatsAppIntegrationTab } from './tabs/WhatsAppIntegrationTab';
-import { BillingTab } from './tabs/BillingTab';
-import { WebhookLogsTab } from './tabs/WebhookLogsTab';
+// Tab panels + the simulator are lazy-loaded: only the active tab's chunk is
+// fetched, instead of all of them being bundled into the initial admin load.
+const InsightsTab = lazy(() => import('./tabs/InsightsTab').then(m => ({ default: m.InsightsTab })));
+const BotConfigTab = lazy(() => import('./tabs/BotConfigTab').then(m => ({ default: m.BotConfigTab })));
+const KnowledgeBaseTab = lazy(() => import('./tabs/KnowledgeBaseTab').then(m => ({ default: m.KnowledgeBaseTab })));
+const LeadsTab = lazy(() => import('./tabs/LeadsTab').then(m => ({ default: m.LeadsTab })));
+const CalendarTab = lazy(() => import('./tabs/CalendarTab').then(m => ({ default: m.CalendarTab })));
+const WhatsAppIntegrationTab = lazy(() => import('./tabs/WhatsAppIntegrationTab').then(m => ({ default: m.WhatsAppIntegrationTab })));
+const BillingTab = lazy(() => import('./tabs/BillingTab').then(m => ({ default: m.BillingTab })));
+const WebhookLogsTab = lazy(() => import('./tabs/WebhookLogsTab').then(m => ({ default: m.WebhookLogsTab })));
+const BotSimulator = lazy(() => import('./BotSimulator').then(m => ({ default: m.BotSimulator })));
+
+const TabLoadingFallback: React.FC = () => (
+  <div className="flex items-center justify-center py-24 text-slate-500 text-xs font-mono">
+    Loading…
+  </div>
+);
 
 import {
   TrendingUp,
@@ -722,6 +729,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
           {/* Active Tab Panel Body */}
           <div className="flex-1 w-full bg-[#0d121d] rounded-3xl p-6 border border-white/5 shadow-2xl">
+            <Suspense fallback={<TabLoadingFallback />}>
             {activeTab === 'insights' && <InsightsTab />}
             {activeTab === 'bot_config' && <BotConfigTab />}
             {activeTab === 'knowledge_base' && <KnowledgeBaseTab />}
@@ -730,6 +738,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             {activeTab === 'whatsapp_integration' && <WhatsAppIntegrationTab />}
             {activeTab === 'webhook_logs' && <WebhookLogsTab />}
             {activeTab === 'billing' && <BillingTab />}
+            </Suspense>
             {activeTab === 'workspace_hub' && (
               <div className="space-y-6 animate-fade-in">
                 <WorkspaceHub
@@ -747,23 +756,25 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <p className="text-xs text-slate-450 mt-0.5 font-mono">{t('simulatorSub')}</p>
                 </div>
 
-                <BotSimulator
-                  selectedTenant={selectedTenant}
-                  onLeadCaptured={handleAddLiveLead}
-                  onAppointmentBooked={handleLiveAppointmentBooked}
-                  googleAccessToken={googleToken}
-                  appointmentsList={activeAppointments}
-                  onConnectGoogle={handleGoogleLogin}
-                  onRefreshCalendar={async () => {
-                    if (googleToken) {
-                      try {
-                        await loadGoogleCalendar(googleToken);
-                      } catch (err) {
-                        console.error("Refresh calendar failed:", err);
+                <Suspense fallback={<TabLoadingFallback />}>
+                  <BotSimulator
+                    selectedTenant={selectedTenant}
+                    onLeadCaptured={handleAddLiveLead}
+                    onAppointmentBooked={handleLiveAppointmentBooked}
+                    googleAccessToken={googleToken}
+                    appointmentsList={activeAppointments}
+                    onConnectGoogle={handleGoogleLogin}
+                    onRefreshCalendar={async () => {
+                      if (googleToken) {
+                        try {
+                          await loadGoogleCalendar(googleToken);
+                        } catch (err) {
+                          console.error("Refresh calendar failed:", err);
+                        }
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                </Suspense>
               </div>
             )}
           </div>
