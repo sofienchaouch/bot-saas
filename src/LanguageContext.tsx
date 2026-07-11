@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type LanguageType = 'en' | 'fr' | 'ar' | 'derja';
 
@@ -68,7 +68,25 @@ export const TRANSLATIONS: TranslationDictionary = {
     backToHome: 'Back to Homepage',
     demoConsole: 'Demo Owner Console',
     quickDemo: 'Quick Demo Access',
-    headline: 'Autonomous Webhook Bots for WhatsApp Businesses'
+    headline: 'Autonomous Webhook Bots for WhatsApp Businesses',
+
+    // Billing
+    billingActivePlan: 'ACTIVE PLAN',
+    billingCurrentCycle: 'Current Billing Cycle',
+    billingRenews: 'Renews automatically next month',
+    billingManage: 'Manage Billing',
+    billingUsage: 'Monthly Message Usage',
+    billingSelectTier: 'Select Subscription Tier',
+    billingActivePlanBtn: 'Active Plan',
+    billingRedirecting: 'Redirecting…',
+    billingFreeTier: 'Free Sandbox',
+    billingStarterTier: 'Starter',
+    billingBusinessTier: 'Business',
+    billingEnterpriseTier: 'Enterprise',
+    billingDowngradeFree: 'Downgrade to Free',
+    billingSelectStarter: 'Select Starter',
+    billingSelectBusiness: 'Select Business',
+    billingContactSales: 'Contact Sales'
   },
   fr: {
     // Header
@@ -129,7 +147,25 @@ export const TRANSLATIONS: TranslationDictionary = {
     backToHome: 'Retour à l’accueil',
     demoConsole: 'Console Démo Propriétaire',
     quickDemo: 'Accès Démo Rapide',
-    headline: 'Bots WhatsApp Autonomes pour Entreprises Modernes'
+    headline: 'Bots WhatsApp Autonomes pour Entreprises Modernes',
+
+    // Billing
+    billingActivePlan: 'PLAN ACTIF',
+    billingCurrentCycle: 'Cycle de Facturation Actuel',
+    billingRenews: 'Renouvellement automatique le mois prochain',
+    billingManage: 'Gérer la Facturation',
+    billingUsage: 'Utilisation Mensuelle des Messages',
+    billingSelectTier: 'Choisir un Abonnement',
+    billingActivePlanBtn: 'Plan Actif',
+    billingRedirecting: 'Redirection…',
+    billingFreeTier: 'Bac à Sable Gratuit',
+    billingStarterTier: 'Starter',
+    billingBusinessTier: 'Business',
+    billingEnterpriseTier: 'Entreprise',
+    billingDowngradeFree: 'Revenir au Gratuit',
+    billingSelectStarter: 'Choisir Starter',
+    billingSelectBusiness: 'Choisir Business',
+    billingContactSales: 'Contacter les Ventes'
   },
   ar: {
     // Header
@@ -190,7 +226,25 @@ export const TRANSLATIONS: TranslationDictionary = {
     backToHome: 'العودة للصفحة الرئيسية',
     demoConsole: 'لوحة التحكم التجريبية',
     quickDemo: 'دخول تجريبي سريع',
-    headline: 'وكلاء واتساب ذاتية التشغيل للشركات الذكية والمؤسسات'
+    headline: 'وكلاء واتساب ذاتية التشغيل للشركات الذكية والمؤسسات',
+
+    // Billing
+    billingActivePlan: 'الخطة النشطة',
+    billingCurrentCycle: 'دورة الفوترة الحالية',
+    billingRenews: 'تتجدد تلقائياً الشهر القادم',
+    billingManage: 'إدارة الفوترة',
+    billingUsage: 'استخدام الرسائل الشهري',
+    billingSelectTier: 'اختر باقة الاشتراك',
+    billingActivePlanBtn: 'الخطة الحالية',
+    billingRedirecting: 'جاري التحويل…',
+    billingFreeTier: 'الباقة المجانية',
+    billingStarterTier: 'باقة البداية',
+    billingBusinessTier: 'باقة الأعمال',
+    billingEnterpriseTier: 'باقة المؤسسات',
+    billingDowngradeFree: 'الرجوع للمجانية',
+    billingSelectStarter: 'اختيار باقة البداية',
+    billingSelectBusiness: 'اختيار باقة الأعمال',
+    billingContactSales: 'تواصل مع المبيعات'
   },
   derja: {
     // Header
@@ -251,7 +305,25 @@ export const TRANSLATIONS: TranslationDictionary = {
     backToHome: 'رجعني للصفحة الرئيسية',
     demoConsole: 'لوحة تحكم التجريب',
     quickDemo: 'أدخل جرب ديركت',
-    headline: 'بوتات واتساب تخدم وتجاوب وحدها من غير تعب لشركتك وخدمتك'
+    headline: 'بوتات واتساب تخدم وتجاوب وحدها من غير تعب لشركتك وخدمتك',
+
+    // Billing
+    billingActivePlan: 'الخطة اللي تخدم بيها',
+    billingCurrentCycle: 'دورة الفاتورة الحالية',
+    billingRenews: 'تتجدد وحدها الشهر الجاي',
+    billingManage: 'دير في الفاتورة',
+    billingUsage: 'قداش استخدمت من مساج هالشهر',
+    billingSelectTier: 'اختار الباقة اللي تعجبك',
+    billingActivePlanBtn: 'هذي الباقة متاعك',
+    billingRedirecting: 'قاعدين نحولوك…',
+    billingFreeTier: 'الباقة الفري',
+    billingStarterTier: 'باقة البداية',
+    billingBusinessTier: 'باقة البيزنس',
+    billingEnterpriseTier: 'باقة الكبار',
+    billingDowngradeFree: 'ارجع للفري',
+    billingSelectStarter: 'خذ باقة البداية',
+    billingSelectBusiness: 'خذ باقة البيزنس',
+    billingContactSales: 'كلم فريق البيع'
   }
 };
 
@@ -286,6 +358,14 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const dict = TRANSLATIONS[language] || TRANSLATIONS.en;
     return dict[key] || TRANSLATIONS.en[key] || key;
   };
+
+  // Arabic and Tunisian Derja are RTL — flip document direction so layout
+  // mirrors correctly instead of just the text.
+  useEffect(() => {
+    const isRtl = language === 'ar' || language === 'derja';
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.documentElement.lang = language === 'derja' ? 'ar' : language;
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

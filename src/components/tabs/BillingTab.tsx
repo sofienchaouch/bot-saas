@@ -91,7 +91,7 @@ export const BillingTab: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-                ACTIVE PLAN
+                {t('billingActivePlan')}
               </span>
               <h2 className="text-xl font-bold text-white tracking-tight">{currentTier} Plan</h2>
             </div>
@@ -106,10 +106,10 @@ export const BillingTab: React.FC = () => {
             </div>
             <div>
               <div className="text-[10px] font-mono text-slate-500 uppercase">
-                Current Billing Cycle
+                {t('billingCurrentCycle')}
               </div>
               <div className="text-xs text-slate-200 font-medium">
-                Renews automatically next month
+                {t('billingRenews')}
               </div>
             </div>
             {billingEnabled && selectedTenant.stripeCustomerId && (
@@ -117,7 +117,7 @@ export const BillingTab: React.FC = () => {
                 onClick={handleManageBilling}
                 className="ml-3 px-3 py-1.5 rounded-lg text-[10px] font-semibold font-mono bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
               >
-                Manage Billing
+                {t('billingManage')}
               </button>
             )}
           </div>
@@ -129,7 +129,7 @@ export const BillingTab: React.FC = () => {
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <BarChart2 className="h-4 w-4 text-slate-500" />
-                <span>Monthly Message Usage</span>
+                <span>{t('billingUsage')}</span>
               </div>
               <span className="font-mono text-slate-350">
                 <strong className="text-white font-bold">{currentCount}</strong> / {currentLimit}{' '}
@@ -165,7 +165,7 @@ export const BillingTab: React.FC = () => {
       {/* Pricing Options */}
       <div className="space-y-4">
         <h3 className="text-xs uppercase font-mono tracking-widest text-slate-400 font-bold">
-          Select Subscription Tier
+          {t('billingSelectTier')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Free Tier */}
@@ -178,7 +178,7 @@ export const BillingTab: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Free Sandbox</span>
+                <span className="text-xs font-bold text-slate-400">{t('billingFreeTier')}</span>
                 {currentTier === 'Free' && <CheckCircle className="h-4 w-4 text-blue-500" />}
               </div>
               <div>
@@ -212,7 +212,7 @@ export const BillingTab: React.FC = () => {
                   : 'bg-white/5 hover:bg-white/10 text-slate-350 border border-white/10'
               }`}
             >
-              {currentTier === 'Free' ? 'Active Plan' : 'Downgrade to Free'}
+              {currentTier === 'Free' ? t('billingActivePlanBtn') : t('billingDowngradeFree')}
             </button>
           </div>
 
@@ -226,7 +226,7 @@ export const BillingTab: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Starter</span>
+                <span className="text-xs font-bold text-slate-400">{t('billingStarterTier')}</span>
                 {currentTier === 'Starter' && <CheckCircle className="h-4 w-4 text-blue-500" />}
               </div>
               <div>
@@ -261,10 +261,10 @@ export const BillingTab: React.FC = () => {
               }`}
             >
               {currentTier === 'Starter'
-                ? 'Active Plan'
+                ? t('billingActivePlanBtn')
                 : checkoutLoading === 'Starter'
-                  ? 'Redirecting…'
-                  : 'Select Starter'}
+                  ? t('billingRedirecting')
+                  : t('billingSelectStarter')}
             </button>
           </div>
 
@@ -278,7 +278,7 @@ export const BillingTab: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Business</span>
+                <span className="text-xs font-bold text-slate-400">{t('billingBusinessTier')}</span>
                 {currentTier === 'Business' && <CheckCircle className="h-4 w-4 text-blue-500" />}
               </div>
               <div>
@@ -313,10 +313,10 @@ export const BillingTab: React.FC = () => {
               }`}
             >
               {currentTier === 'Business'
-                ? 'Active Plan'
+                ? t('billingActivePlanBtn')
                 : checkoutLoading === 'Business'
-                  ? 'Redirecting…'
-                  : 'Select Business'}
+                  ? t('billingRedirecting')
+                  : t('billingSelectBusiness')}
             </button>
           </div>
 
@@ -330,7 +330,7 @@ export const BillingTab: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Enterprise</span>
+                <span className="text-xs font-bold text-slate-400">{t('billingEnterpriseTier')}</span>
                 {currentTier === 'Enterprise' && <CheckCircle className="h-4 w-4 text-blue-500" />}
               </div>
               <div>
@@ -364,7 +364,7 @@ export const BillingTab: React.FC = () => {
                   : 'bg-white/5 hover:bg-white/10 text-slate-350 border border-white/10'
               }`}
             >
-              {currentTier === 'Enterprise' ? 'Active Plan' : 'Contact Sales'}
+              {currentTier === 'Enterprise' ? t('billingActivePlanBtn') : t('billingContactSales')}
             </button>
           </div>
         </div>
