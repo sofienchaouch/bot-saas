@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSaaS } from '../../context/SaaSContext';
 import { useLanguage } from '../../LanguageContext';
 import { CreditCard, CheckCircle, Zap, Shield, Sparkles, BarChart2 } from 'lucide-react';
@@ -6,6 +6,22 @@ import { CreditCard, CheckCircle, Zap, Shield, Sparkles, BarChart2 } from 'lucid
 export const BillingTab: React.FC = () => {
   const { selectedTenant, updateTenantFields } = useSaaS();
   const { t } = useLanguage();
+  const [billingEnabled, setBillingEnabled] = useState(false);
+  const [availableTiers, setAvailableTiers] = useState<string[]>([]);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/billing/config')
+      .then((res) => (res.ok ? res.json() : { enabled: false, availableTiers: [] }))
+      .then((data) => {
+        setBillingEnabled(!!data.enabled);
+        setAvailableTiers(data.availableTiers || []);
+      })
+      .catch(() => {
+        setBillingEnabled(false);
+        setAvailableTiers([]);
+      });
+  }, []);
 
   if (!selectedTenant) return null;
 
@@ -20,16 +36,50 @@ export const BillingTab: React.FC = () => {
   };
 
   const currentLimit = limits[currentTier as keyof typeof limits]?.max || 50;
-  const progressPercent = currentLimit === Infinity 
-    ? 0 
+  const progressPercent = currentLimit === Infinity
+    ? 0
     : Math.min(100, Math.round((currentCount / currentLimit) * 100));
 
-  const handleUpgrade = (tier: string) => {
+  const handleUpgrade = async (tier: string) => {
+    // Real checkout when Stripe is configured for this tier (Starter/Business).
+    if (billingEnabled && availableTiers.includes(tier)) {
+      setCheckoutLoading(tier);
+      try {
+        const res = await fetch(`/api/tenant/${selectedTenant.id}/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier })
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      } catch {
+        // fall through to demo-mode update below
+      } finally {
+        setCheckoutLoading(null);
+      }
+    }
+
+    // Demo/sandbox mode (no Stripe configured, or Free/Enterprise tiers
+    // which have no self-serve checkout): update locally as before.
     updateTenantFields({
       subscriptionTier: tier,
-      // Reset message count on upgrade to demonstrate limit lift
       messageCount: 0
     });
+  };
+
+  const handleManageBilling = async () => {
+    try {
+      const res = await fetch(`/api/tenant/${selectedTenant.id}/portal`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      // no-op: portal unavailable
+    }
   };
 
   return (
@@ -59,6 +109,14 @@ export const BillingTab: React.FC = () => {
               <div className="text-[10px] font-mono text-slate-500 uppercase">Current Billing Cycle</div>
               <div className="text-xs text-slate-200 font-medium">Renews automatically next month</div>
             </div>
+            {billingEnabled && selectedTenant.stripeCustomerId && (
+              <button
+                onClick={handleManageBilling}
+                className="ml-3 px-3 py-1.5 rounded-lg text-[10px] font-semibold font-mono bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+              >
+                Manage Billing
+              </button>
+            )}
           </div>
         </div>
 
@@ -184,14 +242,14 @@ export const BillingTab: React.FC = () => {
             </div>
             <button
               onClick={() => handleUpgrade('Starter')}
-              disabled={currentTier === 'Starter'}
+              disabled={currentTier === 'Starter' || checkoutLoading === 'Starter'}
               className={`w-full mt-6 py-2 rounded-xl text-xs font-semibold font-mono transition-all cursor-pointer ${
                 currentTier === 'Starter'
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-default'
                   : 'bg-blue-600 hover:bg-blue-550 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]'
               }`}
             >
-              {currentTier === 'Starter' ? 'Active Plan' : 'Select Starter'}
+              {currentTier === 'Starter' ? 'Active Plan' : checkoutLoading === 'Starter' ? 'Redirecting…' : 'Select Starter'}
             </button>
           </div>
 
@@ -230,14 +288,14 @@ export const BillingTab: React.FC = () => {
             </div>
             <button
               onClick={() => handleUpgrade('Business')}
-              disabled={currentTier === 'Business'}
+              disabled={currentTier === 'Business' || checkoutLoading === 'Business'}
               className={`w-full mt-6 py-2 rounded-xl text-xs font-semibold font-mono transition-all cursor-pointer ${
                 currentTier === 'Business'
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-default'
                   : 'bg-blue-600 hover:bg-blue-550 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]'
               }`}
             >
-              {currentTier === 'Business' ? 'Active Plan' : 'Select Business'}
+              {currentTier === 'Business' ? 'Active Plan' : checkoutLoading === 'Business' ? 'Redirecting…' : 'Select Business'}
             </button>
           </div>
 

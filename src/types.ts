@@ -73,6 +73,9 @@ export interface Tenant {
   messageCount?: number;
   autopilotEnabled?: boolean;
   telegramBotToken?: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  billingCycleAnchor?: string;
   systemInstruction?: string;
   welcomeTemplates?: WelcomeTemplate[];
   activeWelcomeTemplateId?: string;

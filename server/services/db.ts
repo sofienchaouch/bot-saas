@@ -31,6 +31,9 @@ function rowToTenant(
     subscriptionTier: row.subscriptionTier,
     messageCount: row.messageCount,
     autopilotEnabled: row.autopilotEnabled,
+    stripeCustomerId: row.stripeCustomerId ?? undefined,
+    stripeSubscriptionId: row.stripeSubscriptionId ?? undefined,
+    billingCycleAnchor: row.billingCycleAnchor?.toISOString() ?? undefined,
     telegramBotToken: row.telegramBotTokenEnc ? decryptText(row.telegramBotTokenEnc) : undefined,
     systemInstruction: row.systemInstruction ?? undefined,
     activeWelcomeTemplateId: row.activeWelcomeTemplateId ?? undefined,
@@ -171,6 +174,9 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
         messageCount: tenant.messageCount ?? 0,
         autopilotEnabled: tenant.autopilotEnabled ?? true,
         telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
+        stripeCustomerId: tenant.stripeCustomerId ?? null,
+        stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
+        billingCycleAnchor: tenant.billingCycleAnchor ? new Date(tenant.billingCycleAnchor) : new Date(),
         systemInstruction: tenant.systemInstruction ?? null,
         activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
         whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
@@ -208,6 +214,11 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
           messageCount: tenant.messageCount ?? 0,
           autopilotEnabled: tenant.autopilotEnabled ?? true,
           telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
+          stripeCustomerId: tenant.stripeCustomerId ?? null,
+          stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
+          // billingCycleAnchor is intentionally omitted here — it's set once
+          // at insert time and only ever advanced by resetTenantQuota(), so
+          // routine tenant syncs can't clobber it back to null.
           systemInstruction: tenant.systemInstruction ?? null,
           activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
           whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
@@ -395,6 +406,27 @@ export async function writeConversationsStore(store: Record<string, any>): Promi
         set: { data, updatedAt: new Date() },
       });
   }
+}
+
+/**
+ * Reset a tenant's monthly message quota and advance its billing cycle
+ * anchor to now. Called by the scheduler once per elapsed billing period.
+ */
+export async function resetTenantQuota(tenantId: string): Promise<void> {
+  if (!isDbAvailable()) {
+    const tenant = _memTenants.get(tenantId);
+    if (tenant) {
+      tenant.messageCount = 0;
+      tenant.billingCycleAnchor = new Date().toISOString();
+    }
+    return;
+  }
+
+  const db = getDb();
+  await db
+    .update(schema.tenants)
+    .set({ messageCount: 0, billingCycleAnchor: new Date() })
+    .where(eq(schema.tenants.id, tenantId));
 }
 
 /**

@@ -17,7 +17,12 @@ const envSchema = z.object({
   DATABASE_URL: z.string().optional(),
   SENTRY_DSN: z.string().url().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
-  BYPASS_AUTH_IN_DEV: z.enum(['true', 'false']).optional()
+  BYPASS_AUTH_IN_DEV: z.enum(['true', 'false']).optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_STARTER: z.string().optional(),
+  STRIPE_PRICE_BUSINESS: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -39,7 +44,12 @@ if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.WHATSAPP_APP_SECR
   process.exit(1);
 }
 
-export const { ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET, PORT, NODE_ENV, APP_URL, GEMINI_API_KEY, DATABASE_URL, SENTRY_DSN, REDIS_URL, BYPASS_AUTH_IN_DEV } = parsedEnv.data;
+export const {
+  ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET, PORT, NODE_ENV, APP_URL,
+  GEMINI_API_KEY, DATABASE_URL, SENTRY_DSN, REDIS_URL, BYPASS_AUTH_IN_DEV,
+  STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS,
+} = parsedEnv.data;
 export const lookupAsync = promisify(dns.lookup);
 
 export const TENANTS_FILE = NODE_ENV === "test"

@@ -38,6 +38,9 @@ export const tenants = pgTable("tenants", {
   ownerId: text("owner_id"),   // Firebase UID; nullable — existing rows are claimed on first access
   subscriptionTier: text("subscription_tier").notNull().default("Free"),
   messageCount: integer("message_count").notNull().default(0),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  billingCycleAnchor: timestamp("billing_cycle_anchor", { withTimezone: true }).defaultNow(),
   autopilotEnabled: boolean("autopilot_enabled").notNull().default(true),
   telegramBotTokenEnc: text("telegram_bot_token_enc"),   // AES-256-GCM encrypted
   systemInstruction: text("system_instruction"),
