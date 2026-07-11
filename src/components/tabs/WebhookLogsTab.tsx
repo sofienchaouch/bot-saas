@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Bot,
   Zap,
+  Globe,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ interface WebhookEvent {
   id: string;
   tenantId: string;
   timestamp: string;
-  channel: 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'simulator';
+  channel: 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'simulator' | 'widget';
   direction: 'inbound' | 'outbound';
   status: 'success' | 'error';
   durationMs: number;
@@ -57,6 +58,11 @@ const CHANNEL_META: Record<string, { label: string; color: string; icon: React.R
     label: 'SMS',
     color: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
     icon: <MessageSquare className="h-3 w-3" />,
+  },
+  widget: {
+    label: 'Website Widget',
+    color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+    icon: <Globe className="h-3 w-3" />,
   },
   simulator: {
     label: 'Simulator',

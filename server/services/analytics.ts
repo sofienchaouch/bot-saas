@@ -18,7 +18,7 @@ export interface AnalyticsEvent {
   tenantId: string;
   type: AnalyticsEventType;
   timestamp: string;
-  channel: "whatsapp" | "messenger" | "telegram" | "sms" | "simulator";
+  channel: "whatsapp" | "messenger" | "telegram" | "sms" | "simulator" | "widget";
   metadata: Record<string, unknown>;
 }
 

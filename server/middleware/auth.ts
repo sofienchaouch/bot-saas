@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/health",
   "/api/chat",
   "/api/twilio/",
+  "/api/widget/",
 ];
 
 function isPublicPath(path: string): boolean {

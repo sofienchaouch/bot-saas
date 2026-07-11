@@ -5,7 +5,7 @@ import { logger } from '../lib/logger';
 
 // ── Types (unchanged) ─────────────────────────────────────────────────────────
 
-export type WebhookChannel = 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'simulator';
+export type WebhookChannel = 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'simulator' | 'widget';
 export type WebhookDirection = 'inbound' | 'outbound';
 export type WebhookStatus = 'success' | 'error';
 

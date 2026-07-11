@@ -1,13 +1,16 @@
 import express from "express";
+import cors from "cors";
 import { Type } from "@google/genai";
 import { sql } from 'drizzle-orm';
-import { readTenantsStore, writeTenantsStore } from "../services/db";
+import { readTenantsStore, writeTenantsStore, readConversationsStore, writeConversationsStore } from "../services/db";
 import { getRAGContext } from "../services/rag";
 import { asyncHandler } from "../middleware/errorHandler";
 import { buildSystemPrompt } from "../services/promptBuilder";
 import { ai } from "../services/gemini";
 import { recordEvent } from "../services/analytics";
 import { logWebhookEvent } from "../services/webhookLogger";
+import { isOverQuota } from "../services/quota";
+import { broadcastToTenant } from "../services/realtime";
 import { getDb, isDbAvailable } from '../db/index';
 import { logger } from '../lib/logger';
 import { redisConnection } from '../services/queue';
@@ -240,6 +243,187 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       reply: "I am experiencing temporary connection latency with my core system. Let me verify that and answer you momentarily!",
       error: error.message
     });
+  }
+}));
+
+// Embeddable website chat widget endpoint (public/api/widget/widget.js). Unlike
+// /api/chat (used by the authenticated Bot Simulator, which supplies tenant
+// fields directly), this looks up the tenant server-side by id so an
+// untrusted embedding page only ever needs to know the tenant id — never
+// internal config like the system instruction. CORS is opened for any origin
+// since third-party sites embed this script.
+router.post("/api/widget/:tenantId/chat", cors({ origin: true }), asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const { sessionId, messages } = req.body;
+
+  if (!sessionId || typeof sessionId !== "string") {
+    return res.status(400).json({ error: "sessionId is required" });
+  }
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "messages array is required" });
+  }
+
+  const store = await readTenantsStore();
+  const tenant = store[tenantId];
+  if (!tenant) {
+    return res.status(404).json({ error: "Unknown widget" });
+  }
+
+  if (isOverQuota(tenant.subscriptionTier, tenant.messageCount)) {
+    return res.status(403).json({ error: "This assistant is temporarily unavailable. Please try again later." });
+  }
+
+  const chatStartTime = Date.now();
+  const lastMessage = messages[messages.length - 1]?.text || "";
+
+  try {
+    let replyText: string;
+    let actionTriggered: any = null;
+    let citations: string[] = [];
+
+    if (!ai) {
+      replyText = `Hello! Thanks for reaching out to ${tenant.name}. I'm currently offline for setup, but your message has been noted.`;
+    } else {
+      const ragResult = await getRAGContext(lastMessage, tenantId);
+      citations = ragResult.citations;
+
+      const scheduleContext = tenant.appointments && tenant.appointments.length > 0
+        ? tenant.appointments.map((a: any) => `- Booked Slot: From ${a.start} to ${a.end}`).join("\n")
+        : "No conflicting scheduled bookings on the calendar.";
+
+      const systemPrompt = buildSystemPrompt({
+        channel: `Public website chat widget representing the tenant "${tenant.name}" (${tenant.industry})`,
+        tenantName: tenant.name,
+        tenantIndustry: tenant.industry,
+        botName: tenant.botName,
+        tone: tenant.tone,
+        tenantDescription: tenant.description,
+        systemInstruction: tenant.systemInstruction,
+        kbContext: ragResult.contextText,
+        scheduleContext,
+        additionalRules: `\n\nCRITICAL ANTI-HALLUCINATION & GROUND TRUTH MANDATES:
+1. STRICT TRUTH ONLY: Do NOT invent, fabricate, or guess facts, operations, URLs, email addresses, phone numbers, or treatment prices under any circumstances. Everything you say MUST be explicitly stated within your PRIVATE KNOWLEDGE BASE. Do not extrapolate.
+2. HANDLING UNKNOWN INFO: If a customer requests facts, details, or policies NOT listed in your PRIVATE KNOWLEDGE BASE, say so directly and politely, stating that those specific details are currently unavailable. Offer to record their contact coordinates (name, email/phone) so a human manager can contact them and clarify.
+3. NO PLACEHOLDERS: Ground all responses strictly on real facts.
+
+CRITICAL CALENDAR RULES (NO DOUBLE BOOKING / STRICT WORKING HOURS):
+1. Carefully check the BUSY SLOTS of the calendar below. Do not agree to, suggest, or book any date/time slots that are already busy or overlap with busy slots.
+2. Business hours are strictly Monday to Friday, from 9:00 AM to 5:00 PM. Never suggest weekend slots or off-hours outside this window.
+
+CRITICAL ACTION SAFETY RULES:
+- Do NOT trigger a 'capture_lead' action unless the user has actually provided or explicitly agreed to share their real personal coordinates (email, phone, or name) in the latest turns.
+- Do NOT trigger a 'book_appointment' action until they have explicitly negotiated and confirmed a final choice of a precise reservation date and slot.
+
+Your response MUST be returned strictly in JSON format matching the schema requested below.
+Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clean JSON.`
+      });
+
+      const contents = messages.map((m: any) => ({
+        role: m.sender === 'bot' ? 'model' : 'user',
+        parts: [{ text: m.text }]
+      }));
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.3,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              reply: { type: Type.STRING, description: "The direct messaging sentence response to display to the user in the chat widget." },
+              actionTriggered: {
+                type: Type.OBJECT,
+                nullable: true,
+                properties: {
+                  type: { type: Type.STRING, description: "'capture_lead' or 'book_appointment'." },
+                  details: { type: Type.STRING, description: "Stringified JSON matching the action type." }
+                },
+                required: ["type", "details"]
+              }
+            },
+            required: ["reply"]
+          }
+        }
+      });
+
+      const rawText = response.text || "";
+      let parsedData;
+      try {
+        parsedData = JSON.parse(rawText.trim());
+      } catch {
+        const match = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+        parsedData = match?.[1] ? JSON.parse(match[1].trim()) : { reply: "I'm here to help — could you rephrase that?" };
+      }
+      replyText = parsedData.reply;
+      actionTriggered = parsedData.actionTriggered;
+    }
+
+    // Execute CRM actions the same way the WhatsApp/Messenger channels do.
+    if (actionTriggered) {
+      try {
+        const details = JSON.parse(actionTriggered.details || "{}");
+        if (actionTriggered.type === 'capture_lead') {
+          if (!tenant.leads) tenant.leads = [];
+          tenant.leads.push({
+            id: `lead-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            name: details.name || "Website Visitor",
+            phone: details.phone || "",
+            email: details.email || "",
+            status: 'New',
+            dateCaptured: new Date().toISOString().split('T')[0],
+            note: "Captured autonomously via website chat widget."
+          });
+        } else if (actionTriggered.type === 'book_appointment') {
+          if (!tenant.appointments) tenant.appointments = [];
+          tenant.appointments.push({
+            id: `appt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            customerName: details.name || "Website Visitor",
+            customerPhone: details.phone || "",
+            email: details.email || "",
+            start: details.startStr || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + "T10:00:00",
+            end: details.endStr || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + "T10:30:00",
+            summary: details.summary || `Website Widget Booking with ${tenant.botName}`,
+            notes: "Booked autonomously via website chat widget.",
+            syncedWithGoogle: false
+          });
+        }
+      } catch (actErr) {
+        logger.error({ err: actErr }, "[WIDGET CHAT] Error executing AI action");
+      }
+    }
+
+    tenant.messageCount = (tenant.messageCount || 0) + 1;
+    store[tenantId] = tenant;
+    await writeTenantsStore(store);
+
+    const convoKey = `${tenantId}_widget_${sessionId}`;
+    const conversations = await readConversationsStore();
+    if (!conversations[convoKey]) conversations[convoKey] = { messages: [] };
+    conversations[convoKey].messages.push({ sender: 'customer', text: lastMessage, timestamp: new Date().toISOString() });
+    const botMessage = { sender: 'bot' as const, text: replyText, timestamp: new Date().toISOString(), citations };
+    conversations[convoKey].messages.push(botMessage);
+    await writeConversationsStore(conversations);
+    broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: botMessage } });
+
+    const durationMs = Date.now() - chatStartTime;
+    recordEvent(tenantId, "message_received", "widget", {});
+    recordEvent(tenantId, "message_sent", "widget", { durationMs, usedRAG: citations.length > 0 });
+    logWebhookEvent(tenantId, {
+      channel: "widget",
+      direction: "outbound",
+      status: "success",
+      durationMs,
+      payload: { reply: replyText.slice(0, 200), citations },
+      messagePreview: lastMessage.slice(0, 120)
+    });
+
+    res.json({ reply: replyText, citations });
+  } catch (error: any) {
+    logger.error({ err: error, tenantId }, "[WIDGET CHAT] Error");
+    res.status(500).json({ reply: "Sorry, I'm having trouble responding right now. Please try again shortly." });
   }
 }));
 

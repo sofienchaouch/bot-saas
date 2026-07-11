@@ -248,7 +248,50 @@ export const WhatsAppIntegrationTab: React.FC = () => {
         >
           💬 SMS (Twilio)
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveChannelSubTab('widget')}
+          className={`flex-1 md:flex-initial px-4 py-2 text-center rounded-xl font-medium transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeChannelSubTab === 'widget'
+              ? 'bg-teal-500/15 text-teal-400 font-semibold border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.15)]'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          🌐 Website Widget
+        </button>
       </div>
+
+      {activeChannelSubTab === 'widget' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 border border-white/10 bg-[#080b12] rounded-3xl space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="space-y-1 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                🌐 Embeddable Website Chat Widget
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Paste this snippet before the closing <code className="text-slate-300">&lt;/body&gt;</code> tag on your website. A floating chat bubble will appear, powered by the same AI agent and knowledge base as your other channels.
+              </p>
+            </div>
+            <div className="relative z-10 flex items-start gap-2 p-3 bg-[#0d121d] border border-white/10 rounded-xl">
+              <code className="flex-1 text-[11px] text-teal-300 font-mono whitespace-pre-wrap break-all select-all">
+                {`<script src="${window.location.origin}/widget.js" data-tenant="${selectedTenant.id}"></script>`}
+              </code>
+              <button
+                type="button"
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    `<script src="${window.location.origin}/widget.js" data-tenant="${selectedTenant.id}"></script>`
+                  )
+                }
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-lg text-[10px] font-semibold shrink-0 cursor-pointer"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeChannelSubTab === 'telegram' && (
         <div className="space-y-6 animate-fadeIn">

@@ -752,3 +752,78 @@ describe('POST /api/kb/extract-file (real KB upload)', () => {
     expect(res.body.error).toContain('Missing file upload');
   });
 });
+
+describe('POST /api/widget/:tenantId/chat (embeddable website widget)', () => {
+  beforeEach(() => {
+    _clearMemStore();
+    _setMemTenant('test-tenant', {
+      id: 'test-tenant',
+      name: 'Test Business Corp',
+      industry: 'Fitness',
+      description: 'Test description',
+      avatar: '💪',
+      botName: 'Aura',
+      tone: 'friendly',
+      status: 'active',
+      knowledgeBase: [],
+      leads: [],
+      appointments: []
+    });
+  });
+
+  afterEach(() => {
+    _clearMemStore();
+  });
+
+  it('replies to a widget message, meters usage, and stores conversation history (no auth required)', async () => {
+    const res = await request(app)
+      .post('/api/widget/test-tenant/chat')
+      .send({ sessionId: 'sess-1', messages: [{ sender: 'customer', text: 'Hello there' }] });
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.reply).toBe('string');
+    expect(res.body.reply.length).toBeGreaterThan(0);
+
+    const store = await readTenantsStore();
+    expect(store['test-tenant'].messageCount).toBe(1);
+
+    const conversations = await readConversationsStore();
+    const convo = conversations['test-tenant_widget_sess-1'];
+    expect(convo.messages.length).toBe(2);
+    expect(convo.messages[0].sender).toBe('customer');
+    expect(convo.messages[1].sender).toBe('bot');
+  });
+
+  it('rejects a request missing sessionId', async () => {
+    const res = await request(app)
+      .post('/api/widget/test-tenant/chat')
+      .send({ messages: [{ sender: 'customer', text: 'Hi' }] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('sessionId');
+  });
+
+  it('returns 404 for an unknown tenant', async () => {
+    const res = await request(app)
+      .post('/api/widget/does-not-exist/chat')
+      .send({ sessionId: 'sess-2', messages: [{ sender: 'customer', text: 'Hi' }] });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 403 once the tenant is over its message quota', async () => {
+    const store = await readTenantsStore();
+    store['test-tenant'].messageCount = 50;
+    store['test-tenant'].subscriptionTier = 'Free';
+    await writeTenantsStore(store);
+
+    const res = await request(app)
+      .post('/api/widget/test-tenant/chat')
+      .send({ sessionId: 'sess-3', messages: [{ sender: 'customer', text: 'Hi' }] });
+
+    expect(res.status).toBe(403);
+
+    store['test-tenant'].messageCount = 0;
+    await writeTenantsStore(store);
+  });
+});

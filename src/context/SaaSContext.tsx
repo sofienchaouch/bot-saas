@@ -242,8 +242,8 @@ interface SaaSContextType {
   messengerSandboxSentCode: string;
   messengerSandboxStep: 'idle' | 'sending' | 'otp_sent' | 'verified';
   messengerSandboxError: string | null;
-  activeChannelSubTab: 'whatsapp' | 'messenger' | 'telegram' | 'sms';
-  setActiveChannelSubTab: (val: 'whatsapp' | 'messenger' | 'telegram' | 'sms') => void;
+  activeChannelSubTab: 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'widget';
+  setActiveChannelSubTab: (val: 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'widget') => void;
   telegramBotTokenInput: string;
   setTelegramBotTokenInput: (val: string) => void;
   telegramConnecting: boolean;
@@ -569,7 +569,7 @@ export const SaaSProvider: React.FC<{
 
   // Active platform sub-tab inside Integrations Tab
   const [activeChannelSubTab, setActiveChannelSubTab] = useState<
-    'whatsapp' | 'messenger' | 'telegram' | 'sms'
+    'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'widget'
   >('whatsapp');
   const [telegramBotTokenInput, setTelegramBotTokenInput] = useState('');
   const [telegramConnecting, setTelegramConnecting] = useState(false);
