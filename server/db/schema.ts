@@ -244,3 +244,22 @@ export const webhookEvents = pgTable(
   },
   t => [index('webhook_events_tenant_ts_idx').on(t.tenantId, t.timestamp)]
 );
+
+// ── Team Members ──────────────────────────────────────────────────────────────
+// Grants a Firebase-authenticated uid access to a tenant without being its
+// owner. tenantAccessMiddleware checks this table after the ownerId check.
+
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    uid: text('uid').notNull(),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('support'),
+    invitedAt: timestamp('invited_at', { withTimezone: true }).defaultNow(),
+  },
+  t => [index('team_members_tenant_idx').on(t.tenantId), index('team_members_uid_idx').on(t.uid)]
+);

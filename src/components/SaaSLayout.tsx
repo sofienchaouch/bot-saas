@@ -27,6 +27,7 @@ const WhatsAppIntegrationTab = lazy(() =>
   import('./tabs/WhatsAppIntegrationTab').then(m => ({ default: m.WhatsAppIntegrationTab }))
 );
 const BillingTab = lazy(() => import('./tabs/BillingTab').then(m => ({ default: m.BillingTab })));
+const TeamTab = lazy(() => import('./tabs/TeamTab').then(m => ({ default: m.TeamTab })));
 const WebhookLogsTab = lazy(() =>
   import('./tabs/WebhookLogsTab').then(m => ({ default: m.WebhookLogsTab }))
 );
@@ -628,6 +629,19 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                     <CreditCard className="h-4 w-4 text-amber-400 shrink-0" />
                     <span>{t('billing') || 'Billing & Quota'}</span>
                   </button>
+
+                  <button
+                    onClick={() => handleTabChange('team')}
+                    className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
+                      activeTab === 'team'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-455 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                    }`}
+                    id="mobile-tab-team"
+                  >
+                    <Users className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>Team</span>
+                  </button>
                 </nav>
               </div>
 
@@ -836,6 +850,19 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <span>{t('billing') || 'Billing & Quota'}</span>
             </button>
 
+            <button
+              onClick={() => handleTabChange('team')}
+              className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
+                activeTab === 'team'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+              id="tab-team-btn"
+            >
+              <Users className="h-4 w-4 text-emerald-500" />
+              <span>Team</span>
+            </button>
+
             {onLogoutAdmin && (
               <>
                 <div className="h-px bg-white/5 my-2 hidden md:block" />
@@ -906,6 +933,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               {activeTab === 'whatsapp_integration' && <WhatsAppIntegrationTab />}
               {activeTab === 'webhook_logs' && <WebhookLogsTab />}
               {activeTab === 'billing' && <BillingTab />}
+              {activeTab === 'team' && <TeamTab />}
             </Suspense>
             {activeTab === 'workspace_hub' && (
               <div className="space-y-6 animate-fade-in">

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { readTenantsStore, claimTenantOwnership } from '../services/db';
+import { findTeamMemberRole } from '../services/team';
 import { NODE_ENV } from '../config';
 import { logger } from '../lib/logger';
 
@@ -10,6 +11,7 @@ export async function tenantAccessMiddleware(
 ): Promise<void> {
   // Test bypass — skip ownership check but still allow through
   if (NODE_ENV === 'test' && req.headers['x-test-auth-bypass'] === 'true') {
+    (req as any).tenantRole = 'admin';
     return next();
   }
 
@@ -47,6 +49,13 @@ export async function tenantAccessMiddleware(
     }
 
     if (tenant.ownerId !== user.uid) {
+      // Not the owner — allow through if they've been added as a team member.
+      const teamRole = await findTeamMemberRole(tenantId, user.uid);
+      if (teamRole) {
+        (req as any).tenantRole = teamRole;
+        return next();
+      }
+
       logger.warn(
         { tenantId, uid: user.uid, ownerId: tenant.ownerId },
         'Cross-tenant access blocked'
@@ -55,6 +64,7 @@ export async function tenantAccessMiddleware(
       return;
     }
 
+    (req as any).tenantRole = 'admin';
     next();
   } catch (err) {
     logger.error({ err, tenantId }, 'tenantAccessMiddleware error');

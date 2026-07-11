@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import admin from 'firebase-admin';
 import { Type } from '@google/genai';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../lib/logger';
@@ -23,6 +24,7 @@ import { getWebhookEvents, clearWebhookEvents } from '../services/webhookLogger'
 import { validateUrlForSsrf, crawlWebsite } from '../services/crawler';
 import { broadcastToTenant } from '../services/realtime';
 import { extractTextFromFile } from '../services/fileExtract';
+import { listTeamMembers, addTeamMember, removeTeamMember } from '../services/team';
 
 const router = express.Router();
 
@@ -43,6 +45,7 @@ router.use(
     '/api/tenant/:id/autopilot',
     '/api/tenant/:id/schedule',
     '/api/tenant/:id/telegram',
+    '/api/tenant/:id/team',
     '/api/conversations/:id',
   ],
   tenantAccessMiddleware
@@ -371,6 +374,72 @@ router.post(
     tenant.telegramBotToken = undefined;
     store[tenantId] = tenant;
     await writeTenantsStore(store);
+    res.json({ status: 'success' });
+  })
+);
+
+router.get(
+  '/api/tenant/:id/team',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.params.id;
+    const store = await readTenantsStore();
+    const tenant = store[tenantId];
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const members = await listTeamMembers(tenantId);
+    res.json({
+      owner: tenant.ownerId ? { uid: tenant.ownerId, role: 'admin' } : null,
+      members,
+    });
+  })
+);
+
+router.post(
+  '/api/tenant/:id/team/invite',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.params.id;
+    const { email, role } = req.body;
+    const requesterRole = (req as any).tenantRole;
+
+    if (requesterRole !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can invite team members.' });
+    }
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Missing email.' });
+    }
+    if (role !== 'admin' && role !== 'support') {
+      return res.status(400).json({ error: "role must be 'admin' or 'support'." });
+    }
+
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      const member = await addTeamMember(tenantId, userRecord.uid, email, role);
+      res.json({ status: 'success', member });
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        return res.status(404).json({
+          error: 'No account found for that email. They must sign in at least once before being invited.',
+        });
+      }
+      logger.error({ err: err.message, tenantId }, '[TEAM INVITE] Failed to invite member');
+      res.status(502).json({ error: 'Failed to invite team member.' });
+    }
+  })
+);
+
+router.delete(
+  '/api/tenant/:id/team/:memberId',
+  asyncHandler(async (req, res) => {
+    const { id: tenantId, memberId } = req.params;
+    const requesterRole = (req as any).tenantRole;
+
+    if (requesterRole !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can remove team members.' });
+    }
+
+    await removeTeamMember(tenantId, memberId);
     res.json({ status: 'success' });
   })
 );

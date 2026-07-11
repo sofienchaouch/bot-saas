@@ -5,6 +5,22 @@ import request from 'supertest';
 // Set environment variable to test to run in sandboxed local file storage
 process.env.NODE_ENV = 'test';
 
+// Mock firebase-admin's user lookup for team-invite tests — auth.ts's own
+// verifyIdToken path is never exercised in tests (NODE_ENV=test bypass).
+vi.mock('firebase-admin', () => ({
+  default: {
+    auth: () => ({
+      getUserByEmail: vi.fn(async (email: string) => {
+        if (email === 'teammate@example.com') return { uid: 'uid-teammate' };
+        const err: any = new Error('no user');
+        err.code = 'auth/user-not-found';
+        throw err;
+      }),
+      verifyIdToken: vi.fn(),
+    }),
+  },
+}));
+
 import { app, cosineSimilarity, chunkText, encryptText, decryptText } from '../server';
 import {
   readTenantsStore,
@@ -18,6 +34,7 @@ import { getRAGContext } from '../server/services/rag';
 import { logger } from '../server/lib/logger';
 import { isOverQuota } from '../server/services/quota';
 import { parseRobotsTxt, isPathDisallowed, validateUrlForSsrf } from '../server/services/crawler';
+import { _clearMemTeamMembers } from '../server/services/team';
 
 describe('Backend Utilities Unit Tests', () => {
   describe('cosineSimilarity', () => {
@@ -767,7 +784,7 @@ describe('POST /api/widget/:tenantId/chat (embeddable website widget)', () => {
       status: 'active',
       knowledgeBase: [],
       leads: [],
-      appointments: []
+      appointments: [],
     });
   });
 
@@ -825,5 +842,117 @@ describe('POST /api/widget/:tenantId/chat (embeddable website widget)', () => {
 
     store['test-tenant'].messageCount = 0;
     await writeTenantsStore(store);
+  });
+});
+
+describe('Team RBAC', () => {
+  beforeEach(() => {
+    _clearMemStore();
+    _clearMemTeamMembers();
+    _setMemTenant('rbac-tenant', {
+      id: 'rbac-tenant',
+      name: 'RBAC Co',
+      industry: 'Retail',
+      description: '',
+      avatar: '',
+      botName: 'Aura',
+      tone: 'friendly',
+      status: 'active',
+      ownerId: 'uid-owner',
+      knowledgeBase: [],
+      leads: [],
+      appointments: []
+    });
+  });
+
+  afterEach(() => {
+    _clearMemStore();
+    _clearMemTeamMembers();
+  });
+
+  it('GET /api/tenant/:id/team returns the owner and an empty member list initially', async () => {
+    const res = await request(app)
+      .get('/api/tenant/rbac-tenant/team')
+      .set('X-Test-Auth-Bypass', 'true');
+
+    expect(res.status).toBe(200);
+    expect(res.body.owner.uid).toBe('uid-owner');
+    expect(res.body.members).toEqual([]);
+  });
+
+  it('invites a team member by email, resolving their uid via Firebase', async () => {
+    const res = await request(app)
+      .post('/api/tenant/rbac-tenant/team/invite')
+      .set('X-Test-Auth-Bypass', 'true')
+      .send({ email: 'teammate@example.com', role: 'support' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.member.uid).toBe('uid-teammate');
+    expect(res.body.member.role).toBe('support');
+
+    const listRes = await request(app)
+      .get('/api/tenant/rbac-tenant/team')
+      .set('X-Test-Auth-Bypass', 'true');
+    expect(listRes.body.members).toHaveLength(1);
+    expect(listRes.body.members[0].email).toBe('teammate@example.com');
+  });
+
+  it('rejects inviting an email with no Firebase account', async () => {
+    const res = await request(app)
+      .post('/api/tenant/rbac-tenant/team/invite')
+      .set('X-Test-Auth-Bypass', 'true')
+      .send({ email: 'nobody@example.com', role: 'support' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain('No account found');
+  });
+
+  it('rejects an invalid role', async () => {
+    const res = await request(app)
+      .post('/api/tenant/rbac-tenant/team/invite')
+      .set('X-Test-Auth-Bypass', 'true')
+      .send({ email: 'teammate@example.com', role: 'superuser' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('removes a team member', async () => {
+    const inviteRes = await request(app)
+      .post('/api/tenant/rbac-tenant/team/invite')
+      .set('X-Test-Auth-Bypass', 'true')
+      .send({ email: 'teammate@example.com', role: 'support' });
+
+    const memberId = inviteRes.body.member.id;
+    const delRes = await request(app)
+      .delete(`/api/tenant/rbac-tenant/team/${memberId}`)
+      .set('X-Test-Auth-Bypass', 'true');
+    expect(delRes.status).toBe(200);
+
+    const listRes = await request(app)
+      .get('/api/tenant/rbac-tenant/team')
+      .set('X-Test-Auth-Bypass', 'true');
+    expect(listRes.body.members).toHaveLength(0);
+  });
+
+  it('tenantAccessMiddleware grants access to a team member uid and denies unrelated uids', async () => {
+    const { tenantAccessMiddleware } = await import('../server/middleware/tenantAccess');
+    const { addTeamMember } = await import('../server/services/team');
+    await addTeamMember('rbac-tenant', 'uid-teammate', 'teammate@example.com', 'support');
+
+    // Team member: access granted, role attached to the request
+    const reqMember: any = { params: { id: 'rbac-tenant' }, headers: {}, user: { uid: 'uid-teammate' } };
+    const nextMember = vi.fn();
+    await tenantAccessMiddleware(reqMember, {} as any, nextMember);
+    expect(nextMember).toHaveBeenCalled();
+    expect(reqMember.tenantRole).toBe('support');
+
+    // Unrelated uid: access denied
+    const jsonSpy = vi.fn();
+    const reqStranger: any = { params: { id: 'rbac-tenant' }, headers: {}, user: { uid: 'uid-stranger' } };
+    const resStranger: any = { status: vi.fn(() => resStranger), json: jsonSpy };
+    const nextStranger = vi.fn();
+    await tenantAccessMiddleware(reqStranger, resStranger, nextStranger);
+    expect(nextStranger).not.toHaveBeenCalled();
+    expect(resStranger.status).toHaveBeenCalledWith(403);
   });
 });

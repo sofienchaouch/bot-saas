@@ -22,13 +22,13 @@ import {
   Zap,
   Eye,
   EyeOff,
-  Phone
+  Phone,
 } from 'lucide-react';
 
 export const WhatsAppIntegrationTab: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  
+
   const {
     activeChannelSubTab,
     setActiveChannelSubTab,
@@ -132,7 +132,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
     setMessengerInputIsVoiceNote,
     handleTriggerMessengerWebhook,
     toggleMessengerChatMic,
-    handleClearMessengerConversations
+    handleClearMessengerConversations,
   } = useSaaS();
 
   const [waSaveSuccess, setWaSaveSuccess] = useState(false);
@@ -157,10 +157,11 @@ export const WhatsAppIntegrationTab: React.FC = () => {
             <span>Omnichannel Integrations Gateway</span>
           </h2>
           <p className="text-[11px] text-slate-400 mt-1 font-mono">
-            Configure your Meta developer parameters to orchestrate customer support and retail assistants.
+            Configure your Meta developer parameters to orchestrate customer support and retail
+            assistants.
           </p>
         </div>
-        
+
         {/* Dynamic Visual Connection status badge depending on active sub-tab */}
         {(activeChannelSubTab === 'whatsapp' || activeChannelSubTab === 'messenger') && (
           <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 bg-white/2 px-3 py-1.5 rounded-2xl border border-white/5">
@@ -270,7 +271,10 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 🌐 Embeddable Website Chat Widget
               </h3>
               <p className="text-[11px] text-slate-400">
-                Paste this snippet before the closing <code className="text-slate-300">&lt;/body&gt;</code> tag on your website. A floating chat bubble will appear, powered by the same AI agent and knowledge base as your other channels.
+                Paste this snippet before the closing{' '}
+                <code className="text-slate-300">&lt;/body&gt;</code> tag on your website. A
+                floating chat bubble will appear, powered by the same AI agent and knowledge base as
+                your other channels.
               </p>
             </div>
             <div className="relative z-10 flex items-start gap-2 p-3 bg-[#0d121d] border border-white/10 rounded-xl">
@@ -303,7 +307,12 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               </h3>
               <p className="text-[11px] text-slate-400">
                 Create a bot with{' '}
-                <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
+                <a
+                  href="https://t.me/BotFather"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sky-400 hover:underline"
+                >
                   @BotFather
                 </a>{' '}
                 on Telegram, then paste its token below. We register the webhook automatically.
@@ -316,7 +325,8 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
                   <div>
                     <h4 className="text-white text-xs font-bold">
-                      Connected{telegramConnectedUsername ? ` as @${telegramConnectedUsername}` : ''}
+                      Connected
+                      {telegramConnectedUsername ? ` as @${telegramConnectedUsername}` : ''}
                     </h4>
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                       Inbound messages are routed to your AI agent automatically.
@@ -400,30 +410,37 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
               <div>
-                <h4 className="text-white text-xs font-bold font-sans">SaaS Configurations Successfully Preserved!</h4>
+                <h4 className="text-white text-xs font-bold font-sans">
+                  SaaS Configurations Successfully Preserved!
+                </h4>
                 <p className="text-[10.5px] text-slate-400 font-mono mt-0.5">
-                  WhatsApp Business Phone Number settings have been applied in background. Verification webhooks are listening.
+                  WhatsApp Business Phone Number settings have been applied in background.
+                  Verification webhooks are listening.
                 </p>
               </div>
             </div>
           )}
 
           {/* Visual Sandbox Mode Section */}
-          <div className={`p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
-            waSandboxActive 
-              ? 'border-blue-500/30 bg-blue-500/[0.02] shadow-[0_0_25px_rgba(59,130,246,0.15)]' 
-              : 'border-white/5 bg-[#080b12]'
-          }`}>
+          <div
+            className={`p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
+              waSandboxActive
+                ? 'border-blue-500/30 bg-blue-500/[0.02] shadow-[0_0_25px_rgba(59,130,246,0.15)]'
+                : 'border-white/5 bg-[#080b12]'
+            }`}
+          >
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-            
+
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/5 pb-4 mb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold font-mono tracking-wider ${
-                    waSandboxActive 
-                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse' 
-                      : 'bg-slate-800 text-slate-400 border border-white/5'
-                  }`}>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold font-mono tracking-wider ${
+                      waSandboxActive
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse'
+                        : 'bg-slate-800 text-slate-400 border border-white/5'
+                    }`}
+                  >
                     {waSandboxActive ? '🎯 SANDBOX LIVE' : '🔌 PRODUCTION'}
                   </span>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
@@ -431,7 +448,8 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Register and verify temporary test phone numbers for quick prototyping. Sandbox mode bypasses Meta Developer portal checks and simulates incoming text handshakes.
+                  Register and verify temporary test phone numbers for quick prototyping. Sandbox
+                  mode bypasses Meta Developer portal checks and simulates incoming text handshakes.
                 </p>
               </div>
 
@@ -452,14 +470,17 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Sandbox registration/verify form (only shown/interactive if activated) */}
-              <div className={`md:col-span-7 space-y-4 transition-all duration-300 ${waSandboxActive ? 'opacity-100' : 'opacity-50 pointer-events-none select-none'}`}>
+              <div
+                className={`md:col-span-7 space-y-4 transition-all duration-300 ${waSandboxActive ? 'opacity-100' : 'opacity-50 pointer-events-none select-none'}`}
+              >
                 <div className="space-y-1">
                   <h4 className="text-xs font-mono font-bold text-slate-300 flex items-center gap-1.5">
                     <Plus className="h-4 w-4 text-blue-500" />
                     <span>Register & Verify Test Number</span>
                   </h4>
                   <p className="text-[11px] text-slate-400 font-sans">
-                    Add your personal phone number or an E.164 simulated testing string to start receiving webhook threads.
+                    Add your personal phone number or an E.164 simulated testing string to start
+                    receiving webhook threads.
                   </p>
                 </div>
 
@@ -477,7 +498,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       required
                       disabled={!waSandboxActive}
                       value={waSandboxInputNumber}
-                      onChange={(e) => setWaSandboxInputNumber(e.target.value)}
+                      onChange={e => setWaSandboxInputNumber(e.target.value)}
                       placeholder="e.g. +1 (555) 019-2831"
                       className="bg-[#090d16] text-white text-xs px-3.5 py-2.5 rounded-xl border border-white/5 shadow-inner focus:border-blue-500/45 focus:ring-1 focus:ring-blue-500/50 outline-none font-mono flex-1 leading-normal"
                     />
@@ -495,7 +516,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-center justify-between gap-3 font-mono text-xs">
                     <div className="flex items-center gap-2.5">
                       <RefreshCw className="h-4 w-4 text-blue-400 animate-spin" />
-                      <span className="text-slate-300">Routing sandbox handshake packet to Meta cloud infrastructure...</span>
+                      <span className="text-slate-300">
+                        Routing sandbox handshake packet to Meta cloud infrastructure...
+                      </span>
                     </div>
                   </div>
                 )}
@@ -514,7 +537,11 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                             Inbound SMS received on {waSandboxInputNumber}:
                           </span>
                           <p className="text-[11.5px] font-sans text-slate-300 italic font-medium leading-relaxed">
-                            "[Meta Dev] Use code <span className="font-mono bg-white/15 px-1.5 py-0.5 rounded font-black text-amber-300 tracking-wider select-all">{waSandboxSentCode}</span> to verify your developer mobile test device for OmniBot SaaS."
+                            "[Meta Dev] Use code{' '}
+                            <span className="font-mono bg-white/15 px-1.5 py-0.5 rounded font-black text-amber-300 tracking-wider select-all">
+                              {waSandboxSentCode}
+                            </span>{' '}
+                            to verify your developer mobile test device for OmniBot SaaS."
                           </p>
                         </div>
                       </div>
@@ -526,7 +553,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                           type="text"
                           required
                           value={waSandboxCode}
-                          onChange={(e) => setWaSandboxCode(e.target.value)}
+                          onChange={e => setWaSandboxCode(e.target.value)}
                           placeholder="Enter 6-digit verification code"
                           className="bg-[#090d16] text-white text-xs px-3.5 py-2.5 rounded-xl border border-white/5 shadow-inner focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/50 outline-none font-mono flex-1 text-center font-black tracking-widest leading-normal"
                         />
@@ -555,9 +582,12 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex items-center gap-3 animate-pulse">
                     <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
                     <div>
-                      <span className="text-white text-xs font-bold font-mono block">Dev Number Registered Successfully!</span>
+                      <span className="text-white text-xs font-bold font-mono block">
+                        Dev Number Registered Successfully!
+                      </span>
                       <p className="text-[10.5px] text-slate-400 mt-0.5">
-                        Adding {waSandboxInputNumber} to verified local test sandbox devices routing tables.
+                        Adding {waSandboxInputNumber} to verified local test sandbox devices routing
+                        tables.
                       </p>
                     </div>
                   </div>
@@ -574,19 +604,24 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   {!waSandboxActive ? (
                     <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-center py-6">
                       <p className="text-[11px] text-slate-500 italic font-mono leading-relaxed">
-                        Sandbox mode is currently inactive. Turn on Sandbox toggle above to activate bypasses.
+                        Sandbox mode is currently inactive. Turn on Sandbox toggle above to activate
+                        bypasses.
                       </p>
                     </div>
                   ) : waSandboxNumbers.length === 0 ? (
                     <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-center py-6">
                       <p className="text-[11px] text-slate-400 font-mono leading-relaxed">
-                        No sandbox numbers listed. Use the register widget to verify a temporary test device!
+                        No sandbox numbers listed. Use the register widget to verify a temporary
+                        test device!
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                       {waSandboxNumbers.map((num, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-200">
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-200"
+                        >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-ping shrink-0" />
                             <span className="font-mono truncate font-medium">{num}</span>
@@ -622,7 +657,8 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 {waSandboxActive && waSandboxNumbers.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-white/5 text-center">
                     <p className="text-[10px] text-slate-500 font-mono">
-                      💡 Use <strong>Test Chat</strong> to quickly jump to the simulator and chat with your AI assistant using that sandbox profile context!
+                      💡 Use <strong>Test Chat</strong> to quickly jump to the simulator and chat
+                      with your AI assistant using that sandbox profile context!
                     </p>
                   </div>
                 )}
@@ -631,9 +667,12 @@ export const WhatsAppIntegrationTab: React.FC = () => {
           </div>
 
           {/* WhatsApp Incoming Webhook Playground Simulator */}
-          <div className="border border-white/5 bg-[#080b12] p-6 rounded-3xl space-y-5 shadow-2xl relative overflow-hidden" id="whatsapp-webhook-emulator-container">
+          <div
+            className="border border-white/5 bg-[#080b12] p-6 rounded-3xl space-y-5 shadow-2xl relative overflow-hidden"
+            id="whatsapp-webhook-emulator-container"
+          >
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/[0.02] rounded-full blur-3xl pointer-events-none" />
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
               <div>
                 <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-widest font-mono flex items-center gap-2">
@@ -641,14 +680,20 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   <span>🔌 Real-Time Inbound REST / Webhook Emulator</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Simulate the exact payload Facebook Meta sends to your SaaS workspace when clients send WhatsApp messages.
+                  Simulate the exact payload Facebook Meta sends to your SaaS workspace when clients
+                  send WhatsApp messages.
                 </p>
               </div>
 
               {/* Test Mode Switch */}
-              <div className="flex items-center gap-3 bg-white/[0.02] border border-white/5 p-2 px-3 rounded-2xl shrink-0" id="whatsapp-test-mode-toggle-card">
+              <div
+                className="flex items-center gap-3 bg-white/[0.02] border border-white/5 p-2 px-3 rounded-2xl shrink-0"
+                id="whatsapp-test-mode-toggle-card"
+              >
                 <div className="text-right">
-                  <span className="text-[10px] font-mono font-bold text-slate-300 block">AI Agent Test Mode</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-300 block">
+                    AI Agent Test Mode
+                  </span>
                   <span className="text-[9px] text-slate-500 block font-mono">
                     {waTestMode ? '🔴 Active: Verified Agent LLM' : '⚪ Static Code Simulation'}
                   </span>
@@ -681,34 +726,44 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               <div className="lg:col-span-7 space-y-4">
                 {/* Prebaked Webhook Scenarios */}
                 <div className="space-y-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-450 uppercase tracking-widest block">Quick-Load Simulated Scenarios:</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-450 uppercase tracking-widest block">
+                    Quick-Load Simulated Scenarios:
+                  </span>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setTestWebhookSenderName('Elon Musk');
                         setTestWebhookSenderPhone('+1 (321) 902-8800');
-                        setTestWebhookMessage('Hi, please register my email elon.mars@spacex.com as a Qualified Lead. Can you consult your knowledge base for rates?');
+                        setTestWebhookMessage(
+                          'Hi, please register my email elon.mars@spacex.com as a Qualified Lead. Can you consult your knowledge base for rates?'
+                        );
                       }}
                       className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 active:bg-white/15 text-[10px] text-slate-350 hover:text-white font-mono rounded-lg cursor-pointer transition-colors border border-white/5 text-left flex flex-col justify-between h-[68px]"
                       title="Test AI Agent automatic lead parsing and CRM extraction"
                     >
                       <span className="font-bold text-emerald-450 block">🚀 CRM Lead</span>
-                      <span className="text-[9px] text-slate-500 block truncate">Elon: elon.mars@spacex...</span>
+                      <span className="text-[9px] text-slate-500 block truncate">
+                        Elon: elon.mars@spacex...
+                      </span>
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={() => {
                         setTestWebhookSenderName('Alexander checking');
                         setTestWebhookSenderPhone('+30 (211) 555-0300');
-                        setTestWebhookMessage('Hello! Can you book me a live slot for next Tuesday at 2 PM? Use my email alex@ancientmacedon.com to block the date on your calendar.');
+                        setTestWebhookMessage(
+                          'Hello! Can you book me a live slot for next Tuesday at 2 PM? Use my email alex@ancientmacedon.com to block the date on your calendar.'
+                        );
                       }}
                       className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 active:bg-white/15 text-[10px] text-slate-350 hover:text-white font-mono rounded-lg cursor-pointer transition-colors border border-white/5 text-left flex flex-col justify-between h-[68px]"
                       title="Test Google Calendar / Local Booking engine slot allocation"
                     >
                       <span className="font-bold text-indigo-400 block">📅 Slot Booking</span>
-                      <span className="text-[9px] text-slate-500 block truncate">Next Tuesday 2 PM booking</span>
+                      <span className="text-[9px] text-slate-500 block truncate">
+                        Next Tuesday 2 PM booking
+                      </span>
                     </button>
 
                     <button
@@ -716,13 +771,19 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => {
                         setTestWebhookSenderName('Sarah Conflict Test');
                         setTestWebhookSenderPhone('+44 7911 123456');
-                        setTestWebhookMessage(`Hi, can I get a 30-min consultation slot booked tomorrow at 2 PM? If that is conflict or double-booked, verify my email sarah.test@gmail.com and suggest next available slots!`);
+                        setTestWebhookMessage(
+                          `Hi, can I get a 30-min consultation slot booked tomorrow at 2 PM? If that is conflict or double-booked, verify my email sarah.test@gmail.com and suggest next available slots!`
+                        );
                       }}
                       className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 active:bg-white/15 text-[10px] text-slate-350 hover:text-white font-mono rounded-lg cursor-pointer transition-colors border border-white/5 text-left flex flex-col justify-between h-[68px]"
                       title="Simulate calendar slot occupancy to check double-booking routing logic"
                     >
-                      <span className="font-bold text-amber-505 block text-amber-500">⚠️ Busy Slot Test</span>
-                      <span className="text-[9px] text-slate-500 block truncate">Double-booking avoidance</span>
+                      <span className="font-bold text-amber-505 block text-amber-500">
+                        ⚠️ Busy Slot Test
+                      </span>
+                      <span className="text-[9px] text-slate-500 block truncate">
+                        Double-booking avoidance
+                      </span>
                     </button>
 
                     <button
@@ -730,13 +791,17 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => {
                         setTestWebhookSenderName('Dr. Watson');
                         setTestWebhookSenderPhone('+1 (555) 019-9281');
-                        setTestWebhookMessage('Tell me, what are your company pricing rates and guidelines listed in your knowledge base docs? Do you have custom pricing lists?');
+                        setTestWebhookMessage(
+                          'Tell me, what are your company pricing rates and guidelines listed in your knowledge base docs? Do you have custom pricing lists?'
+                        );
                       }}
                       className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 active:bg-white/15 text-[10px] text-slate-350 hover:text-white font-mono rounded-lg cursor-pointer transition-colors border border-white/5 text-left flex flex-col justify-between h-[68px]"
                       title="Inquire about information stored in tenant Knowledge Base documents"
                     >
                       <span className="font-bold text-purple-400 block">📚 KB Lookup</span>
-                      <span className="text-[9px] text-slate-500 block truncate">Query KB catalog rates</span>
+                      <span className="text-[9px] text-slate-500 block truncate">
+                        Query KB catalog rates
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -744,21 +809,25 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 {/* Custom Input Block */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                   <div className="space-y-1.5">
-                    <label className="text-slate-400 block font-semibold">Inbound Persona Name:</label>
+                    <label className="text-slate-400 block font-semibold">
+                      Inbound Persona Name:
+                    </label>
                     <input
                       type="text"
                       value={testWebhookSenderName}
-                      onChange={(e) => setTestWebhookSenderName(e.target.value)}
+                      onChange={e => setTestWebhookSenderName(e.target.value)}
                       placeholder="e.g. John Miller"
                       className="w-full bg-[#0d121d] text-slate-100 px-3 py-2 border border-white/5 rounded-xl focus:border-emerald-500/40 outline-none font-mono"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-slate-400 block font-semibold">E.164 WhatsApp Phone:</label>
+                    <label className="text-slate-400 block font-semibold">
+                      E.164 WhatsApp Phone:
+                    </label>
                     <input
                       type="text"
                       value={testWebhookSenderPhone}
-                      onChange={(e) => setTestWebhookSenderPhone(e.target.value)}
+                      onChange={e => setTestWebhookSenderPhone(e.target.value)}
                       placeholder="e.g. +1 (555) 902-1234"
                       className="w-full bg-[#0d121d] text-slate-100 px-3 py-2 border border-white/5 rounded-xl focus:border-emerald-500/40 outline-none font-mono"
                     />
@@ -766,11 +835,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5 text-xs font-mono">
-                  <label className="text-slate-400 block font-semibold">Simulated WhatsApp Message Body:</label>
+                  <label className="text-slate-400 block font-semibold">
+                    Simulated WhatsApp Message Body:
+                  </label>
                   <textarea
                     rows={3}
                     value={testWebhookMessage}
-                    onChange={(e) => setTestWebhookMessage(e.target.value)}
+                    onChange={e => setTestWebhookMessage(e.target.value)}
                     placeholder="Type simulated whatsapp text string..."
                     className="w-full bg-[#0d121d] text-slate-100 p-3 border border-white/5 rounded-xl focus:border-emerald-500/40 outline-none text-xs font-mono"
                   />
@@ -783,22 +854,29 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     updateTenantFields({ isTestingWebhook: true, testWebhookLogs: [] } as any);
                     const postLog = (msg: string) => {
                       updateTenantFields({
-                        testWebhookLogs: [...testWebhookLogs, `[${new Date().toLocaleTimeString()}] ${msg}`]
+                        testWebhookLogs: [
+                          ...testWebhookLogs,
+                          `[${new Date().toLocaleTimeString()}] ${msg}`,
+                        ],
                       } as any);
                     };
 
                     if (waTestMode) {
-                      postLog("🔌 Webhook request initiated. (AI AGENT TEST VERIFICATION ACTIVE)...");
-                      
+                      postLog(
+                        '🔌 Webhook request initiated. (AI AGENT TEST VERIFICATION ACTIVE)...'
+                      );
+
                       setTimeout(() => {
-                        postLog("📤 POST /api/chat [Local Sandbox Validation Router]");
-                        postLog("🔒 Credentials Bypass Active: Simulating safe test context.");
+                        postLog('📤 POST /api/chat [Local Sandbox Validation Router]');
+                        postLog('🔒 Credentials Bypass Active: Simulating safe test context.');
                       }, 400);
 
                       setTimeout(async () => {
-                        postLog(`📡 Request payload mapped: Sender "${testWebhookSenderName}" (${testWebhookSenderPhone})`);
+                        postLog(
+                          `📡 Request payload mapped: Sender "${testWebhookSenderName}" (${testWebhookSenderPhone})`
+                        );
                         postLog(`🧠 Dispatching query body into LLM reasoning core...`);
-                        
+
                         try {
                           const response = await fetch('/api/chat', {
                             method: 'POST',
@@ -812,15 +890,17 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                               tenantName: selectedTenant.name,
                               tenantIndustry: selectedTenant.industry,
                               tenantDescription: selectedTenant.description,
-                              systemInstruction: selectedTenant.systemInstruction
-                            })
+                              systemInstruction: selectedTenant.systemInstruction,
+                            }),
                           });
 
                           if (response.ok) {
                             const data = await response.json();
-                            postLog(`🤖 [AI AGENT RESPONSE] Received from @${selectedTenant.botName}:`);
+                            postLog(
+                              `🤖 [AI AGENT RESPONSE] Received from @${selectedTenant.botName}:`
+                            );
                             postLog(`💬 "${data.reply}"`);
-                            
+
                             let tenantModified = false;
                             let nextLeads = [...selectedTenant.leads];
                             let nextAppointments = [...selectedTenant.appointments];
@@ -828,10 +908,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                             if (data.actionTriggered) {
                               const action = data.actionTriggered;
                               postLog(`⚙️ Resolved dynamic CRM callback trigger: "${action.type}"`);
-                              
+
                               let actDetails: any = {};
                               try {
-                                actDetails = typeof action.details === 'string' ? JSON.parse(action.details) : action.details;
+                                actDetails =
+                                  typeof action.details === 'string'
+                                    ? JSON.parse(action.details)
+                                    : action.details;
                               } catch (e) {
                                 actDetails = {};
                               }
@@ -840,68 +923,101 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                                 const newLead = {
                                   id: 'lead-test-' + Date.now(),
                                   name: actDetails.name || testWebhookSenderName,
-                                  email: actDetails.email || `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@testdomain.com`,
+                                  email:
+                                    actDetails.email ||
+                                    `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@testdomain.com`,
                                   phone: actDetails.phone || testWebhookSenderPhone,
                                   status: 'New',
                                   dateCaptured: new Date().toISOString().split('T')[0],
-                                  note: `Verified via Agent Webhook Emulator. Response: "${data.reply}"`
+                                  note: `Verified via Agent Webhook Emulator. Response: "${data.reply}"`,
                                 };
                                 nextLeads = [newLead, ...nextLeads];
                                 tenantModified = true;
-                                postLog(`📦 CRM DB Action: Registered qualified lead [${newLead.name}] successfully!`);
+                                postLog(
+                                  `📦 CRM DB Action: Registered qualified lead [${newLead.name}] successfully!`
+                                );
                               } else if (action.type === 'book_appointment') {
-                                const shouldSyncGoogle = googleToken && selectedTenant.googleCalendarAutoSchedule !== false;
-                                
+                                const shouldSyncGoogle =
+                                  googleToken &&
+                                  selectedTenant.googleCalendarAutoSchedule !== false;
+
                                 const newAppt = {
                                   id: 'appt-test-' + Date.now(),
                                   customerName: actDetails.name || testWebhookSenderName,
                                   customerPhone: actDetails.phone || testWebhookSenderPhone,
-                                  email: actDetails.email || `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@testdomain.com`,
-                                  start: actDetails.startStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T14:00:00",
-                                  end: actDetails.endStr || new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0] + "T14:30:00",
-                                  summary: actDetails.summary || `Consultation with ${selectedTenant.botName}`,
+                                  email:
+                                    actDetails.email ||
+                                    `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@testdomain.com`,
+                                  start:
+                                    actDetails.startStr ||
+                                    new Date(Date.now() + 24 * 60 * 60 * 1000)
+                                      .toISOString()
+                                      .split('T')[0] + 'T14:00:00',
+                                  end:
+                                    actDetails.endStr ||
+                                    new Date(Date.now() + 24 * 60 * 60 * 1000)
+                                      .toISOString()
+                                      .split('T')[0] + 'T14:30:00',
+                                  summary:
+                                    actDetails.summary ||
+                                    `Consultation with ${selectedTenant.botName}`,
                                   notes: `Booked autonomously via Agent Webhook Simulator. Client text: "${testWebhookMessage}"`,
-                                  syncedWithGoogle: shouldSyncGoogle
+                                  syncedWithGoogle: shouldSyncGoogle,
                                 };
 
                                 if (shouldSyncGoogle) {
                                   try {
-                                    postLog(`🔮 Real-Time Auto-Scheduling is active! Dispatching Google Calendar API event creation...`);
-                                    const syncedAppt = await createGoogleCalendarEvent(googleToken, {
-                                      customerName: newAppt.customerName,
-                                      customerPhone: newAppt.customerPhone,
-                                      email: newAppt.email,
-                                      start: newAppt.start,
-                                      end: newAppt.end,
-                                      summary: newAppt.summary,
-                                      notes: newAppt.notes
-                                    });
+                                    postLog(
+                                      `🔮 Real-Time Auto-Scheduling is active! Dispatching Google Calendar API event creation...`
+                                    );
+                                    const syncedAppt = await createGoogleCalendarEvent(
+                                      googleToken,
+                                      {
+                                        customerName: newAppt.customerName,
+                                        customerPhone: newAppt.customerPhone,
+                                        email: newAppt.email,
+                                        start: newAppt.start,
+                                        end: newAppt.end,
+                                        summary: newAppt.summary,
+                                        notes: newAppt.notes,
+                                      }
+                                    );
                                     newAppt.googleEventId = syncedAppt.googleEventId;
-                                    postLog(`📅 Google Calendar Sync Success! Live slot booked for ${newAppt.customerName}`);
+                                    postLog(
+                                      `📅 Google Calendar Sync Success! Live slot booked for ${newAppt.customerName}`
+                                    );
                                   } catch (calErr: any) {
-                                    postLog(`⚠️ Google Calendar Link issue: ${calErr.message || 'Verification token stale.'} Reserved offline.`);
+                                    postLog(
+                                      `⚠️ Google Calendar Link issue: ${calErr.message || 'Verification token stale.'} Reserved offline.`
+                                    );
                                   }
                                 } else {
-                                  postLog(`📅 Local Reservation Success: Booked slot ${newAppt.start} internally.`);
+                                  postLog(
+                                    `📅 Local Reservation Success: Booked slot ${newAppt.start} internally.`
+                                  );
                                 }
 
                                 nextAppointments = [newAppt, ...nextAppointments];
                                 tenantModified = true;
                               }
                             } else {
-                              postLog("ℹ️ No state transitions decided by agent. Dialogue was conversational.");
+                              postLog(
+                                'ℹ️ No state transitions decided by agent. Dialogue was conversational.'
+                              );
                             }
 
                             if (tenantModified) {
                               updateTenantFields({
                                 leads: nextLeads,
-                                appointments: nextAppointments
+                                appointments: nextAppointments,
                               });
                             }
 
-                            postLog("✅ [Simulated Webhook End] Verification logs captured successfully.");
+                            postLog(
+                              '✅ [Simulated Webhook End] Verification logs captured successfully.'
+                            );
                           } else {
-                            postLog("❌ Failed to reach local /api/chat endpoint.");
+                            postLog('❌ Failed to reach local /api/chat endpoint.');
                           }
                         } catch (err: any) {
                           postLog(`❌ Verification failed: ${err.message || err}`);
@@ -909,26 +1025,31 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                           updateTenantFields({ isTestingWebhook: false } as any);
                         }
                       }, 1200);
-
                     } else {
                       // Standard Mock Simulation
-                      postLog("🔌 Webhook request initiated. (MOCK SIMULATION MODE)...");
-                      
+                      postLog('🔌 Webhook request initiated. (MOCK SIMULATION MODE)...');
+
                       setTimeout(() => {
-                        postLog("📤 POST /api/webhooks/whatsapp HTTP/1.1");
-                        postLog("🔒 Signature verification payload sha256=verified.");
+                        postLog('📤 POST /api/webhooks/whatsapp HTTP/1.1');
+                        postLog('🔒 Signature verification payload sha256=verified.');
                       }, 600);
 
                       setTimeout(() => {
-                        postLog(`📡 Msg payload mapped to verification sandbox string "${testWebhookSenderPhone}"`);
-                        postLog(`🧠 Directing body content: "${testWebhookMessage.slice(0, 45)}..." to bot @${selectedTenant.botName}`);
+                        postLog(
+                          `📡 Msg payload mapped to verification sandbox string "${testWebhookSenderPhone}"`
+                        );
+                        postLog(
+                          `🧠 Directing body content: "${testWebhookMessage.slice(0, 45)}..." to bot @${selectedTenant.botName}`
+                        );
                       }, 1200);
 
                       setTimeout(() => {
-                        postLog("⚙️ AI heuristics scanning body context variables...");
+                        postLog('⚙️ AI heuristics scanning body context variables...');
                         const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
                         const matchedEmails = testWebhookMessage.match(emailRegex);
-                        const extractedEmail = matchedEmails ? matchedEmails[0] : `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@whatsapp.com`;
+                        const extractedEmail = matchedEmails
+                          ? matchedEmails[0]
+                          : `${testWebhookSenderName.toLowerCase().replace(/\s/g, '.')}@whatsapp.com`;
 
                         const newMockLead = {
                           id: 'lead-webhook-' + Date.now(),
@@ -937,18 +1058,22 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                           phone: testWebhookSenderPhone,
                           status: 'New',
                           dateCaptured: new Date().toISOString().split('T')[0],
-                          note: `Harvested via webhook tester. Text: "${testWebhookMessage}"`
+                          note: `Harvested via webhook tester. Text: "${testWebhookMessage}"`,
                         };
 
                         updateTenantFields({
-                          leads: [newMockLead, ...selectedTenant.leads]
+                          leads: [newMockLead, ...selectedTenant.leads],
                         });
 
-                        postLog(`📦 [AI EXTRACT SUCCESS] Captured CRM Lead Opportunity: {name: "${testWebhookSenderName}", email: "${extractedEmail}", phone: "${testWebhookSenderPhone}"}`);
+                        postLog(
+                          `📦 [AI EXTRACT SUCCESS] Captured CRM Lead Opportunity: {name: "${testWebhookSenderName}", email: "${extractedEmail}", phone: "${testWebhookSenderPhone}"}`
+                        );
                       }, 2000);
 
                       setTimeout(() => {
-                        postLog("✅ [Meta Response] HTTP/1.1 200 OK Connection persistent. Webhook simulator execution green.");
+                        postLog(
+                          '✅ [Meta Response] HTTP/1.1 200 OK Connection persistent. Webhook simulator execution green.'
+                        );
                         updateTenantFields({ isTestingWebhook: false } as any);
                       }, 2800);
                     }
@@ -970,14 +1095,19 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               </div>
 
               {/* Developer Terminal Console & Live Meta Webhook Payload Inspector */}
-              <div className="lg:col-span-5 flex flex-col h-full space-y-2 self-stretch" id="developer-terminal-section">
+              <div
+                className="lg:col-span-5 flex flex-col h-full space-y-2 self-stretch"
+                id="developer-terminal-section"
+              >
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <div className="flex gap-1.5 bg-white/[0.02] p-0.5 rounded-lg border border-white/5">
                     <button
                       type="button"
                       onClick={() => setWebhookViewMode('logs')}
                       className={`px-3 py-1 rounded text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
-                        webhookViewMode === 'logs' ? 'bg-[#10b881]/15 text-emerald-400 border border-emerald-500/20 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                        webhookViewMode === 'logs'
+                          ? 'bg-[#10b881]/15 text-emerald-400 border border-emerald-500/20 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       Console Logs
@@ -986,7 +1116,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       type="button"
                       onClick={() => setWebhookViewMode('payload')}
                       className={`px-3 py-1 rounded text-[10.5px] font-mono font-bold transition-all cursor-pointer ${
-                        webhookViewMode === 'payload' ? 'bg-[#10b881]/15 text-emerald-400 border border-emerald-500/20 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                        webhookViewMode === 'payload'
+                          ? 'bg-[#10b881]/15 text-emerald-400 border border-emerald-500/20 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       Meta JSON Payload
@@ -999,43 +1131,43 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => {
                         const cleanPhone = testWebhookSenderPhone.replace(/[^0-9]/g, '');
                         const currentPayload = {
-                          object: "whatsapp_business_account",
+                          object: 'whatsapp_business_account',
                           entry: [
                             {
-                              id: "wa_biz_acc_908",
+                              id: 'wa_biz_acc_908',
                               changes: [
                                 {
                                   value: {
-                                    messaging_product: "whatsapp",
+                                    messaging_product: 'whatsapp',
                                     metadata: {
-                                      display_phone_number: "+1(800)555-0199",
-                                      phone_number_id: "phone_id_992"
+                                      display_phone_number: '+1(800)555-0199',
+                                      phone_number_id: 'phone_id_992',
                                     },
                                     contacts: [
                                       {
                                         profile: {
-                                          name: testWebhookSenderName
+                                          name: testWebhookSenderName,
                                         },
-                                        wa_id: cleanPhone || "13219028800"
-                                      }
+                                        wa_id: cleanPhone || '13219028800',
+                                      },
                                     ],
                                     messages: [
                                       {
-                                        from: cleanPhone || "13219028800",
-                                        id: "wamid.HBgLMTU1NTU1NTU1NTUSFggMRENEQ0U0RDUzOTg4RjU4RjVBAA==",
+                                        from: cleanPhone || '13219028800',
+                                        id: 'wamid.HBgLMTU1NTU1NTU1NTUSFggMRENEQ0U0RDUzOTg4RjU4RjVBAA==',
                                         timestamp: Math.floor(Date.now() / 1000).toString(),
                                         text: {
-                                          body: testWebhookMessage
+                                          body: testWebhookMessage,
                                         },
-                                        type: "text"
-                                      }
-                                    ]
+                                        type: 'text',
+                                      },
+                                    ],
                                   },
-                                  field: "messages"
-                                }
-                              ]
-                            }
-                          ]
+                                  field: 'messages',
+                                },
+                              ],
+                            },
+                          ],
                         };
                         navigator.clipboard.writeText(JSON.stringify(currentPayload, null, 2));
                         setPayloadCopied(true);
@@ -1053,11 +1185,17 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     {testWebhookLogs.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-slate-600 italic select-none text-center px-4 space-y-2">
                         <Terminal className="h-8 w-8 text-slate-700 animate-pulse animate-bounce" />
-                        <span>Inbound server endpoint listening for webhook pulses... Click "Dispatch" to ignite.</span>
+                        <span>
+                          Inbound server endpoint listening for webhook pulses... Click "Dispatch"
+                          to ignite.
+                        </span>
                       </div>
                     ) : (
                       testWebhookLogs.map((log, idx) => (
-                        <div key={idx} className="border-b border-white/5 pb-1 last:border-b-0 leading-relaxed font-light">
+                        <div
+                          key={idx}
+                          className="border-b border-white/5 pb-1 last:border-b-0 leading-relaxed font-light"
+                        >
                           {log}
                         </div>
                       ))
@@ -1065,45 +1203,53 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   </div>
                 ) : (
                   <div className="bg-[#090d16] border border-white/5 rounded-2xl p-4 font-mono text-[10px] text-teal-300 h-[260px] overflow-y-auto shadow-inner select-all whitespace-pre leading-relaxed scrollbar-thin">
-                    {JSON.stringify({
-                      object: "whatsapp_business_account",
-                      entry: [
-                        {
-                          id: "wa_biz_acc_908",
-                          changes: [
-                            {
-                              value: {
-                                messaging_product: "whatsapp",
-                                metadata: {
-                                  display_phone_number: "+1(800)555-0199",
-                                  phone_number_id: "phone_id_992"
+                    {JSON.stringify(
+                      {
+                        object: 'whatsapp_business_account',
+                        entry: [
+                          {
+                            id: 'wa_biz_acc_908',
+                            changes: [
+                              {
+                                value: {
+                                  messaging_product: 'whatsapp',
+                                  metadata: {
+                                    display_phone_number: '+1(800)555-0199',
+                                    phone_number_id: 'phone_id_992',
+                                  },
+                                  contacts: [
+                                    {
+                                      profile: {
+                                        name: testWebhookSenderName,
+                                      },
+                                      wa_id:
+                                        testWebhookSenderPhone.replace(/[^0-9]/g, '') ||
+                                        '13219028800',
+                                    },
+                                  ],
+                                  messages: [
+                                    {
+                                      from:
+                                        testWebhookSenderPhone.replace(/[^0-9]/g, '') ||
+                                        '13219028800',
+                                      id: 'wamid.HBgLMTU1NTU1NTU1NTUSFggMRENEQ0U0RDUzOTg4RjU4RjVBAA==',
+                                      timestamp: Math.floor(Date.now() / 1000).toString(),
+                                      text: {
+                                        body: testWebhookMessage,
+                                      },
+                                      type: 'text',
+                                    },
+                                  ],
                                 },
-                                contacts: [
-                                  {
-                                    profile: {
-                                      name: testWebhookSenderName
-                                    },
-                                    wa_id: testWebhookSenderPhone.replace(/[^0-9]/g, '') || "13219028800"
-                                  }
-                                ],
-                                messages: [
-                                  {
-                                    from: testWebhookSenderPhone.replace(/[^0-9]/g, '') || "13219028800",
-                                    id: "wamid.HBgLMTU1NTU1NTU1NTUSFggMRENEQ0U0RDUzOTg4RjU4RjVBAA==",
-                                    timestamp: Math.floor(Date.now() / 1000).toString(),
-                                    text: {
-                                      body: testWebhookMessage
-                                    },
-                                    type: "text"
-                                  }
-                                ]
+                                field: 'messages',
                               },
-                              field: "messages"
-                            }
-                          ]
-                        }
-                      ]
-                    }, null, 2)}
+                            ],
+                          },
+                        ],
+                      },
+                      null,
+                      2
+                    )}
                   </div>
                 )}
               </div>
@@ -1112,21 +1258,28 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
             {/* Left Column: Form Settings (7 cols) */}
-            <form onSubmit={handleSubmitWhatsApp} className="lg:col-span-7 bg-[#080b12] border border-white/5 p-6 rounded-3xl space-y-5 shadow-2xl relative overflow-hidden text-slate-300">
+            <form
+              onSubmit={handleSubmitWhatsApp}
+              className="lg:col-span-7 bg-[#080b12] border border-white/5 p-6 rounded-3xl space-y-5 shadow-2xl relative overflow-hidden text-slate-300"
+            >
               <div className="absolute top-0 right-0 w-44 h-44 bg-blue-500/3 rounded-full blur-3xl pointer-events-none"></div>
-              
+
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                   ⚙️ Integration Credentials Form
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Fill in your Meta Cloud Webhook and Access variables below. These will build the channel handshake mapping.
+                  Fill in your Meta Cloud Webhook and Access variables below. These will build the
+                  channel handshake mapping.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="wa-phone-input" className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5">
+                  <label
+                    htmlFor="wa-phone-input"
+                    className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5"
+                  >
                     <Phone className="h-3.5 w-3.5 text-blue-400" />
                     <span>WhatsApp Business Phone Number (E.164):</span>
                   </label>
@@ -1135,15 +1288,20 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     type="text"
                     required
                     value={waPhone}
-                    onChange={(e) => setWaPhone(e.target.value)}
+                    onChange={e => setWaPhone(e.target.value)}
                     placeholder="e.g., +1 (555) 321-7222"
                     className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all"
                   />
-                  <span className="text-[10px] text-slate-500 block">The primary WhatsApp contact number displayed to consumers globally.</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    The primary WhatsApp contact number displayed to consumers globally.
+                  </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="wa-sid-input" className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5">
+                  <label
+                    htmlFor="wa-sid-input"
+                    className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5"
+                  >
                     <Settings className="h-3.5 w-3.5 text-blue-400" />
                     <span>Meta Phone Number ID (SID):</span>
                   </label>
@@ -1153,26 +1311,32 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     required
                     value={userRole === 'support' ? '••••••••••••••••' : waSid}
                     disabled={userRole === 'support'}
-                    onChange={(e) => setWaSid(e.target.value)}
+                    onChange={e => setWaSid(e.target.value)}
                     placeholder="e.g., phone_3217222_prod"
                     className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                  <span className="text-[10px] text-slate-500 block">Copy this ID directly from the WhatsApp Technical Setup pane on Facebook Developers.</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    Copy this ID directly from the WhatsApp Technical Setup pane on Facebook
+                    Developers.
+                  </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="wa-token-input" className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5">
+                  <label
+                    htmlFor="wa-token-input"
+                    className="text-xs font-semibold text-slate-400 font-mono flex items-center gap-1.5"
+                  >
                     <AlertCircle className="h-3.5 w-3.5 text-blue-400" />
                     <span>Meta GraphQL Permanent System Token:</span>
                   </label>
                   <div className="relative">
                     <input
                       id="wa-token-input"
-                      type={waShowToken ? "text" : "password"}
+                      type={waShowToken ? 'text' : 'password'}
                       required
                       value={userRole === 'support' ? '••••••••••••••••' : waToken}
                       disabled={userRole === 'support'}
-                      onChange={(e) => setWaToken(e.target.value)}
+                      onChange={e => setWaToken(e.target.value)}
                       placeholder="EAAGb3v...218Xv7M"
                       className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-16 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     />
@@ -1181,26 +1345,38 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => setWaShowToken(!waShowToken)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 text-[10px] rounded font-mono border border-white/5 cursor-pointer select-none"
                     >
-                      {waShowToken ? "HIDE" : "SHOW"}
+                      {waShowToken ? 'HIDE' : 'SHOW'}
                     </button>
                   </div>
-                  <span className="text-[10px] text-slate-500 block">System Access Token with "whatsapp_business_messaging" and "whatsapp_business_management" permissions.</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    System Access Token with "whatsapp_business_messaging" and
+                    "whatsapp_business_management" permissions.
+                  </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="wa-status-select" className="text-xs font-semibold text-slate-400 font-mono">
+                  <label
+                    htmlFor="wa-status-select"
+                    className="text-xs font-semibold text-slate-400 font-mono"
+                  >
                     Simulated Handshake Status & Credentials Verification:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       id="wa-status-select"
                       value={waStatus}
-                      onChange={(e) => setWaStatus(e.target.value as any)}
+                      onChange={e => setWaStatus(e.target.value as any)}
                       className="flex-1 min-w-0 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
                     >
-                      <option value="connected" className="bg-[#0d121d]">Connected & Active (Traffic Routing Live)</option>
-                      <option value="pending_verification" className="bg-[#0d121d]">Pending External Webhooks Verification</option>
-                      <option value="disconnected" className="bg-[#0d121d]">Disconnected / Paused Integration</option>
+                      <option value="connected" className="bg-[#0d121d]">
+                        Connected & Active (Traffic Routing Live)
+                      </option>
+                      <option value="pending_verification" className="bg-[#0d121d]">
+                        Pending External Webhooks Verification
+                      </option>
+                      <option value="disconnected" className="bg-[#0d121d]">
+                        Disconnected / Paused Integration
+                      </option>
                     </select>
 
                     <button
@@ -1224,11 +1400,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     </button>
                   </div>
                   {connectionFeedback && (
-                    <div className={`p-3 rounded-xl border text-[11px] font-mono leading-relaxed transition-all duration-300 ${
-                      connectionFeedback.type === 'success'
-                        ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
-                        : 'border-red-500/30 bg-red-500/5 text-red-400'
-                    }`}>
+                    <div
+                      className={`p-3 rounded-xl border text-[11px] font-mono leading-relaxed transition-all duration-300 ${
+                        connectionFeedback.type === 'success'
+                          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
+                          : 'border-red-500/30 bg-red-500/5 text-red-400'
+                      }`}
+                    >
                       {connectionFeedback.text}
                     </div>
                   )}
@@ -1312,9 +1490,12 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <CheckCircle className="h-5 w-5 text-blue-400 shrink-0" />
               <div>
-                <h4 className="text-white text-xs font-bold font-sans">Messenger API Credentials Preserved!</h4>
+                <h4 className="text-white text-xs font-bold font-sans">
+                  Messenger API Credentials Preserved!
+                </h4>
                 <p className="text-[10.5px] text-slate-400 font-mono mt-0.5">
-                  Facebook Graph webhook endpoints are listening under verify token "verify_token_omnibot_{selectedTenant.id}".
+                  Facebook Graph webhook endpoints are listening under verify token
+                  "verify_token_omnibot_{selectedTenant.id}".
                 </p>
               </div>
             </div>
@@ -1323,42 +1504,58 @@ export const WhatsAppIntegrationTab: React.FC = () => {
           {/* Top Grid: Config parameters and Sandbox manager */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Page Config Form */}
-            <form onSubmit={handleUpdateMessengerIntegration} className="lg:col-span-6 bg-[#080b12] border border-white/5 p-5 rounded-2xl space-y-4 relative overflow-hidden shadow-2xl">
+            <form
+              onSubmit={handleUpdateMessengerIntegration}
+              className="lg:col-span-6 bg-[#080b12] border border-white/5 p-5 rounded-2xl space-y-4 relative overflow-hidden shadow-2xl"
+            >
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#3b82f6]/5 rounded-full blur-2xl pointer-events-none"></div>
-              
+
               <div className="space-y-1">
                 <h3 className="text-white text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-2">
-                  <span className="p-1.5 bg-[#3b82f6]/10 text-[#3b82f6] rounded-lg border border-[#3b82f6]/20">🔵</span>
+                  <span className="p-1.5 bg-[#3b82f6]/10 text-[#3b82f6] rounded-lg border border-[#3b82f6]/20">
+                    🔵
+                  </span>
                   <span>Messenger Graph API Parameters</span>
                 </h3>
                 <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-                  Link your Facebook Business Page ID and Access Token to route inbound requests through the selected specialized agent.
+                  Link your Facebook Business Page ID and Access Token to route inbound requests
+                  through the selected specialized agent.
                 </p>
               </div>
 
               <div className="space-y-3 pt-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 font-mono" htmlFor="messenger-page-id-input">Facebook Page ID:</label>
+                  <label
+                    className="text-xs font-semibold text-slate-400 font-mono"
+                    htmlFor="messenger-page-id-input"
+                  >
+                    Facebook Page ID:
+                  </label>
                   <input
                     id="messenger-page-id-input"
                     type="text"
                     value={userRole === 'support' ? '••••••••••••••••' : messengerPageId}
                     disabled={userRole === 'support'}
-                    onChange={(e) => setMessengerPageId(e.target.value)}
+                    onChange={e => setMessengerPageId(e.target.value)}
                     placeholder="E.g., 108392182039281"
                     className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 font-mono" htmlFor="messenger-token-input">Page Access Token:</label>
+                  <label
+                    className="text-xs font-semibold text-slate-400 font-mono"
+                    htmlFor="messenger-token-input"
+                  >
+                    Page Access Token:
+                  </label>
                   <div className="relative">
                     <input
                       id="messenger-token-input"
                       type={messengerShowToken ? 'text' : 'password'}
                       value={userRole === 'support' ? '••••••••••••••••' : messengerToken}
                       disabled={userRole === 'support'}
-                      onChange={(e) => setMessengerToken(e.target.value)}
+                      onChange={e => setMessengerToken(e.target.value)}
                       placeholder="EAArY..."
                       className="w-full bg-[#0d121d] text-slate-100 text-xs pl-3 pr-10 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                     />
@@ -1374,7 +1571,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
                 {/* Public callback endpoints information */}
                 <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-2 mt-4 text-[10.5px]">
-                  <span className="text-blue-400 font-bold font-mono tracking-wider block uppercase text-[9px]">💡 Meta Developer Portal Webhook Callback:</span>
+                  <span className="text-blue-400 font-bold font-mono tracking-wider block uppercase text-[9px]">
+                    💡 Meta Developer Portal Webhook Callback:
+                  </span>
                   <div className="font-mono text-slate-350 space-y-1 select-all">
                     <p className="flex justify-between border-b border-white/5 pb-1">
                       <span>Callback URL:</span>
@@ -1389,19 +1588,28 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
                 {/* Connection Status Selector & Test Connection button */}
                 <div className="space-y-1.5 pt-2">
-                  <label htmlFor="messenger-status-select" className="text-xs font-semibold text-slate-400 font-mono">
+                  <label
+                    htmlFor="messenger-status-select"
+                    className="text-xs font-semibold text-slate-400 font-mono"
+                  >
                     Simulated Handshake Status & Credentials Verification:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       id="messenger-status-select"
                       value={messengerStatus}
-                      onChange={(e) => setMessengerStatus(e.target.value as any)}
+                      onChange={e => setMessengerStatus(e.target.value as any)}
                       className="flex-1 min-w-0 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
                     >
-                      <option value="connected" className="bg-[#0d121d]">Connected & Active (Traffic Routing Live)</option>
-                      <option value="pending_verification" className="bg-[#0d121d]">Pending External Webhooks Verification</option>
-                      <option value="disconnected" className="bg-[#0d121d]">Disconnected / Paused Integration</option>
+                      <option value="connected" className="bg-[#0d121d]">
+                        Connected & Active (Traffic Routing Live)
+                      </option>
+                      <option value="pending_verification" className="bg-[#0d121d]">
+                        Pending External Webhooks Verification
+                      </option>
+                      <option value="disconnected" className="bg-[#0d121d]">
+                        Disconnected / Paused Integration
+                      </option>
                     </select>
 
                     <button
@@ -1424,11 +1632,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     </button>
                   </div>
                   {messengerConnectionFeedback && (
-                    <div className={`p-3 rounded-xl border text-[11px] font-mono leading-relaxed transition-all duration-300 ${
-                      messengerConnectionFeedback.type === 'success'
-                        ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
-                        : 'border-red-500/30 bg-red-500/5 text-red-400'
-                    }`}>
+                    <div
+                      className={`p-3 rounded-xl border text-[11px] font-mono leading-relaxed transition-all duration-300 ${
+                        messengerConnectionFeedback.type === 'success'
+                          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
+                          : 'border-red-500/30 bg-red-500/5 text-red-400'
+                      }`}
+                    >
                       {messengerConnectionFeedback.text}
                     </div>
                   )}
@@ -1444,11 +1654,14 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       type="checkbox"
                       id="messenger-voice-enabled-toggle"
                       checked={messengerVoiceEnabled}
-                      onChange={(e) => setMessengerVoiceEnabled(e.target.checked)}
+                      onChange={e => setMessengerVoiceEnabled(e.target.checked)}
                       className="bg-slate-850 text-blue-500 rounded border-slate-700 focus:ring-blue-500 cursor-pointer h-4 w-4"
                     />
                     <span className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
-                      🎤 {messengerVoiceEnabled ? 'Voice Notes (Audio Playback & Audio Transcription) Active' : 'Standard Webhook Text Message Only'}
+                      🎤{' '}
+                      {messengerVoiceEnabled
+                        ? 'Voice Notes (Audio Playback & Audio Transcription) Active'
+                        : 'Standard Webhook Text Message Only'}
                     </span>
                   </div>
                 </div>
@@ -1477,20 +1690,24 @@ export const WhatsAppIntegrationTab: React.FC = () => {
             </form>
 
             {/* Facebook Sandbox profile verifier */}
-            <div className={`lg:col-span-6 p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
-              messengerSandboxActive 
-                ? 'border-blue-500/30 bg-blue-500/[0.01] shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-                : 'border-white/5 bg-[#080b12]'
-            }`}>
+            <div
+              className={`lg:col-span-6 p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+                messengerSandboxActive
+                  ? 'border-blue-500/30 bg-blue-500/[0.01] shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                  : 'border-white/5 bg-[#080b12]'
+              }`}
+            >
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
 
               <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-3.5 mb-3.5">
                 <div className="space-y-0.5">
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono tracking-wider ${
-                    messengerSandboxActive 
-                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse' 
-                      : 'bg-slate-800 text-slate-400 border border-white/5'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono tracking-wider ${
+                      messengerSandboxActive
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse'
+                        : 'bg-slate-800 text-slate-400 border border-white/5'
+                    }`}
+                  >
                     {messengerSandboxActive ? '🎯 SANDBOX LIVE' : '🔌 PRODUCTION'}
                   </span>
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono block mt-1">
@@ -1513,8 +1730,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className={`space-y-3 transition-opacity duration-300 ${messengerSandboxActive ? 'opacity-100' : 'opacity-40 pointer-events-none select-none'}`}>
-                  
+                <div
+                  className={`space-y-3 transition-opacity duration-300 ${messengerSandboxActive ? 'opacity-100' : 'opacity-40 pointer-events-none select-none'}`}
+                >
                   {messengerSandboxError && (
                     <div className="p-3 text-[11px] bg-red-500/10 border border-red-500/25 text-red-400 rounded-xl flex items-center gap-2 font-mono">
                       <AlertCircle className="h-4 w-4 shrink-0" />
@@ -1525,14 +1743,15 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   {messengerSandboxStep === 'idle' && (
                     <form onSubmit={handleRequestMessengerSandboxOTP} className="space-y-2">
                       <p className="text-[11px] text-slate-400 leading-normal">
-                        Map standard client profiles (PSIDs) to receive developer telemetry. Register a test handle below.
+                        Map standard client profiles (PSIDs) to receive developer telemetry.
+                        Register a test handle below.
                       </p>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           disabled={!messengerSandboxActive}
                           value={messengerSandboxInputNumber}
-                          onChange={(e) => setMessengerSandboxInputNumber(e.target.value)}
+                          onChange={e => setMessengerSandboxInputNumber(e.target.value)}
                           placeholder="E.g., maria_sharapova or psid_9281742"
                           className="flex-1 bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono disabled:opacity-50"
                         />
@@ -1550,7 +1769,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   {messengerSandboxStep === 'sending' && (
                     <div className="p-6 bg-white/[0.01] border border-white/5 rounded-xl text-center space-y-2">
                       <RefreshCw className="h-5 w-5 mx-auto animate-spin text-blue-500" />
-                      <p className="text-[11px] text-slate-350 font-mono">Simulating Meta Graph validation handshake packet...</p>
+                      <p className="text-[11px] text-slate-350 font-mono">
+                        Simulating Meta Graph validation handshake packet...
+                      </p>
                     </div>
                   )}
 
@@ -1560,22 +1781,36 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       <div className="bg-[#0b0f19] border border-blue-500/25 p-3 rounded-xl space-y-2 relative shadow-inner">
                         <div className="absolute top-1.5 right-2 flex items-center gap-1">
                           <span className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-ping"></span>
-                          <span className="text-[8px] text-blue-400 font-mono font-bold">DEV_PORTAL_NOTIF</span>
+                          <span className="text-[8px] text-blue-400 font-mono font-bold">
+                            DEV_PORTAL_NOTIF
+                          </span>
                         </div>
-                        <span className="text-[10px] text-amber-400 font-mono font-bold flex items-center gap-1">💬 SIMULATED USER NOTIFICATION</span>
+                        <span className="text-[10px] text-amber-400 font-mono font-bold flex items-center gap-1">
+                          💬 SIMULATED USER NOTIFICATION
+                        </span>
                         <p className="text-[11px] text-slate-300 font-mono border-l-2 border-blue-500/40 pl-2 py-1 leading-relaxed select-all">
-                          "[Meta Developers] Verify simulated sandbox user <span className="text-white font-black">{messengerSandboxInputNumber}</span> for Zenith using code: <span className="font-bold text-yellow-355 bg-white/10 px-1.5 py-0.5 rounded select-all text-yellow-300">{messengerSandboxSentCode}</span>"
+                          "[Meta Developers] Verify simulated sandbox user{' '}
+                          <span className="text-white font-black">
+                            {messengerSandboxInputNumber}
+                          </span>{' '}
+                          for Zenith using code:{' '}
+                          <span className="font-bold text-yellow-355 bg-white/10 px-1.5 py-0.5 rounded select-all text-yellow-300">
+                            {messengerSandboxSentCode}
+                          </span>
+                          "
                         </p>
                       </div>
 
                       <form onSubmit={handleVerifyMessengerSandboxOTP} className="space-y-2">
-                        <label className="text-[10.5px] text-slate-400 font-semibold font-mono block">Enter 6-digit confirmation key:</label>
+                        <label className="text-[10.5px] text-slate-400 font-semibold font-mono block">
+                          Enter 6-digit confirmation key:
+                        </label>
                         <div className="flex gap-2">
                           <input
                             type="text"
                             required
                             value={messengerSandboxCode}
-                            onChange={(e) => setMessengerSandboxCode(e.target.value)}
+                            onChange={e => setMessengerSandboxCode(e.target.value)}
                             placeholder="Enter 6-digit code..."
                             className="flex-1 bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono text-center tracking-widest font-bold"
                           />
@@ -1604,7 +1839,11 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/25 rounded-xl flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
                       <p className="text-[11px] text-slate-300 font-mono">
-                        Simulated account <span className="text-emerald-400 font-bold">{messengerSandboxInputNumber}</span> successfully mapped to CRM sandbox!
+                        Simulated account{' '}
+                        <span className="text-emerald-400 font-bold">
+                          {messengerSandboxInputNumber}
+                        </span>{' '}
+                        successfully mapped to CRM sandbox!
                       </p>
                     </div>
                   )}
@@ -1612,7 +1851,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
                 {/* List of active registered sandbox profiles */}
                 <div className="space-y-2">
-                  <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-450 block">AUTHORIZED SANDBOX PROFILES ({messengerSandboxNumbers.length})</span>
+                  <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-450 block">
+                    AUTHORIZED SANDBOX PROFILES ({messengerSandboxNumbers.length})
+                  </span>
                   {!messengerSandboxActive ? (
                     <div className="text-center p-4 bg-white/[0.01] border border-dashed border-white/5 rounded-xl text-slate-500 text-[11px]">
                       Turn on Sandbox mode above to register & test custom profiles.
@@ -1624,7 +1865,10 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {messengerSandboxNumbers.map((userVal, idx) => (
-                        <div key={idx} className="p-2.5 bg-[#0d121d] border border-white/5 rounded-xl flex items-center justify-between text-xs font-mono">
+                        <div
+                          key={idx}
+                          className="p-2.5 bg-[#0d121d] border border-white/5 rounded-xl flex items-center justify-between text-xs font-mono"
+                        >
                           <span className="text-slate-300 flex items-center gap-1.5 truncate">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
                             {userVal}
@@ -1659,7 +1903,8 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Configure inbound customer questions to process specialized roles (FAQ Support, Lead Capture, & Sales Booker) via the Gemini AI model.
+                  Configure inbound customer questions to process specialized roles (FAQ Support,
+                  Lead Capture, & Sales Booker) via the Gemini AI model.
                 </p>
               </div>
 
@@ -1675,19 +1920,25 @@ export const WhatsAppIntegrationTab: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
               {/* Left: Interactive Inbound Request simulator form (4 cols) */}
-              <form onSubmit={handleTriggerMessengerWebhook} className="lg:col-span-4 space-y-4 font-mono text-xs">
+              <form
+                onSubmit={handleTriggerMessengerWebhook}
+                className="lg:col-span-4 space-y-4 font-mono text-xs"
+              >
                 {/* Quick-Load Webhook Scenarios */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">Quick-Load Webhook Schemas:</span>
+                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
+                    Quick-Load Webhook Schemas:
+                  </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
                         setTestMessengerWebhookSenderName('Elon Musk');
                         setTestMessengerWebhookSenderPSID('psid_elon_mars_99');
-                        setTestMessengerWebhookMessage('Hi, please register my email elon.mars@spacex.com as a Qualified Lead. Can you consult your knowledge base for rates?');
+                        setTestMessengerWebhookMessage(
+                          'Hi, please register my email elon.mars@spacex.com as a Qualified Lead. Can you consult your knowledge base for rates?'
+                        );
                       }}
                       className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-[9px] text-slate-350 rounded-lg cursor-pointer transition-colors text-left truncate font-mono"
                       title="Elon Lead Schema"
@@ -1699,7 +1950,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => {
                         setTestMessengerWebhookSenderName('Alexander the Great');
                         setTestMessengerWebhookSenderPSID('psid_alexander_356');
-                        setTestMessengerWebhookMessage('Greetings! Register alexander.conqueror@ancientmacedon.com for my checkup appointment please!');
+                        setTestMessengerWebhookMessage(
+                          'Greetings! Register alexander.conqueror@ancientmacedon.com for my checkup appointment please!'
+                        );
                       }}
                       className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-[9px] text-slate-350 rounded-lg cursor-pointer transition-colors text-left truncate font-mono"
                       title="Alexander Lead Schema"
@@ -1711,7 +1964,9 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       onClick={() => {
                         setTestMessengerWebhookSenderName('Belhassen Tunis');
                         setTestMessengerWebhookSenderPSID('psid_belhassen_tn');
-                        setTestMessengerWebhookMessage('bellehi n7eb ntasel bikom emaili belhassen@esprit.tn rdv bahi thulatha!');
+                        setTestMessengerWebhookMessage(
+                          'bellehi n7eb ntasel bikom emaili belhassen@esprit.tn rdv bahi thulatha!'
+                        );
                       }}
                       className="px-2 py-1.5 bg-white/5 hover:bg-white/10 text-[9px] text-slate-355 rounded-lg cursor-pointer transition-colors text-left truncate font-mono"
                       title="Tunis Derja Scenario"
@@ -1723,41 +1978,57 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <label className="text-[10.5px] font-bold text-slate-400" htmlFor="messenger-tester-sender-name">Simulated Sender Profile Name:</label>
+                    <label
+                      className="text-[10.5px] font-bold text-slate-400"
+                      htmlFor="messenger-tester-sender-name"
+                    >
+                      Simulated Sender Profile Name:
+                    </label>
                     <input
                       id="messenger-tester-sender-name"
                       type="text"
                       value={testMessengerWebhookSenderName}
-                      onChange={(e) => setTestMessengerWebhookSenderName(e.target.value)}
+                      onChange={e => setTestMessengerWebhookSenderName(e.target.value)}
                       placeholder="E.g., Maria Sharapova"
                       className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10.5px] font-bold text-slate-400 font-mono" htmlFor="messenger-tester-sender-psid">Simulated Profile ID (PSID):</label>
+                    <label
+                      className="text-[10.5px] font-bold text-slate-400 font-mono"
+                      htmlFor="messenger-tester-sender-psid"
+                    >
+                      Simulated Profile ID (PSID):
+                    </label>
                     <select
                       id="messenger-tester-sender-psid"
                       value={testMessengerWebhookSenderPSID}
-                      onChange={(e) => setTestMessengerWebhookSenderPSID(e.target.value)}
+                      onChange={e => setTestMessengerWebhookSenderPSID(e.target.value)}
                       className="w-full bg-[#0d121d] text-slate-100 text-xs px-2.5 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                     >
                       {messengerSandboxNumbers.length > 0 ? (
                         messengerSandboxNumbers.map((userVal, uidx) => (
-                          <option key={uidx} value={userVal}>Matched Selector: {userVal}</option>
+                          <option key={uidx} value={userVal}>
+                            Matched Selector: {userVal}
+                          </option>
                         ))
                       ) : (
                         <option value="psid_9281742">Temporary Context User (psid_9281742)</option>
                       )}
                       <option value="psid_fb_tester_881">New FB Tester (psid_fb_tester_881)</option>
-                      <option value="psid_fb_tester_219">Support Lead Account (psid_fb_tester_219)</option>
+                      <option value="psid_fb_tester_219">
+                        Support Lead Account (psid_fb_tester_219)
+                      </option>
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10.5px] font-bold text-blue-400 font-mono block">⚡ Omni-AI Specialized Role templates:</label>
+                    <label className="text-[10.5px] font-bold text-blue-400 font-mono block">
+                      ⚡ Omni-AI Specialized Role templates:
+                    </label>
                     <select
-                      onChange={(e) => {
+                      onChange={e => {
                         if (e.target.value) {
                           setTestMessengerWebhookMessage(e.target.value);
                         }
@@ -1767,26 +2038,47 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       <option value="">-- Click to choose sample conversation class --</option>
                       {selectedTenant.industry === 'fitness' ? (
                         <>
-                          <option value="Hi, I want to book a private personal coach assessment for tomorrow at 10 AM. Can we schedule? My email is maria@fitness.com">🗓️ Meeting Booker: Fitness coach appointment</option>
-                          <option value="What are the monthly fees for the premium crossfit weightlifting and can I buy workout retail shakes? My name is Maria.">🛍️ Retail Sales: Subscription rates & shake checkout</option>
-                          <option value="An error occurred on the check-in card reader today, help me resolve subscription login.">💬 Customer Support: Check-in hardware assistance</option>
-                          <option value="Do you offer a student discount rate if I bring a group of 3 friends?">🌸 FAQ Guide: Group & student rates</option>
+                          <option value="Hi, I want to book a private personal coach assessment for tomorrow at 10 AM. Can we schedule? My email is maria@fitness.com">
+                            🗓️ Meeting Booker: Fitness coach appointment
+                          </option>
+                          <option value="What are the monthly fees for the premium crossfit weightlifting and can I buy workout retail shakes? My name is Maria.">
+                            🛍️ Retail Sales: Subscription rates & shake checkout
+                          </option>
+                          <option value="An error occurred on the check-in card reader today, help me resolve subscription login.">
+                            💬 Customer Support: Check-in hardware assistance
+                          </option>
+                          <option value="Do you offer a student discount rate if I bring a group of 3 friends?">
+                            🌸 FAQ Guide: Group & student rates
+                          </option>
                         </>
                       ) : (
                         <>
-                          <option value="Hi, I am trying to book a luxury catering buffet for a corporate event of 45 guests next Friday. Can we schedule? My email is catering@gourmet.co">🗓️ Meeting Booker: Catering buffet appointment</option>
-                          <option value="What premium retail merchandise or custom lunch trays are available? My name is Maria.">🛍️ Retail Sales: Menu trays & merchandise checkout</option>
-                          <option value="There is a mistake on the total luxury checkout balance, whom should I speak to?">💬 Customer Support: Invoicing reconciliation</option>
-                          <option value="Do you have organic, vegan, or nut-free options on the catering sheet?">🌸 FAQ Guide: Menu substitutions & allergies</option>
+                          <option value="Hi, I am trying to book a luxury catering buffet for a corporate event of 45 guests next Friday. Can we schedule? My email is catering@gourmet.co">
+                            🗓️ Meeting Booker: Catering buffet appointment
+                          </option>
+                          <option value="What premium retail merchandise or custom lunch trays are available? My name is Maria.">
+                            🛍️ Retail Sales: Menu trays & merchandise checkout
+                          </option>
+                          <option value="There is a mistake on the total luxury checkout balance, whom should I speak to?">
+                            💬 Customer Support: Invoicing reconciliation
+                          </option>
+                          <option value="Do you have organic, vegan, or nut-free options on the catering sheet?">
+                            🌸 FAQ Guide: Menu substitutions & allergies
+                          </option>
                         </>
                       )}
-                      <option value="Bahi, n7eb nasal 3la aswem esh'har, chneya el offers eli 3andkom tawa?">🇹🇳 Tunisian Derja dialect inquiry</option>
+                      <option value="Bahi, n7eb nasal 3la aswem esh'har, chneya el offers eli 3andkom tawa?">
+                        🇹🇳 Tunisian Derja dialect inquiry
+                      </option>
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10.5px] font-bold text-slate-400 font-mono flex items-center gap-1" htmlFor="messenger-tester-body">
+                      <label
+                        className="text-[10.5px] font-bold text-slate-400 font-mono flex items-center gap-1"
+                        htmlFor="messenger-tester-body"
+                      >
                         <span>Simulated Customer Text Body:</span>
                         <button
                           type="button"
@@ -1796,18 +2088,24 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                               ? 'bg-rose-500 text-white border-rose-455 animate-pulse'
                               : 'bg-white/5 text-slate-400 hover:text-white border-white/5 hover:bg-white/10'
                           }`}
-                          title={isMessengerChatMicActive ? "Stop listening" : "Speak to dictate text (Voice transcription input)"}
+                          title={
+                            isMessengerChatMicActive
+                              ? 'Stop listening'
+                              : 'Speak to dictate text (Voice transcription input)'
+                          }
                         >
                           <Mic className="h-3 w-3" />
                         </button>
                       </label>
-                      <span className="text-[9.5px] font-mono text-slate-500">Facebook Graph String</span>
+                      <span className="text-[9.5px] font-mono text-slate-500">
+                        Facebook Graph String
+                      </span>
                     </div>
                     <textarea
                       id="messenger-tester-body"
                       rows={3}
                       value={testMessengerWebhookMessage}
-                      onChange={(e) => setTestMessengerWebhookMessage(e.target.value)}
+                      onChange={e => setTestMessengerWebhookMessage(e.target.value)}
                       placeholder="Write simulated incoming text..."
                       className="w-full bg-[#0d121d] text-slate-100 text-xs px-3 py-2 border border-white/5 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-mono leading-relaxed resize-none"
                     />
@@ -1817,10 +2115,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                         type="checkbox"
                         id="messenger-input-voice-note-checkbox"
                         checked={messengerInputIsVoiceNote}
-                        onChange={(e) => setMessengerInputIsVoiceNote(e.target.checked)}
+                        onChange={e => setMessengerInputIsVoiceNote(e.target.checked)}
                         className="bg-[#0b0f19] text-blue-500 rounded border-white/10 focus:ring-blue-500 cursor-pointer h-3.5 w-3.5"
                       />
-                      <label htmlFor="messenger-input-voice-note-checkbox" className="text-[10px] font-mono text-slate-300 cursor-pointer flex items-center gap-1 bg-transparent">
+                      <label
+                        htmlFor="messenger-input-voice-note-checkbox"
+                        className="text-[10px] font-mono text-slate-300 cursor-pointer flex items-center gap-1 bg-transparent"
+                      >
                         🎙️ Send as Voice Note (audio attachment payload)
                       </label>
                     </div>
@@ -1849,16 +2150,25 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
               {/* Middle: API JSON handshakes logs output Terminal (3 cols) */}
               <div className="lg:col-span-4 space-y-1.5">
-                <span className="text-[10.5px] font-mono font-bold text-slate-450 uppercase tracking-widest block">Simulation Execution Logs:</span>
+                <span className="text-[10.5px] font-mono font-bold text-slate-450 uppercase tracking-widest block">
+                  Simulation Execution Logs:
+                </span>
                 <div className="bg-[#04060a] border border-white/5 rounded-xl px-3 py-3 h-64 overflow-y-auto text-[10px] font-mono text-[#38bdf8] space-y-2.5 shadow-inner scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                   {testMessengerWebhookLogs.length === 0 ? (
                     <div className="text-slate-605 h-full flex flex-col justify-center items-center text-center">
                       <span>📟 TELEMETRY SYSTEM IDLE</span>
-                      <span className="text-[9px] mt-1 text-slate-500">Submit the trigger form to initiate Graph API pipeline outputs.</span>
+                      <span className="text-[9px] mt-1 text-slate-500">
+                        Submit the trigger form to initiate Graph API pipeline outputs.
+                      </span>
                     </div>
                   ) : (
                     testMessengerWebhookLogs.map((logLine, lidx) => (
-                      <p key={lidx} className="leading-relaxed border-b border-white/2 pb-1 last:border-0">{logLine}</p>
+                      <p
+                        key={lidx}
+                        className="leading-relaxed border-b border-white/2 pb-1 last:border-0"
+                      >
+                        {logLine}
+                      </p>
                     ))
                   )}
                   {isTestingMessengerWebhook && (
@@ -1872,12 +2182,16 @@ export const WhatsAppIntegrationTab: React.FC = () => {
 
               {/* Right: Simulated Messenger Smartphone chat bubble list (4 cols) */}
               <div className="lg:col-span-4 space-y-1.5">
-                <span className="text-[10.5px] font-mono font-bold text-slate-455 uppercase tracking-wider block">🗣️ Simulated Conversation Stream:</span>
+                <span className="text-[10.5px] font-mono font-bold text-slate-455 uppercase tracking-wider block">
+                  🗣️ Simulated Conversation Stream:
+                </span>
                 <div className="bg-[#030509] border border-white/5 px-3 py-3 rounded-xl h-64 overflow-y-auto text-xs space-y-3 shadow-inner scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                   {testMessengerConversationsList.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-slate-650 font-mono text-center px-4">
                       <span>No active message exchange found.</span>
-                      <span className="text-[9.5px] mt-1">Submit the test webhook form to ignite the cycle.</span>
+                      <span className="text-[9.5px] mt-1">
+                        Submit the test webhook form to ignite the cycle.
+                      </span>
                     </div>
                   ) : (
                     testMessengerConversationsList.map((msg, index) => {
@@ -1904,16 +2218,23 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       };
 
                       return (
-                        <div key={index} className={`flex flex-col ${msg.sender === 'bot' ? 'items-start' : 'items-end'}`}>
-                          <div className={`px-2.5 py-1.5 rounded-xl max-w-[85%] ${
-                            msg.sender === 'bot' 
-                            ? 'bg-[#2563eb]/20 border border-blue-500/10 text-slate-100 shadow-[0_2px_8px_rgba(37,99,235,0.1)]' 
-                            : 'bg-[#1e293b] border border-white/5 text-slate-200'
-                          }`}>
+                        <div
+                          key={index}
+                          className={`flex flex-col ${msg.sender === 'bot' ? 'items-start' : 'items-end'}`}
+                        >
+                          <div
+                            className={`px-2.5 py-1.5 rounded-xl max-w-[85%] ${
+                              msg.sender === 'bot'
+                                ? 'bg-[#2563eb]/20 border border-blue-500/10 text-slate-100 shadow-[0_2px_8px_rgba(37,99,235,0.1)]'
+                                : 'bg-[#1e293b] border border-white/5 text-slate-200'
+                            }`}
+                          >
                             <div className="font-semibold text-[9px] opacity-60 font-mono mb-0.5 text-blue-400">
-                              {msg.sender === 'bot' ? selectedTenant.botName || 'Assistant' : testMessengerWebhookSenderName}
+                              {msg.sender === 'bot'
+                                ? selectedTenant.botName || 'Assistant'
+                                : testMessengerWebhookSenderName}
                             </div>
-                            
+
                             {msg.isAudio ? (
                               <div className="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-lg my-1 mx-0.5 min-w-[170px] border border-white/5 select-none font-mono">
                                 <button
@@ -1922,36 +2243,51 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                                   className={`p-1 text-white rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow active:scale-95 transition-all ${
                                     isPlaying ? 'bg-rose-500' : 'bg-blue-500 hover:bg-blue-600'
                                   }`}
-                                  title={isPlaying ? "Mute" : "Listen Playback"}
+                                  title={isPlaying ? 'Mute' : 'Listen Playback'}
                                 >
-                                  {isPlaying ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                                  {isPlaying ? (
+                                    <VolumeX className="h-3 w-3" />
+                                  ) : (
+                                    <Volume2 className="h-3 w-3" />
+                                  )}
                                 </button>
-                                
+
                                 <div className="flex-1 flex flex-col justify-center min-w-0">
                                   <div className="flex items-end gap-[1.5px] h-3.5 mb-0.5 pt-0.5">
-                                    {[1, 2, 3, 4, 3, 2, 3, 4, 5, 4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1].map((h, hIdx) => (
-                                      <span 
-                                        key={hIdx} 
+                                    {[
+                                      1, 2, 3, 4, 3, 2, 3, 4, 5, 4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1,
+                                    ].map((h, hIdx) => (
+                                      <span
+                                        key={hIdx}
                                         className={`w-[2px] rounded-full transition-all duration-300 ${
                                           isPlaying ? 'bg-blue-400 animate-pulse' : 'bg-slate-600'
                                         }`}
-                                        style={{ 
-                                          height: isPlaying ? `${Math.max(3, Math.min(14, h * (1 + Math.random() * 0.8)))}px` : `${h * 2}px` 
+                                        style={{
+                                          height: isPlaying
+                                            ? `${Math.max(3, Math.min(14, h * (1 + Math.random() * 0.8)))}px`
+                                            : `${h * 2}px`,
                                         }}
                                       />
                                     ))}
                                   </div>
-                                  <span className="text-[7.5px] text-slate-400 leading-none">🎙️ Voice Notes Audio</span>
+                                  <span className="text-[7.5px] text-slate-400 leading-none">
+                                    🎙️ Voice Notes Audio
+                                  </span>
                                 </div>
                               </div>
                             ) : null}
 
-                            <p className={`leading-snug text-[10.5px] select-all font-sans ${msg.isAudio ? 'italic text-slate-300 pt-0.5 border-t border-white/5' : ''}`}>
+                            <p
+                              className={`leading-snug text-[10.5px] select-all font-sans ${msg.isAudio ? 'italic text-slate-300 pt-0.5 border-t border-white/5' : ''}`}
+                            >
                               {msg.isAudio ? `"${msg.text}"` : msg.text}
                             </p>
                           </div>
                           <span className="text-[8px] text-slate-500 mt-0.5 px-1 font-mono">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(msg.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
                           </span>
                         </div>
                       );
@@ -1965,7 +2301,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
           {/* Twilio voice bridge dashboard */}
           <div className="p-6 rounded-3xl border border-indigo-500/20 bg-[#080d19]/80 shadow-[0_0_25px_rgba(99,102,241,0.15)] relative overflow-hidden space-y-6">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-            
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -1995,13 +2331,15 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 <div className="flex items-center justify-between p-3.5 bg-[#0c1222] border border-white/5 rounded-xl">
                   <div>
                     <span className="font-bold text-white block">Twilio Voice Active:</span>
-                    <span className="text-[10px] text-slate-500 block leading-tight pt-0.5 font-sans">Route incoming voice calls to Gemini.</span>
+                    <span className="text-[10px] text-slate-500 block leading-tight pt-0.5 font-sans">
+                      Route incoming voice calls to Gemini.
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       updateTenantFields({
-                        twilioVoiceActive: !selectedTenant.twilioVoiceActive
+                        twilioVoiceActive: !selectedTenant.twilioVoiceActive,
                       });
                     }}
                     className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
@@ -2015,12 +2353,14 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 block font-mono">Gemini Live Voice Selector:</label>
+                  <label className="text-xs font-semibold text-slate-400 block font-mono">
+                    Gemini Live Voice Selector:
+                  </label>
                   <select
                     value={selectedTenant.twilioVoiceName || 'Zephyr'}
-                    onChange={(e) => {
+                    onChange={e => {
                       updateTenantFields({
-                        twilioVoiceName: e.target.value
+                        twilioVoiceName: e.target.value,
                       });
                     }}
                     className="w-full bg-[#0c1222] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-indigo-500/40 rounded-xl outline-none focus:ring-1 focus:ring-indigo-500/50 font-sans cursor-pointer transition-all"
@@ -2047,7 +2387,8 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-500 block leading-tight pt-1">
-                    ⚡ Copy this URL and paste it under the "A Call Comes In" section of your Twilio Active Phone Number configurations.
+                    ⚡ Copy this URL and paste it under the "A Call Comes In" section of your Twilio
+                    Active Phone Number configurations.
                   </span>
                 </div>
               </div>
