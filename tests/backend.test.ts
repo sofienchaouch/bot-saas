@@ -9,6 +9,8 @@ import { app, cosineSimilarity, chunkText, encryptText, decryptText } from '../s
 import { readTenantsStore, writeTenantsStore, readConversationsStore, writeConversationsStore, _setMemTenant, _clearMemStore } from '../server/services/db';
 import { getRAGContext } from '../server/services/rag';
 import { logger } from '../server/lib/logger';
+import { isOverQuota } from '../server/services/quota';
+import { parseRobotsTxt, isPathDisallowed, validateUrlForSsrf } from '../server/services/crawler';
 
 describe('Backend Utilities Unit Tests', () => {
   describe('cosineSimilarity', () => {
@@ -449,7 +451,7 @@ describe('scheduler', () => {
   });
 });
 
-import { crawlQueue, outboundMessageQueue, webhookRetryQueue } from '../server/services/queue';
+import { crawlQueue, outboundMessageQueue } from '../server/services/queue';
 
 describe('BullMQ queue definitions', () => {
   it('exports crawlQueue with name "crawl"', () => {
@@ -458,10 +460,6 @@ describe('BullMQ queue definitions', () => {
 
   it('exports outboundMessageQueue with name "outbound-message"', () => {
     expect(outboundMessageQueue.name).toBe('outbound-message');
-  });
-
-  it('exports webhookRetryQueue with name "webhook-retry"', () => {
-    expect(webhookRetryQueue.name).toBe('webhook-retry');
   });
 });
 
@@ -505,5 +503,190 @@ describe('tenantRateLimiter', () => {
       .set('X-Test-Auth-Bypass', 'true');
     // Should not return 429
     expect(res.status).not.toBe(429);
+  });
+});
+
+describe('Phase 1 production fixes', () => {
+  afterEach(() => {
+    _clearMemStore();
+  });
+
+  describe('tenant field round-trip (memory store)', () => {
+    it('preserves ownerId, subscriptionTier, messageCount, autopilotEnabled', async () => {
+      _setMemTenant('rt-tenant', {
+        id: 'rt-tenant',
+        name: 'Round Trip Co',
+        industry: 'Retail',
+        description: '',
+        avatar: '🛍️',
+        botName: 'Aura',
+        tone: 'friendly',
+        status: 'active',
+        ownerId: 'uid-owner-1',
+        subscriptionTier: 'Starter',
+        messageCount: 42,
+        autopilotEnabled: false,
+        knowledgeBase: [],
+        leads: [],
+        appointments: []
+      });
+
+      const store = await readTenantsStore();
+      const tenant = store['rt-tenant'];
+      expect(tenant.ownerId).toBe('uid-owner-1');
+      expect(tenant.subscriptionTier).toBe('Starter');
+      expect(tenant.messageCount).toBe(42);
+      expect(tenant.autopilotEnabled).toBe(false);
+    });
+  });
+
+  describe('quota service', () => {
+    it('flags a tenant at or over the Starter limit (500)', () => {
+      expect(isOverQuota('Starter', 500)).toBe(true);
+      expect(isOverQuota('Starter', 499)).toBe(false);
+    });
+
+    it('defaults to the Free tier limit (50) when tier is undefined', () => {
+      expect(isOverQuota(undefined, 50)).toBe(true);
+      expect(isOverQuota(undefined, 49)).toBe(false);
+    });
+
+    it('treats Enterprise as unlimited', () => {
+      expect(isOverQuota('Enterprise', 1_000_000)).toBe(false);
+    });
+  });
+
+  describe('quota enforcement via Starter tier over webhook', () => {
+    it('rejects Telegram messages at the Starter limit (500) and allows at 499', async () => {
+      _setMemTenant('starter-tenant', {
+        id: 'starter-tenant',
+        name: 'Starter Co',
+        industry: 'Retail',
+        description: '',
+        avatar: '🛍️',
+        botName: 'Aura',
+        tone: 'friendly',
+        status: 'active',
+        subscriptionTier: 'Starter',
+        messageCount: 500,
+        knowledgeBase: [],
+        leads: [],
+        appointments: []
+      });
+
+      const payload = { message: { chat: { id: 1 }, from: { first_name: 'X' }, text: 'hi' } };
+
+      const overRes = await request(app)
+        .post('/api/webhook/telegram/starter-tenant')
+        .send(payload);
+      expect(overRes.status).toBe(403);
+
+      const store = await readTenantsStore();
+      store['starter-tenant'].messageCount = 499;
+      await writeTenantsStore(store);
+
+      const underRes = await request(app)
+        .post('/api/webhook/telegram/starter-tenant')
+        .send(payload);
+      expect(underRes.status).toBe(200);
+    });
+  });
+
+  describe('webhook signature verification (timingSafeEqual)', () => {
+    it('rejects a malformed (non-hex) signature with 403, not 500', async () => {
+      const payload = { object: "whatsapp_business_account", entry: [] };
+      const res = await request(app)
+        .post('/api/webhook')
+        .set('X-Hub-Signature-256', 'sha256=not-valid-hex!!')
+        .send(payload);
+
+      expect(res.status).toBe(403);
+      expect(res.text).toContain('signature verification failed');
+    });
+
+    it('rejects a well-formed but wrong-value hex signature with 403', async () => {
+      const payload = { object: "whatsapp_business_account", entry: [] };
+      const wrongButValidHex = 'a'.repeat(64);
+      const res = await request(app)
+        .post('/api/webhook')
+        .set('X-Hub-Signature-256', `sha256=${wrongButValidHex}`)
+        .send(payload);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('outbound message worker: credentials from DB, not job data', () => {
+    it('fetches phoneNumberId/accessToken from the tenant store, not job data', async () => {
+      _setMemTenant('worker-tenant', {
+        id: 'worker-tenant',
+        name: 'Worker Co',
+        industry: 'Retail',
+        description: '',
+        avatar: '📦',
+        botName: 'Aura',
+        tone: 'friendly',
+        status: 'active',
+        whatsAppApiKey: 'real-whatsapp-access-token-1234567890',
+        whatsAppVerifiedSid: 'pn-1',
+        knowledgeBase: [],
+        leads: [],
+        appointments: []
+      });
+
+      const whatsapp = await import('../server/services/whatsapp');
+      const sendSpy = vi.spyOn(whatsapp, 'sendWhatsAppMessage').mockResolvedValue({ ok: true } as any);
+
+      const { processOutboundMessage } = await import('../server/workers/messageWorker');
+      await processOutboundMessage({
+        tenantId: 'worker-tenant',
+        to: '+15551234',
+        text: 'hello',
+        channel: 'whatsapp'
+      });
+
+      expect(sendSpy).toHaveBeenCalledWith('pn-1', 'real-whatsapp-access-token-1234567890', '+15551234', 'hello');
+      sendSpy.mockRestore();
+    });
+
+    it('throws UnrecoverableError for an unknown tenant (no BullMQ retry)', async () => {
+      const { UnrecoverableError } = await import('bullmq');
+      const { processOutboundMessage } = await import('../server/workers/messageWorker');
+
+      await expect(
+        processOutboundMessage({ tenantId: 'does-not-exist', to: '+1', text: 'x', channel: 'whatsapp' })
+      ).rejects.toThrow(UnrecoverableError);
+    });
+  });
+
+  describe('crawler service (pure helpers)', () => {
+    it('parseRobotsTxt extracts disallow rules for the matching user-agent', () => {
+      const robots = `User-agent: *\nDisallow: /admin\nDisallow: /private\nSitemap: https://example.com/sitemap.xml`;
+      const { disallows, sitemaps } = parseRobotsTxt(robots, 'AuraSaaSCrawler/1.0');
+      expect(disallows).toContain('/admin');
+      expect(disallows).toContain('/private');
+      expect(sitemaps).toContain('https://example.com/sitemap.xml');
+    });
+
+    it('isPathDisallowed matches prefix rules and "/" wildcard', () => {
+      expect(isPathDisallowed('/admin/settings', ['/admin'])).toBe(true);
+      expect(isPathDisallowed('/public', ['/admin'])).toBe(false);
+      expect(isPathDisallowed('/anything', ['/'])).toBe(true);
+    });
+
+    it('validateUrlForSsrf rejects non-https and private-network targets', async () => {
+      expect(await validateUrlForSsrf('http://example.com')).toBe(false);
+      expect(await validateUrlForSsrf('https://localhost')).toBe(false);
+      expect(await validateUrlForSsrf('https://foo.internal')).toBe(false);
+    });
+  });
+
+  describe('GET /api/tenants ownership filtering', () => {
+    it('returns all tenants under the test auth bypass (no uid on request)', async () => {
+      _setMemTenant('owned-by-a', { id: 'owned-by-a', ownerId: 'uid-a', name: 'A', industry: '', description: '', avatar: '', botName: 'Aura', tone: 'friendly', status: 'active', knowledgeBase: [], leads: [], appointments: [] });
+      const res = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
+      expect(res.status).toBe(200);
+      expect(res.body['owned-by-a']).toBeDefined();
+    });
   });
 });

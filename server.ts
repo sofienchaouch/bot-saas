@@ -13,9 +13,11 @@ import cors from "cors";
 import { requestIdMiddleware } from "./server/middleware/requestId";
 import { apiLimiter, webhookLimiter } from "./server/middleware/rateLimit";
 import { setupWebSocket } from "./server/services/websocket";
-import { startScheduler } from "./server/services/scheduler";
+import { startScheduler, stopScheduler } from "./server/services/scheduler";
 import { startCrawlWorker } from "./server/workers/crawlWorker";
 import { startMessageWorker } from "./server/workers/messageWorker";
+import { crawlQueue, outboundMessageQueue, redisConnection } from "./server/services/queue";
+import { closeDb } from "./server/db/index";
 import { logger } from "./server/lib/logger";
 import router from "./server/routes";
 import { errorHandler } from "./server/middleware/errorHandler";
@@ -25,7 +27,24 @@ const app = express();
 
 app.use(requestIdMiddleware);
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy:
+      NODE_ENV === "production"
+        ? undefined
+        : {
+            directives: {
+              defaultSrc: ["'self'", "*"],
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "*"],
+              styleSrc: ["'self'", "'unsafe-inline'", "*"],
+              connectSrc: ["'self'", "ws:", "wss:", "*"],
+              imgSrc: ["'self'", "data:", "blob:", "*"],
+              mediaSrc: ["'self'", "data:", "blob:", "*"],
+            },
+          },
+    crossOriginEmbedderPolicy: NODE_ENV === "production" ? undefined : false,
+  })
+);
 app.use(cors({ origin: process.env.APP_URL || true }));
 app.use(express.json({ 
   limit: "1mb",
@@ -78,9 +97,39 @@ async function startServer() {
   setupWebSocket(server);
 
   startScheduler();
-  startCrawlWorker();
-  startMessageWorker();
+  const crawlWorker = startCrawlWorker();
+  const messageWorker = startMessageWorker();
   logger.info('Background workers started');
+
+  let shuttingDown = false;
+  async function shutdown(signal: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, 'Shutting down');
+
+    const forceExit = setTimeout(() => {
+      logger.warn('Graceful shutdown timed out, forcing exit');
+      process.exit(1);
+    }, 10_000);
+    forceExit.unref();
+
+    try {
+      stopScheduler();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await Promise.allSettled([crawlWorker.close(), messageWorker.close()]);
+      await Promise.allSettled([crawlQueue.close(), outboundMessageQueue.close()]);
+      await redisConnection.quit().catch(() => redisConnection.disconnect());
+      await closeDb();
+    } catch (err) {
+      logger.error({ err }, 'Error during shutdown');
+    } finally {
+      clearTimeout(forceExit);
+      process.exit(0);
+    }
+  }
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 }
 
 if (process.env.NODE_ENV !== "test") {

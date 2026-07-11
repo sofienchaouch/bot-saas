@@ -1,6 +1,6 @@
 import express from "express";
 import admin from "firebase-admin";
-import { NODE_ENV } from "../config";
+import { NODE_ENV, BYPASS_AUTH_IN_DEV } from "../config";
 import { logger } from "../lib/logger";
 
 // Public routes that bypass authentication
@@ -28,6 +28,11 @@ export async function authMiddleware(
 
   // Only bypass in test mode with explicit header
   if (NODE_ENV === "test" && req.headers["x-test-auth-bypass"] === "true") {
+    return next();
+  }
+
+  // Allow dev bypass when explicitly opted in via BYPASS_AUTH_IN_DEV=true in .env
+  if (NODE_ENV === "development" && BYPASS_AUTH_IN_DEV === "true") {
     return next();
   }
 

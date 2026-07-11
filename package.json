@@ -21,11 +21,13 @@
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "db:import-json": "tsx scripts/migrate-json-to-pg.ts"
+    "db:import-json": "tsx scripts/migrate-json-to-pg.ts",
+    "db:backfill-owner": "tsx scripts/backfill-owner.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@sentry/node": "^10.59.0",
+    "bullmq": "^5.79.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.2",
@@ -34,6 +36,7 @@
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
     "helmet": "^8.0.0",
+    "ioredis": "^5.11.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "pg": "^8.22.0",

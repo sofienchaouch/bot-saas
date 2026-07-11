@@ -1,10 +1,10 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
-import { DATABASE_URL } from "../config";
+import { DATABASE_URL, NODE_ENV } from "../config";
 
 export function isDbAvailable(): boolean {
-  return !!DATABASE_URL;
+  return !!DATABASE_URL && NODE_ENV !== "test";
 }
 
 let _pool: pg.Pool | null = null;

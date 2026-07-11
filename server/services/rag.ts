@@ -101,6 +101,16 @@ export async function enrichTenantEmbeddings(tenant: any): Promise<any> {
   return tenant;
 }
 
+// Delete existing chunks for a document so it can be re-embedded (e.g. after
+// a re-crawl produces fresh content for the same stable document id).
+export async function deleteChunksForDocument(documentId: string, tenantId: string): Promise<void> {
+  if (!isDbAvailable()) return;
+  const db = getDb();
+  await db
+    .delete(schema.kbChunks)
+    .where(and(eq(schema.kbChunks.documentId, documentId), eq(schema.kbChunks.tenantId, tenantId)));
+}
+
 // ── RAG Filter type (unchanged) ────────────────────────────────────────────────
 
 export interface RAGFilter {

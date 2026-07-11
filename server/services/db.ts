@@ -1,6 +1,6 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getDb, isDbAvailable, schema } from "../db/index";
-import { encryptTenant, decryptTenant } from "./encryption";
+import { encryptTenant, decryptTenant, decryptText } from "./encryption";
 import type { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent, WelcomeTemplate } from "../../src/types";
 
 // ── In-memory fallback (used when DATABASE_URL is not set, e.g. vitest without Docker) ──
@@ -27,6 +27,11 @@ function rowToTenant(
     botName: row.botName,
     tone: row.tone as Tenant["tone"],
     status: row.status as Tenant["status"],
+    ownerId: row.ownerId ?? undefined,
+    subscriptionTier: row.subscriptionTier,
+    messageCount: row.messageCount,
+    autopilotEnabled: row.autopilotEnabled,
+    telegramBotToken: row.telegramBotTokenEnc ? decryptText(row.telegramBotTokenEnc) : undefined,
     systemInstruction: row.systemInstruction ?? undefined,
     activeWelcomeTemplateId: row.activeWelcomeTemplateId ?? undefined,
     welcomeTemplates: wts.map((w) => ({ id: w.id, name: w.name, text: w.text })),
@@ -159,6 +164,13 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
         botName: tenant.botName,
         tone: tenant.tone,
         status: tenant.status,
+        // ownerId is set on insert only — client-posted tenant blobs must never
+        // overwrite ownership (see claimTenantOwnership / tenantAccessMiddleware)
+        ownerId: tenant.ownerId ?? null,
+        subscriptionTier: tenant.subscriptionTier ?? "Free",
+        messageCount: tenant.messageCount ?? 0,
+        autopilotEnabled: tenant.autopilotEnabled ?? true,
+        telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
         systemInstruction: tenant.systemInstruction ?? null,
         activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
         whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
@@ -192,6 +204,10 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
           botName: tenant.botName,
           tone: tenant.tone,
           status: tenant.status,
+          subscriptionTier: tenant.subscriptionTier ?? "Free",
+          messageCount: tenant.messageCount ?? 0,
+          autopilotEnabled: tenant.autopilotEnabled ?? true,
+          telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
           systemInstruction: tenant.systemInstruction ?? null,
           activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
           whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
@@ -379,6 +395,31 @@ export async function writeConversationsStore(store: Record<string, any>): Promi
         set: { data, updatedAt: new Date() },
       });
   }
+}
+
+/**
+ * Atomically claim ownership of a tenant that has no owner yet.
+ * Returns the resulting ownerId (the caller's uid on success, the racing
+ * winner's uid otherwise), or null if the tenant does not exist.
+ */
+export async function claimTenantOwnership(tenantId: string, uid: string): Promise<string | null> {
+  if (!isDbAvailable()) {
+    const tenant = _memTenants.get(tenantId);
+    if (!tenant) return null;
+    if (!tenant.ownerId) tenant.ownerId = uid;
+    return tenant.ownerId;
+  }
+
+  const db = getDb();
+  await db
+    .update(schema.tenants)
+    .set({ ownerId: uid })
+    .where(and(eq(schema.tenants.id, tenantId), isNull(schema.tenants.ownerId)));
+  const rows = await db
+    .select({ ownerId: schema.tenants.ownerId })
+    .from(schema.tenants)
+    .where(eq(schema.tenants.id, tenantId));
+  return rows[0]?.ownerId ?? null;
 }
 
 // Exported for test injection

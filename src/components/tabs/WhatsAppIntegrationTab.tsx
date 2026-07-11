@@ -1011,7 +1011,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       id="wa-status-select"
                       value={waStatus}
                       onChange={(e) => setWaStatus(e.target.value as any)}
-                      className="flex-1 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
+                      className="flex-1 min-w-0 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
                     >
                       <option value="connected" className="bg-[#0d121d]">Connected & Active (Traffic Routing Live)</option>
                       <option value="pending_verification" className="bg-[#0d121d]">Pending External Webhooks Verification</option>
@@ -1212,7 +1212,7 @@ export const WhatsAppIntegrationTab: React.FC = () => {
                       id="messenger-status-select"
                       value={messengerStatus}
                       onChange={(e) => setMessengerStatus(e.target.value as any)}
-                      className="flex-1 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
+                      className="flex-1 min-w-0 bg-[#0d121d] text-slate-100 text-xs px-3 py-2.5 border border-white/5 focus:border-blue-500/40 rounded-xl outline-none focus:ring-1 focus:ring-blue-500/50 font-mono transition-all cursor-pointer"
                     >
                       <option value="connected" className="bg-[#0d121d]">Connected & Active (Traffic Routing Live)</option>
                       <option value="pending_verification" className="bg-[#0d121d]">Pending External Webhooks Verification</option>

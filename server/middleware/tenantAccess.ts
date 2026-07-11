@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { readTenantsStore } from '../services/db';
+import { readTenantsStore, claimTenantOwnership } from '../services/db';
 import { NODE_ENV } from '../config';
 import { logger } from '../lib/logger';
 
@@ -13,7 +13,7 @@ export async function tenantAccessMiddleware(
     return next();
   }
 
-  const tenantId = req.params.id;
+  const tenantId = req.params.id ?? (req.params as Record<string, string>).tenantId;
   const user = (req as any).user;
 
   if (!user?.uid) {
@@ -30,9 +30,23 @@ export async function tenantAccessMiddleware(
       return;
     }
 
-    // Allow access if tenant has no ownerId set yet (migration grace period)
-    // OR if ownerId matches the authenticated user's Firebase UID
-    if (tenant.ownerId && tenant.ownerId !== user.uid) {
+    // Unowned tenant: first authenticated user to access it claims ownership
+    // (atomic — a concurrent claim by another user wins or loses cleanly).
+    if (!tenant.ownerId) {
+      const owner = await claimTenantOwnership(tenantId, user.uid);
+      if (owner !== user.uid) {
+        logger.warn(
+          { tenantId, uid: user.uid, ownerId: owner },
+          'Cross-tenant access blocked (lost ownership claim race)'
+        );
+        res.status(403).json({ error: 'Forbidden: you do not own this tenant' });
+        return;
+      }
+      logger.info({ tenantId, uid: user.uid }, 'Tenant ownership claimed on first access');
+      return next();
+    }
+
+    if (tenant.ownerId !== user.uid) {
       logger.warn(
         { tenantId, uid: user.uid, ownerId: tenant.ownerId },
         'Cross-tenant access blocked'

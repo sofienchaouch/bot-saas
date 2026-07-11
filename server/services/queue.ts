@@ -11,5 +11,12 @@ export const redisConnection = new IORedis(REDIS_URL, {
 });
 
 export const crawlQueue = new Queue('crawl', { connection: redisConnection });
-export const outboundMessageQueue = new Queue('outbound-message', { connection: redisConnection });
-export const webhookRetryQueue = new Queue('webhook-retry', { connection: redisConnection });
+export const outboundMessageQueue = new Queue('outbound-message', {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 2000 },
+    removeOnComplete: 200,
+    removeOnFail: 100,
+  },
+});

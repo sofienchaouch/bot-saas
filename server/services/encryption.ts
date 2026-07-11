@@ -47,6 +47,7 @@ export function encryptTenant(tenant: any): any {
   
   if (copy.whatsAppApiKey) copy.whatsAppApiKey = encryptText(copy.whatsAppApiKey);
   if (copy.messengerToken) copy.messengerToken = encryptText(copy.messengerToken);
+  if (copy.telegramBotToken) copy.telegramBotToken = encryptText(copy.telegramBotToken);
   
   if (Array.isArray(copy.leads)) {
     copy.leads = copy.leads.map((l: any) => ({
@@ -73,6 +74,7 @@ export function decryptTenant(tenant: any): any {
   
   if (copy.whatsAppApiKey) copy.whatsAppApiKey = decryptText(copy.whatsAppApiKey);
   if (copy.messengerToken) copy.messengerToken = decryptText(copy.messengerToken);
+  if (copy.telegramBotToken) copy.telegramBotToken = decryptText(copy.telegramBotToken);
   
   if (Array.isArray(copy.leads)) {
     copy.leads = copy.leads.map((l: any) => ({

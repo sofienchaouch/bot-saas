@@ -35,6 +35,11 @@ export const tenants = pgTable("tenants", {
   botName: text("bot_name").notNull().default("Aura"),
   tone: text("tone").notNull().default("professional"),
   status: text("status").notNull().default("active"),
+  ownerId: text("owner_id"),   // Firebase UID; nullable — existing rows are claimed on first access
+  subscriptionTier: text("subscription_tier").notNull().default("Free"),
+  messageCount: integer("message_count").notNull().default(0),
+  autopilotEnabled: boolean("autopilot_enabled").notNull().default(true),
+  telegramBotTokenEnc: text("telegram_bot_token_enc"),   // AES-256-GCM encrypted
   systemInstruction: text("system_instruction"),
   activeWelcomeTemplateId: text("active_welcome_template_id"),
   // WhatsApp
@@ -61,7 +66,9 @@ export const tenants = pgTable("tenants", {
   lastCrawlTime: timestamp("last_crawl_time", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+}, (t) => [
+  index("tenants_owner_idx").on(t.ownerId),
+]);
 
 // ── Welcome Templates ─────────────────────────────────────────────────────────
 

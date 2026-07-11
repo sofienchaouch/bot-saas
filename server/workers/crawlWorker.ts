@@ -1,8 +1,9 @@
 import { Worker, Job } from 'bullmq';
 import { redisConnection } from '../services/queue';
 import { readTenantsStore, writeTenantsStore } from '../services/db';
+import { validateUrlForSsrf, crawlWebsite } from '../services/crawler';
+import { deleteChunksForDocument, enrichTenantEmbeddings } from '../services/rag';
 import { logger } from '../lib/logger';
-import { NODE_ENV } from '../config';
 
 export interface CrawlJobData {
   tenantId: string;
@@ -29,33 +30,73 @@ export function startCrawlWorker(): Worker<CrawlJobData> {
         return;
       }
 
+      const documentId = `sched-kb-${tenantId}`;
       const now = new Date();
-      const pageTitle = 'Auto-Synced Business Catalogue';
-      const mockContent = `Dynamic catalog snapshot generated automatically on schedule: ${tenant.crawlSchedule}.\nIndexed on: ${now.toISOString()}.\nServices and product ranges have been fully re-verified and synchronized to vectors.`;
 
-      const newKbItem = {
-        id: `sched-kb-${Math.floor(100000 + Math.random() * 900000)}`,
-        type: 'crawl' as const,
-        title: pageTitle,
-        content: mockContent,
-        dateAdded: now.toISOString().split('T')[0],
-        url: targetItem.url,
-        crawlDepth: 1,
-        crawlStatus: 'synced' as const,
-        crawlPagesCount: 3,
-        chunks: [{ text: pageTitle }, { text: mockContent }],
-      };
+      const isUrlSafe = await validateUrlForSsrf(targetItem.url);
+      if (!isUrlSafe) {
+        logger.warn({ tenantId, url: targetItem.url }, 'Crawl job: SSRF check failed for scheduled URL');
+        tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => kb.id !== documentId);
+        tenant.knowledgeBase.push({
+          id: documentId,
+          type: 'crawl' as const,
+          title: 'Auto-Synced Business Catalogue',
+          content: '',
+          dateAdded: now.toISOString().split('T')[0],
+          url: targetItem.url,
+          crawlDepth: targetItem.crawlDepth ?? 1,
+          crawlStatus: 'error' as const,
+          crawlPagesCount: 0,
+        });
+        store[tenantId] = tenant;
+        await writeTenantsStore(store);
+        return;
+      }
 
-      tenant.knowledgeBase = tenant.knowledgeBase || [];
-      tenant.knowledgeBase = tenant.knowledgeBase.filter(
-        (kb: any) => !(kb.type === 'crawl' && kb.title === pageTitle)
-      );
-      tenant.knowledgeBase.push(newKbItem);
-      tenant.lastCrawlTime = now.toISOString();
-      store[tenantId] = tenant;
+      try {
+        const result = await crawlWebsite(targetItem.url, {
+          maxDepth: targetItem.crawlDepth ?? 1,
+          maxPages: 10,
+        });
 
-      await writeTenantsStore(store);
-      logger.info({ tenantId, schedule: tenant.crawlSchedule }, 'Crawl job completed');
+        tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => kb.id !== documentId);
+        tenant.knowledgeBase.push({
+          id: documentId,
+          type: 'crawl' as const,
+          title: result.title,
+          content: result.content,
+          dateAdded: now.toISOString().split('T')[0],
+          url: targetItem.url,
+          crawlDepth: targetItem.crawlDepth ?? 1,
+          crawlStatus: 'synced' as const,
+          crawlPagesCount: result.pagesCount,
+        });
+        tenant.lastCrawlTime = now.toISOString();
+        store[tenantId] = tenant;
+
+        // Re-embed: drop old chunks for this stable document id, then re-chunk/embed.
+        await deleteChunksForDocument(documentId, tenantId);
+        await enrichTenantEmbeddings(tenant);
+
+        await writeTenantsStore(store);
+        logger.info({ tenantId, schedule: tenant.crawlSchedule, pagesCount: result.pagesCount }, 'Crawl job completed');
+      } catch (err) {
+        tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => kb.id !== documentId);
+        tenant.knowledgeBase.push({
+          id: documentId,
+          type: 'crawl' as const,
+          title: 'Auto-Synced Business Catalogue',
+          content: '',
+          dateAdded: now.toISOString().split('T')[0],
+          url: targetItem.url,
+          crawlDepth: targetItem.crawlDepth ?? 1,
+          crawlStatus: 'error' as const,
+          crawlPagesCount: 0,
+        });
+        store[tenantId] = tenant;
+        await writeTenantsStore(store);
+        throw err; // let BullMQ's retry/backoff apply
+      }
     },
     { connection: redisConnection }
   );

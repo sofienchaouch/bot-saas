@@ -68,6 +68,11 @@ export interface Tenant {
   botName: string;
   tone: 'professional' | 'friendly' | 'casual' | 'empathetic';
   status: 'active' | 'paused';
+  ownerId?: string;
+  subscriptionTier?: string;
+  messageCount?: number;
+  autopilotEnabled?: boolean;
+  telegramBotToken?: string;
   systemInstruction?: string;
   welcomeTemplates?: WelcomeTemplate[];
   activeWelcomeTemplateId?: string;
