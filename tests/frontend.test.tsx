@@ -27,33 +27,42 @@ vi.mock('../src/firebase', () => ({
 }));
 
 // Mock window.fetch for API interaction simulation
-global.fetch = vi.fn().mockImplementation((url) => {
+global.fetch = vi.fn().mockImplementation(url => {
   if (url.includes('/api/tenants')) {
     return Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({
-        'test-vertical-fitness': {
-          id: 'test-vertical-fitness',
-          name: 'Test Fitness Studio',
-          industry: 'Fitness',
-          description: 'Studio description',
-          botName: 'Aura',
-          tone: 'friendly',
-          whatsAppApiKey: 'my-secrets-unmasked',
-          knowledgeBase: [
-            { id: 'kb-1', title: 'Gym Hours', content: 'Open 24/7', dateAdded: '2026-06-17' }
-          ],
-          leads: [
-            { id: 'lead-1', name: 'John Doe', phone: '12345', email: 'john@doe.com', status: 'New', dateCaptured: '2026-06-17', note: '' }
-          ],
-          appointments: []
-        }
-      })
+      json: () =>
+        Promise.resolve({
+          'test-vertical-fitness': {
+            id: 'test-vertical-fitness',
+            name: 'Test Fitness Studio',
+            industry: 'Fitness',
+            description: 'Studio description',
+            botName: 'Aura',
+            tone: 'friendly',
+            whatsAppApiKey: 'my-secrets-unmasked',
+            knowledgeBase: [
+              { id: 'kb-1', title: 'Gym Hours', content: 'Open 24/7', dateAdded: '2026-06-17' },
+            ],
+            leads: [
+              {
+                id: 'lead-1',
+                name: 'John Doe',
+                phone: '12345',
+                email: 'john@doe.com',
+                status: 'New',
+                dateCaptured: '2026-06-17',
+                note: '',
+              },
+            ],
+            appointments: [],
+          },
+        }),
     });
   }
   return Promise.resolve({
     ok: true,
-    json: () => Promise.resolve({ status: 'success' })
+    json: () => Promise.resolve({ status: 'success' }),
   });
 });
 
@@ -74,13 +83,27 @@ const mockTenants = [
     whatsAppSandboxActive: true,
     whatsAppSandboxNumbers: [],
     knowledgeBase: [
-      { id: 'kb-1', type: 'faq' as const, title: 'Gym Hours', content: 'Open 24/7', dateAdded: '2026-06-17' }
+      {
+        id: 'kb-1',
+        type: 'faq' as const,
+        title: 'Gym Hours',
+        content: 'Open 24/7',
+        dateAdded: '2026-06-17',
+      },
     ],
     leads: [
-      { id: 'lead-1', name: 'John Doe', phone: '12345', email: 'john@doe.com', status: 'New' as const, dateCaptured: '2026-06-17', note: '' }
+      {
+        id: 'lead-1',
+        name: 'John Doe',
+        phone: '12345',
+        email: 'john@doe.com',
+        status: 'New' as const,
+        dateCaptured: '2026-06-17',
+        note: '',
+      },
     ],
-    appointments: []
-  }
+    appointments: [],
+  },
 ];
 
 describe('Frontend Component Integration & RBAC Tests', () => {
@@ -94,21 +117,26 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       render(
         <MemoryRouter initialEntries={['/admin/test-vertical-fitness']}>
           <Routes>
-            <Route path="/admin/:tenantId/:tab?" element={
-              <LanguageProvider>
-                <SaaSLayout
-                  initialTenantId="test-vertical-fitness"
-                  tenants={mockTenants}
-                  sessionEmail="admin@aura-saas.com"
-                />
-              </LanguageProvider>
-            } />
+            <Route
+              path="/admin/:tenantId/:tab?"
+              element={
+                <LanguageProvider>
+                  <SaaSLayout
+                    initialTenantId="test-vertical-fitness"
+                    tenants={mockTenants}
+                    sessionEmail="admin@aura-saas.com"
+                  />
+                </LanguageProvider>
+              }
+            />
           </Routes>
         </MemoryRouter>
       );
 
       // Verify page loaded
-      expect(screen.getAllByText('Test Fitness Studio', { exact: false }).length).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getAllByText('Test Fitness Studio', { exact: false }).length
+      ).toBeGreaterThanOrEqual(1);
 
       // Go to credentials / WhatsApp integration tab
       const integrationTab = screen.getByText('API Gateway Credentials');
@@ -132,15 +160,18 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       render(
         <MemoryRouter initialEntries={['/admin/test-vertical-fitness']}>
           <Routes>
-            <Route path="/admin/:tenantId/:tab?" element={
-              <LanguageProvider>
-                <SaaSLayout
-                  initialTenantId="test-vertical-fitness"
-                  tenants={mockTenants}
-                  sessionEmail="admin@aura-saas.com"
-                />
-              </LanguageProvider>
-            } />
+            <Route
+              path="/admin/:tenantId/:tab?"
+              element={
+                <LanguageProvider>
+                  <SaaSLayout
+                    initialTenantId="test-vertical-fitness"
+                    tenants={mockTenants}
+                    sessionEmail="admin@aura-saas.com"
+                  />
+                </LanguageProvider>
+              }
+            />
           </Routes>
         </MemoryRouter>
       );
@@ -148,7 +179,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       // Find the toggle button which has the initial value 'ADMIN' (with key emoji)
       const roleToggleBtn = screen.getByRole('button', { name: /ADMIN/i });
       expect(roleToggleBtn).toHaveTextContent(/ADMIN/i);
-      
+
       fireEvent.click(roleToggleBtn);
       expect(roleToggleBtn).toHaveTextContent(/SUPPORT AGENT/i);
 
@@ -174,7 +205,7 @@ describe('Frontend Component Integration & RBAC Tests', () => {
   describe('SaaSAuth Preset Selection', () => {
     it('allows submitting signup form and selects preset configs correctly', async () => {
       const handleSignUpSuccess = vi.fn();
-      
+
       const { container } = render(
         <LanguageProvider>
           <SaaSAuth
@@ -188,24 +219,24 @@ describe('Frontend Component Integration & RBAC Tests', () => {
 
       // Fill in Company Name (placeholder: "e.g., Titan Personal Coaching")
       fireEvent.change(screen.getByPlaceholderText(/Titan Personal Coaching/i), {
-        target: { value: 'Horizon E-Shop' }
+        target: { value: 'Horizon E-Shop' },
       });
 
       // Select ECommerce industry vertical (the first combobox select element)
       const selects = container.querySelectorAll('select');
       const industrySelect = selects[0];
       fireEvent.change(industrySelect, {
-        target: { value: 'ECommerce' }
+        target: { value: 'ECommerce' },
       });
 
       // Fill in Bot Name (placeholder: "e.g., Titan AI Broker")
       fireEvent.change(screen.getByPlaceholderText(/Titan AI Broker/i), {
-        target: { value: 'CartBot' }
+        target: { value: 'CartBot' },
       });
 
       // Fill in Email (placeholder: "ceo@brand.com")
       fireEvent.change(screen.getByPlaceholderText(/ceo@brand.com/i), {
-        target: { value: 'cart@horizon.com' }
+        target: { value: 'cart@horizon.com' },
       });
 
       // Fill in password inputs (inputs of type "password")
@@ -218,15 +249,18 @@ describe('Frontend Component Integration & RBAC Tests', () => {
       fireEvent.click(signUpButton);
 
       // Wait for the 1100ms asynchronous sign-up submission to complete
-      await waitFor(() => {
-        expect(handleSignUpSuccess).toHaveBeenCalledWith({
-          companyName: 'Horizon E-Shop',
-          industry: 'ECommerce',
-          botName: 'CartBot',
-          tone: 'friendly',
-          email: 'cart@horizon.com'
-        });
-      }, { timeout: 2000 });
+      await waitFor(
+        () => {
+          expect(handleSignUpSuccess).toHaveBeenCalledWith({
+            companyName: 'Horizon E-Shop',
+            industry: 'ECommerce',
+            botName: 'CartBot',
+            tone: 'friendly',
+            email: 'cart@horizon.com',
+          });
+        },
+        { timeout: 2000 }
+      );
     });
   });
 

@@ -46,7 +46,6 @@ export const KnowledgeBaseTab: React.FC = () => {
     isProcessingKb,
     kbProcessingStep,
     dragActive,
-    handleSimulateFileUpload,
     handleDrag,
     handleDrop,
     handleManualFileSelect,
@@ -56,6 +55,14 @@ export const KnowledgeBaseTab: React.FC = () => {
   } = useSaaS();
 
   if (!selectedTenant) return null;
+
+  // Instantly loads a canned sandbox document into the KB form — these are
+  // demo/test content only, not real uploads, so they skip the extraction API.
+  const loadSandboxDoc = (fileName: string, fileSize: string, content: string, titleName: string) => {
+    setKbFileMeta({ name: fileName, size: fileSize, type: 'text/plain' });
+    setKbTitleInput(titleName);
+    setKbContentInput(content);
+  };
 
   return (
     <div className="space-y-6">
@@ -187,7 +194,7 @@ export const KnowledgeBaseTab: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => handleSimulateFileUpload(
+                      onClick={() => loadSandboxDoc(
                         'Refund_Guarantee_Terms.pdf',
                         '342 KB',
                         `[OFFICIAL PDF DOCUMENT: Refund & Guarantee Terms]\nPublished: May 2026\n\n- Satisfied coverage extends 14 days from initial registration fee.\n- Subscription cancellations need 30 days email statement sent to billing@${selectedTenant.name.toLowerCase().replace(/\s+/g, '')}.com.\n- Credit cards are auto-invoiced on the recurring calendar schedule.\n- Personal trainer sessions must confirm cancellation 24 hours prior or are billed full charge.`,
@@ -201,7 +208,7 @@ export const KnowledgeBaseTab: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => handleSimulateFileUpload(
+                      onClick={() => loadSandboxDoc(
                         'Developer_Readme_Onboarding.md',
                         '14 KB',
                         `### Team Onboarding FAQ & Manual (${selectedTenant.name})\n\nWelcome back team!\n\n#### Q: What program tiers do we deploy?\nClients can request standard onboarding packages starting at $99 per term. The pro and corporate clusters reside at $249 and custom quote rates.\n\n#### Q: How is user check-in dispatched?\nWhatsApp automation routes user reservations directly to the assigned Google Workspace agenda logs.`,
@@ -215,7 +222,7 @@ export const KnowledgeBaseTab: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => handleSimulateFileUpload(
+                      onClick={() => loadSandboxDoc(
                         'Hourly_Pricing_Rates.docx',
                         '1.1 MB',
                         `[OFFICIAL COMPANY CONTRACT: HOURLY ASSIGNMENT PRICING]\n\nCorporate details for entity ${selectedTenant.name}:\n\n1. TIMELINE OF TASKS:\nAll scheduled support sessions are billed in blocks of 2 hours minimum. Emergency dispatch outside of regular working hours (9 AM - 6 PM) entails flat fee of $160.\n\n2. CANCELLATION CHARGERS:\nServices cancelled without prior notifications at least 15 days in advance incur 10% contract termination fee. Standard help lines can resolve queries.`,

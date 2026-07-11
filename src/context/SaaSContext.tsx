@@ -74,12 +74,7 @@ interface SaaSContextType {
   setDragActive: (val: boolean) => void;
 
   // KB Actions
-  handleSimulateFileUpload: (
-    fileName: string,
-    fileSize: string,
-    content: string,
-    titleName: string
-  ) => void;
+  handleFileUpload: (file: File) => Promise<void>;
   handleDrag: (e: React.DragEvent) => void;
   handleDrop: (e: React.DragEvent) => void;
   handleManualFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -973,28 +968,32 @@ export const SaaSProvider: React.FC<{
     setTenants(prev => prev.map(t => (t.id === selectedTenant.id ? { ...t, ...fields } : t)));
   };
 
-  const handleSimulateFileUpload = (
-    fileName: string,
-    fileSize: string,
-    content: string,
-    titleName: string
-  ) => {
+  const handleFileUpload = async (file: File) => {
     setIsProcessingKb(true);
-    setKbProcessingStep('Reading binary headers from PDF/Doc...');
-    setKbFileMeta({ name: fileName, size: fileSize, type: 'application/pdf' });
+    setKbProcessingStep('Uploading and extracting text...');
+    setKbFileMeta({ name: file.name, size: `${(file.size / 1024).toFixed(1)} KB`, type: file.type });
 
-    setTimeout(() => {
-      setKbProcessingStep('Parsing XML format layout and nodes...');
-      setTimeout(() => {
-        setKbProcessingStep('Decompressing text structures via OCR engine...');
-        setTimeout(() => {
-          setIsProcessingKb(false);
-          setKbProcessingStep('');
-          setKbTitleInput(titleName);
-          setKbContentInput(content);
-        }, 600);
-      }, 600);
-    }, 600);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/kb/extract-file', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to extract text from file.');
+      }
+
+      setKbTitleInput(data.title);
+      setKbContentInput(data.content);
+    } catch (err: any) {
+      setKbContentInput('');
+      setKbTitleInput('');
+      console.error('KB file upload failed:', err);
+      alert(err?.message || 'Failed to process file.');
+    } finally {
+      setIsProcessingKb(false);
+      setKbProcessingStep('');
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -1013,37 +1012,13 @@ export const SaaSProvider: React.FC<{
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
-      const reader = new FileReader();
-      reader.onload = event => {
-        const text = event.target?.result as string;
-        handleSimulateFileUpload(
-          file.name,
-          sizeStr,
-          text || 'Parsed unstructured metadata content.',
-          file.name.split('.')[0]
-        );
-      };
-      reader.readAsText(file);
+      handleFileUpload(e.dataTransfer.files[0]);
     }
   };
 
   const handleManualFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
-      const reader = new FileReader();
-      reader.onload = event => {
-        const text = event.target?.result as string;
-        handleSimulateFileUpload(
-          file.name,
-          sizeStr,
-          text || 'Parsed unstructured metadata content.',
-          file.name.split('.')[0]
-        );
-      };
-      reader.readAsText(file);
+      handleFileUpload(e.target.files[0]);
     }
   };
 
@@ -2504,7 +2479,7 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     setDragActive,
 
     // KB Actions
-    handleSimulateFileUpload,
+    handleFileUpload,
     handleDrag,
     handleDrop,
     handleManualFileSelect,

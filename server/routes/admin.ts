@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import { Type } from '@google/genai';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../lib/logger';
@@ -21,6 +22,7 @@ import { getAnalytics, clearAnalytics } from '../services/analytics';
 import { getWebhookEvents, clearWebhookEvents } from '../services/webhookLogger';
 import { validateUrlForSsrf, crawlWebsite } from '../services/crawler';
 import { broadcastToTenant } from '../services/realtime';
+import { extractTextFromFile } from '../services/fileExtract';
 
 const router = express.Router();
 
@@ -299,6 +301,33 @@ router.post(
       '[AUTOPILOT UPDATE] Tenant autopilot setting changed'
     );
     res.json({ status: 'success', tenantId, autopilotEnabled: enabled });
+  })
+);
+
+const kbUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+router.post(
+  '/api/kb/extract-file',
+  kbUpload.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Missing file upload (field name "file").' });
+    }
+    try {
+      const content = await extractTextFromFile(req.file.buffer, req.file.originalname);
+      res.json({
+        title: req.file.originalname.replace(/\.[^.]+$/, ''),
+        content,
+        fileType: req.file.originalname.split('.').pop(),
+        fileSize: `${(req.file.size / 1024).toFixed(1)} KB`,
+      });
+    } catch (err: any) {
+      logger.warn({ err: err.message, filename: req.file.originalname }, '[KB UPLOAD] Extraction failed');
+      res.status(400).json({ error: err.message || 'Failed to extract text from file.' });
+    }
   })
 );
 

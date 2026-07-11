@@ -10,14 +10,26 @@ import { WhatsAppStatusIndicator } from './WhatsAppStatusIndicator';
 
 // Tab panels + the simulator are lazy-loaded: only the active tab's chunk is
 // fetched, instead of all of them being bundled into the initial admin load.
-const InsightsTab = lazy(() => import('./tabs/InsightsTab').then(m => ({ default: m.InsightsTab })));
-const BotConfigTab = lazy(() => import('./tabs/BotConfigTab').then(m => ({ default: m.BotConfigTab })));
-const KnowledgeBaseTab = lazy(() => import('./tabs/KnowledgeBaseTab').then(m => ({ default: m.KnowledgeBaseTab })));
+const InsightsTab = lazy(() =>
+  import('./tabs/InsightsTab').then(m => ({ default: m.InsightsTab }))
+);
+const BotConfigTab = lazy(() =>
+  import('./tabs/BotConfigTab').then(m => ({ default: m.BotConfigTab }))
+);
+const KnowledgeBaseTab = lazy(() =>
+  import('./tabs/KnowledgeBaseTab').then(m => ({ default: m.KnowledgeBaseTab }))
+);
 const LeadsTab = lazy(() => import('./tabs/LeadsTab').then(m => ({ default: m.LeadsTab })));
-const CalendarTab = lazy(() => import('./tabs/CalendarTab').then(m => ({ default: m.CalendarTab })));
-const WhatsAppIntegrationTab = lazy(() => import('./tabs/WhatsAppIntegrationTab').then(m => ({ default: m.WhatsAppIntegrationTab })));
+const CalendarTab = lazy(() =>
+  import('./tabs/CalendarTab').then(m => ({ default: m.CalendarTab }))
+);
+const WhatsAppIntegrationTab = lazy(() =>
+  import('./tabs/WhatsAppIntegrationTab').then(m => ({ default: m.WhatsAppIntegrationTab }))
+);
 const BillingTab = lazy(() => import('./tabs/BillingTab').then(m => ({ default: m.BillingTab })));
-const WebhookLogsTab = lazy(() => import('./tabs/WebhookLogsTab').then(m => ({ default: m.WebhookLogsTab })));
+const WebhookLogsTab = lazy(() =>
+  import('./tabs/WebhookLogsTab').then(m => ({ default: m.WebhookLogsTab }))
+);
 const BotSimulator = lazy(() => import('./BotSimulator').then(m => ({ default: m.BotSimulator })));
 
 const TabLoadingFallback: React.FC = () => (
@@ -45,7 +57,7 @@ import {
   AlertCircle,
   Loader2,
   CreditCard,
-  Activity
+  Activity,
 } from 'lucide-react';
 
 interface SaaSLayoutProps {
@@ -61,7 +73,7 @@ interface SaaSLayoutProps {
   onToggleTheme?: () => void;
 }
 
-export const SaaSLayout: React.FC<SaaSLayoutProps> = (props) => {
+export const SaaSLayout: React.FC<SaaSLayoutProps> = props => {
   return (
     <SaaSProvider
       tenants={props.tenants || []}
@@ -81,7 +93,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
   onSelectTenantId,
   theme,
   onToggleTheme,
-  sessionEmail
+  sessionEmail,
 }) => {
   const navigate = useNavigate();
   const { tenantId, tab } = useParams();
@@ -106,7 +118,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
     handleGoogleLogin,
     handleGoogleLogout,
     handleAutopilotToggle,
-    
+
     // Dialer
     isDialerModalOpen,
     setIsDialerModalOpen,
@@ -126,7 +138,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
     setShowAddLead,
     setShowAddKb,
     handleAddLiveLead,
-    handleLiveAppointmentBooked
+    handleLiveAppointmentBooked,
   } = useSaaS();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -177,7 +189,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
       <SaasHeader
         tenants={tenants}
         selectedTenant={selectedTenant}
-        onSelectTenant={(t) => handleSelectTenant(t.id)}
+        onSelectTenant={t => handleSelectTenant(t.id)}
         user={user}
         needsAuth={needsAuth}
         onLogin={handleGoogleLogin}
@@ -191,10 +203,12 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
       {/* Main SaaS Frame */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
-
         {/* Auth Error Banner with Actionable Workarounds */}
         {authError && (
-          <div className="rounded-2xl border border-rose-500/20 bg-[#160d13] p-5 shadow-2xl relative overflow-hidden animate-fade-in" id="auth-error-banner">
+          <div
+            className="rounded-2xl border border-rose-500/20 bg-[#160d13] p-5 shadow-2xl relative overflow-hidden animate-fade-in"
+            id="auth-error-banner"
+          >
             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full blur-2xl pointer-events-none"></div>
             <div className="flex items-start gap-3.5 z-10">
               <div className="rounded-xl bg-rose-500/15 border border-rose-500/20 text-rose-400 p-2.5 shrink-0 shadow-[0_0_10px_rgba(244,63,94,0.15)]">
@@ -202,10 +216,14 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               </div>
               <div className="flex-1 space-y-2.5">
                 <div>
-                  <h4 className="font-semibold text-rose-400 text-sm">Google Authorization Popup Restricted</h4>
+                  <h4 className="font-semibold text-rose-400 text-sm">
+                    Google Authorization Popup Restricted
+                  </h4>
                   {authError === 'POPUP_CLOSED_BY_USER' ? (
                     <p className="text-xs text-slate-400 leading-relaxed mt-1">
-                      The sign-in popup was closed or blocked. Because this application is running inside an **iframe sandbox (AI Studio Preview)**, browsers enforce strict cross-origin restrictions on login popups.
+                      The sign-in popup was closed or blocked. Because this application is running
+                      inside an **iframe sandbox (AI Studio Preview)**, browsers enforce strict
+                      cross-origin restrictions on login popups.
                     </p>
                   ) : (
                     <p className="text-xs text-slate-400 leading-relaxed font-mono mt-1 text-[11px]">
@@ -222,13 +240,28 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                     <li className="flex items-start gap-2">
                       <span className="font-bold text-blue-400 shrink-0 select-none">1.</span>
                       <span>
-                        <strong className="text-slate-200 block md:inline font-semibold">Open App in New Tab (Recommended):</strong> Click the <strong className="text-slate-300">"Open App in New Tab" ↗</strong> button at the top-right corner of your AI Studio preview. Running the app directly avoids all sandbox/iframe security blocks!
+                        <strong className="text-slate-200 block md:inline font-semibold">
+                          Open App in New Tab (Recommended):
+                        </strong>{' '}
+                        Click the{' '}
+                        <strong className="text-slate-300">"Open App in New Tab" ↗</strong> button
+                        at the top-right corner of your AI Studio preview. Running the app directly
+                        avoids all sandbox/iframe security blocks!
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-bold text-blue-400 shrink-0 select-none">2.</span>
                       <span>
-                        <strong className="text-slate-200 block md:inline font-semibold">Enable Browser Popups:</strong> Check your address bar's right side for a <strong className="text-rose-400">"Blocked Popups"</strong> icon, click it, select <strong className="text-slate-200">"Always allow popups and redirects"</strong>, then press Setup Google Sync again.
+                        <strong className="text-slate-200 block md:inline font-semibold">
+                          Enable Browser Popups:
+                        </strong>{' '}
+                        Check your address bar's right side for a{' '}
+                        <strong className="text-rose-400">"Blocked Popups"</strong> icon, click it,
+                        select{' '}
+                        <strong className="text-slate-200">
+                          "Always allow popups and redirects"
+                        </strong>
+                        , then press Setup Google Sync again.
                       </span>
                     </li>
                   </ul>
@@ -253,9 +286,13 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 <CalendarIcon className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-semibold text-white text-sm">Want actual Google Calendar synchronization?</h4>
+                <h4 className="font-semibold text-white text-sm">
+                  Want actual Google Calendar synchronization?
+                </h4>
                 <p className="text-xs text-slate-400 leading-normal mt-1">
-                  Connect **Google Calendar** directly to your app workspace. Once integrated, you can see and update actual client calendar events in real-time, keeping business bookings synchronized perfectly.
+                  Connect **Google Calendar** directly to your app workspace. Once integrated, you
+                  can see and update actual client calendar events in real-time, keeping business
+                  bookings synchronized perfectly.
                 </p>
               </div>
             </div>
@@ -281,10 +318,16 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <Bot className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Agent Status:</span>
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">
+                Agent Status:
+              </span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`h-2 w-2 rounded-full ${selectedTenant.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`} />
-                <span className="text-sm font-bold capitalize text-white">{selectedTenant.botName} ({selectedTenant.status})</span>
+                <span
+                  className={`h-2 w-2 rounded-full ${selectedTenant.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}
+                />
+                <span className="text-sm font-bold capitalize text-white">
+                  {selectedTenant.botName} ({selectedTenant.status})
+                </span>
               </div>
             </div>
           </div>
@@ -294,8 +337,12 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-505 font-mono uppercase tracking-wider block">Captured Leads:</span>
-              <p className="text-sm font-bold text-white mt-0.5">{selectedTenant.leads.length} Clients</p>
+              <span className="text-[10px] text-slate-505 font-mono uppercase tracking-wider block">
+                Captured Leads:
+              </span>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {selectedTenant.leads.length} Clients
+              </p>
             </div>
           </div>
 
@@ -304,8 +351,12 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <CalendarIcon className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Planned Bookings:</span>
-              <p className="text-sm font-bold text-white mt-0.5">{activeAppointments.length} Booked</p>
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">
+                Planned Bookings:
+              </span>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {activeAppointments.length} Booked
+              </p>
             </div>
           </div>
 
@@ -314,25 +365,71 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Knowledge Index:</span>
-              <p className="text-sm font-bold text-white mt-0.5">{selectedTenant.knowledgeBase.length} PDF / FAQ</p>
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">
+                Knowledge Index:
+              </span>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {selectedTenant.knowledgeBase.length} PDF / FAQ
+              </p>
             </div>
           </div>
         </div>
 
         {/* Mobile Navigation Header Switcher */}
-        <div className="md:hidden flex items-center justify-between bg-[#080b12] p-3 rounded-2xl border border-white/5 shadow-xl mb-1" id="mobile-nav-switcher-bar">
+        <div
+          className="md:hidden flex items-center justify-between bg-[#080b12] p-3 rounded-2xl border border-white/5 shadow-xl mb-1"
+          id="mobile-nav-switcher-bar"
+        >
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-505 uppercase tracking-wider">Active View:</span>
+            <span className="text-[10px] font-mono text-slate-505 uppercase tracking-wider">
+              Active View:
+            </span>
             <span className="text-[11px] font-bold text-white flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/15 px-2.5 py-1 rounded-xl shadow-[0_0_10px_rgba(59,130,246,0.06)]">
-              {activeTab === 'insights' && <><TrendingUp className="h-3.5 w-3.5 text-blue-400" /> <span>{t('insights')}</span></>}
-              {activeTab === 'simulator' && <><Smartphone className="h-3.5 w-3.5 text-red-400 animate-pulse" /> <span>{t('simulator')}</span></>}
-              {activeTab === 'bot_config' && <><Settings className="h-3.5 w-3.5 text-purple-400" /> <span>{t('bot_config')}</span></>}
-              {activeTab === 'knowledge_base' && <><Database className="h-3.5 w-3.5 text-amber-400" /> <span>{t('knowledge_base')}</span></>}
-              {activeTab === 'leads' && <><Users className="h-3.5 w-3.5 text-emerald-400" /> <span>{t('leads')}</span></>}
-              {activeTab === 'calendar' && <><CalendarIcon className="h-3.5 w-3.5 text-sky-400" /> <span>{t('calendar')}</span></>}
-              {activeTab === 'workspace_hub' && <><Cloud className="h-3.5 w-3.5 text-indigo-400" /> <span>{t('workspace_hub')}</span></>}
-              {activeTab === 'whatsapp_integration' && <><Phone className="h-3.5 w-3.5 text-teal-400" /> <span>{t('whatsapp_integration')}</span></>}
+              {activeTab === 'insights' && (
+                <>
+                  <TrendingUp className="h-3.5 w-3.5 text-blue-400" /> <span>{t('insights')}</span>
+                </>
+              )}
+              {activeTab === 'simulator' && (
+                <>
+                  <Smartphone className="h-3.5 w-3.5 text-red-400 animate-pulse" />{' '}
+                  <span>{t('simulator')}</span>
+                </>
+              )}
+              {activeTab === 'bot_config' && (
+                <>
+                  <Settings className="h-3.5 w-3.5 text-purple-400" />{' '}
+                  <span>{t('bot_config')}</span>
+                </>
+              )}
+              {activeTab === 'knowledge_base' && (
+                <>
+                  <Database className="h-3.5 w-3.5 text-amber-400" />{' '}
+                  <span>{t('knowledge_base')}</span>
+                </>
+              )}
+              {activeTab === 'leads' && (
+                <>
+                  <Users className="h-3.5 w-3.5 text-emerald-400" /> <span>{t('leads')}</span>
+                </>
+              )}
+              {activeTab === 'calendar' && (
+                <>
+                  <CalendarIcon className="h-3.5 w-3.5 text-sky-400" /> <span>{t('calendar')}</span>
+                </>
+              )}
+              {activeTab === 'workspace_hub' && (
+                <>
+                  <Cloud className="h-3.5 w-3.5 text-indigo-400" />{' '}
+                  <span>{t('workspace_hub')}</span>
+                </>
+              )}
+              {activeTab === 'whatsapp_integration' && (
+                <>
+                  <Phone className="h-3.5 w-3.5 text-teal-400" />{' '}
+                  <span>{t('whatsapp_integration')}</span>
+                </>
+              )}
             </span>
           </div>
           <button
@@ -347,8 +444,11 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
         {/* Mobile Navigation Slide-Over Drawer */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 md:hidden flex justify-end" id="mobile-navigation-drawer-root">
-            <div 
+          <div
+            className="fixed inset-0 z-50 md:hidden flex justify-end"
+            id="mobile-navigation-drawer-root"
+          >
+            <div
               className="absolute inset-0 bg-[#020509]/80 backdrop-blur-md transition-opacity duration-300 animate-fade-in"
               onClick={() => setMobileMenuOpen(false)}
             />
@@ -362,7 +462,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                     </h3>
                     <p className="text-[10px] text-slate-500 font-mono">OmniBot Controls</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
                     id="mobile-drawer-close-btn"
@@ -370,12 +470,14 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                
+
                 <div className="p-3 bg-[#0d121d] rounded-xl border border-white/5 flex items-center gap-3">
                   <span className="text-2xl shrink-0">{selectedTenant.avatar}</span>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-white truncate">{selectedTenant.name}</p>
-                    <p className="text-[9px] text-slate-500 font-mono uppercase tracking-wider">{selectedTenant.industry}</p>
+                    <p className="text-[9px] text-slate-500 font-mono uppercase tracking-wider">
+                      {selectedTenant.industry}
+                    </p>
                   </div>
                 </div>
 
@@ -383,7 +485,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('insights')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'insights' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'insights'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-insights"
                   >
@@ -394,7 +498,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('simulator')}
                     className={`flex items-center justify-between px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'simulator' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'simulator'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-simulator"
                   >
@@ -402,7 +508,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                       <Smartphone className="h-4 w-4" />
                       <span>{t('simulator')}</span>
                     </div>
-                    <span className="text-[8.5px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md">LIVE</span>
+                    <span className="text-[8.5px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md">
+                      LIVE
+                    </span>
                   </button>
 
                   <div className="h-px bg-white/5 my-2" />
@@ -410,7 +518,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('bot_config')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'bot_config' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'bot_config'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-config"
                   >
@@ -421,7 +531,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('knowledge_base')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'knowledge_base' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'knowledge_base'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-kb"
                   >
@@ -432,7 +544,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('leads')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'leads' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-455 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'leads'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-455 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-leads"
                   >
@@ -443,7 +557,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('calendar')}
                     className={`flex items-center justify-between px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'calendar' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'calendar'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-calendar"
                   >
@@ -451,13 +567,17 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                       <CalendarIcon className="h-4 w-4" />
                       <span>{t('calendar')}</span>
                     </div>
-                    {googleToken && <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-md" />}
+                    {googleToken && (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-md" />
+                    )}
                   </button>
 
                   <button
                     onClick={() => handleTabChange('workspace_hub')}
                     className={`flex items-center justify-between px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'workspace_hub' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'workspace_hub'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-workspace"
                   >
@@ -465,13 +585,17 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                       <Cloud className="h-4 w-4" />
                       <span>{t('workspace_hub')}</span>
                     </div>
-                    {googleToken && <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse shadow-md" />}
+                    {googleToken && (
+                      <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse shadow-md" />
+                    )}
                   </button>
 
                   <button
                     onClick={() => handleTabChange('whatsapp_integration')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'whatsapp_integration' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'whatsapp_integration'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-whatsapp"
                   >
@@ -482,7 +606,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('webhook_logs')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'webhook_logs' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'webhook_logs'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-450 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-webhook-logs"
                   >
@@ -493,7 +619,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                   <button
                     onClick={() => handleTabChange('billing')}
                     className={`flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-xl cursor-pointer transition-all ${
-                      activeTab === 'billing' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' : 'text-slate-455 hover:bg-white/5 hover:text-white bg-[#080b12]'
+                      activeTab === 'billing'
+                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+                        : 'text-slate-455 hover:bg-white/5 hover:text-white bg-[#080b12]'
                     }`}
                     id="mobile-tab-billing"
                   >
@@ -506,7 +634,10 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               <div className="pt-5 border-t border-white/5 space-y-3 font-sans">
                 {onGoToOwnerConsole && sessionEmail === 'owner@saas.com' && (
                   <button
-                    onClick={() => { onGoToOwnerConsole(); setMobileMenuOpen(false); }}
+                    onClick={() => {
+                      onGoToOwnerConsole();
+                      setMobileMenuOpen(false);
+                    }}
                     className="flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 w-full cursor-pointer transition-all border border-purple-500/10 bg-purple-950/10"
                     id="mobile-action-owner-console"
                   >
@@ -517,7 +648,10 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
                 {onLogoutAdmin && (
                   <button
-                    onClick={() => { onLogoutAdmin(); setMobileMenuOpen(false); }}
+                    onClick={() => {
+                      onLogoutAdmin();
+                      setMobileMenuOpen(false);
+                    }}
                     className="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-xl text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 w-full cursor-pointer transition-all animate-pulse"
                     id="mobile-action-logout"
                   >
@@ -527,19 +661,23 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 )}
 
                 <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
-                  <span className="text-[9px] text-slate-500 font-mono uppercase tracking-wider block">Access Role:</span>
+                  <span className="text-[9px] text-slate-500 font-mono uppercase tracking-wider block">
+                    Access Role:
+                  </span>
                   <button
                     onClick={() => setUserRole(userRole === 'admin' ? 'support' : 'admin')}
                     className={`w-full py-2.5 px-3.5 rounded-xl border text-xs font-mono font-bold flex items-center justify-between cursor-pointer transition-all ${
-                      userRole === 'admin' 
-                        ? 'bg-blue-950/20 border-blue-500/35 text-blue-400' 
+                      userRole === 'admin'
+                        ? 'bg-blue-950/20 border-blue-500/35 text-blue-400'
                         : 'bg-amber-950/20 border-amber-500/35 text-amber-400'
                     }`}
                     id="mobile-role-toggle-btn"
                     type="button"
                   >
                     <span>{userRole === 'admin' ? '🔑 ADMIN' : '🎧 SUPPORT AGENT'}</span>
-                    <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded font-sans font-normal">Toggle</span>
+                    <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded font-sans font-normal">
+                      Toggle
+                    </span>
                   </button>
                 </div>
               </div>
@@ -554,7 +692,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('insights')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'insights' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'insights'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-insights-btn"
             >
@@ -565,7 +705,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('simulator')}
               className={`flex items-center justify-between gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'simulator' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'simulator'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-simulator-btn"
             >
@@ -573,7 +715,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 <Smartphone className="h-4 w-4" />
                 <span>{t('simulator')}</span>
               </div>
-              <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(239,68,68,0.6)]">LIVE</span>
+              <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(239,68,68,0.6)]">
+                LIVE
+              </span>
             </button>
 
             <div className="h-px bg-white/5 my-2 hidden md:block" />
@@ -581,7 +725,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('bot_config')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'bot_config' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'bot_config'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-config-btn"
             >
@@ -592,7 +738,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('knowledge_base')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'knowledge_base' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'knowledge_base'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-kb-btn"
             >
@@ -603,7 +751,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('leads')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'leads' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'leads'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-leads-btn"
             >
@@ -614,7 +764,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('calendar')}
               className={`flex items-center justify-between gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'calendar' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'calendar'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-calendar-btn"
             >
@@ -622,13 +774,17 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 <CalendarIcon className="h-4 w-4" />
                 <span>{t('calendar')}</span>
               </div>
-              {googleToken && <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
+              {googleToken && (
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+              )}
             </button>
 
             <button
               onClick={() => handleTabChange('workspace_hub')}
               className={`flex items-center justify-between gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'workspace_hub' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'workspace_hub'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-workspaceup-btn"
             >
@@ -636,13 +792,17 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 <Cloud className="h-4 w-4" />
                 <span>{t('workspace_hub')}</span>
               </div>
-              {googleToken && <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />}
+              {googleToken && (
+                <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
+              )}
             </button>
 
             <button
               onClick={() => handleTabChange('whatsapp_integration')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'whatsapp_integration' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'whatsapp_integration'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-whatsapp-inst-btn"
             >
@@ -653,7 +813,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('webhook_logs')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'webhook_logs' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'webhook_logs'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-webhook-logs-btn"
             >
@@ -664,7 +826,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             <button
               onClick={() => handleTabChange('billing')}
               className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-xl cursor-pointer transition-all shrink-0 md:w-full w-auto whitespace-nowrap ${
-                activeTab === 'billing' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeTab === 'billing'
+                  ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
               id="tab-billing-btn"
             >
@@ -675,7 +839,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             {onLogoutAdmin && (
               <>
                 <div className="h-px bg-white/5 my-2 hidden md:block" />
-                
+
                 {onGoToOwnerConsole && sessionEmail === 'owner@saas.com' && (
                   <button
                     onClick={onGoToOwnerConsole}
@@ -700,18 +864,22 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
             {/* User Role Selector */}
             <div className="hidden md:flex flex-col mt-4 pt-4 border-t border-white/5 w-full space-y-2">
-              <span className="text-[10px] text-slate-505 font-mono uppercase tracking-wider block">Access Role:</span>
+              <span className="text-[10px] text-slate-505 font-mono uppercase tracking-wider block">
+                Access Role:
+              </span>
               <button
                 onClick={() => setUserRole(userRole === 'admin' ? 'support' : 'admin')}
                 className={`w-full py-2 px-3 rounded-xl border text-xs font-mono font-bold flex items-center justify-between cursor-pointer transition-all ${
-                  userRole === 'admin' 
-                    ? 'bg-blue-950/20 border-blue-500/35 text-blue-400 hover:border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.1)]' 
+                  userRole === 'admin'
+                    ? 'bg-blue-950/20 border-blue-500/35 text-blue-400 hover:border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.1)]'
                     : 'bg-amber-950/20 border-amber-500/35 text-amber-400 hover:border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.1)]'
                 }`}
                 id="role-toggle-btn"
               >
                 <span>{userRole === 'admin' ? '🔑 ADMIN' : '🎧 SUPPORT AGENT'}</span>
-                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest font-sans font-normal">Toggle</span>
+                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest font-sans font-normal">
+                  Toggle
+                </span>
               </button>
             </div>
 
@@ -730,14 +898,14 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
           {/* Active Tab Panel Body */}
           <div className="flex-1 w-full bg-[#0d121d] rounded-3xl p-6 border border-white/5 shadow-2xl">
             <Suspense fallback={<TabLoadingFallback />}>
-            {activeTab === 'insights' && <InsightsTab />}
-            {activeTab === 'bot_config' && <BotConfigTab />}
-            {activeTab === 'knowledge_base' && <KnowledgeBaseTab />}
-            {activeTab === 'leads' && <LeadsTab />}
-            {activeTab === 'calendar' && <CalendarTab />}
-            {activeTab === 'whatsapp_integration' && <WhatsAppIntegrationTab />}
-            {activeTab === 'webhook_logs' && <WebhookLogsTab />}
-            {activeTab === 'billing' && <BillingTab />}
+              {activeTab === 'insights' && <InsightsTab />}
+              {activeTab === 'bot_config' && <BotConfigTab />}
+              {activeTab === 'knowledge_base' && <KnowledgeBaseTab />}
+              {activeTab === 'leads' && <LeadsTab />}
+              {activeTab === 'calendar' && <CalendarTab />}
+              {activeTab === 'whatsapp_integration' && <WhatsAppIntegrationTab />}
+              {activeTab === 'webhook_logs' && <WebhookLogsTab />}
+              {activeTab === 'billing' && <BillingTab />}
             </Suspense>
             {activeTab === 'workspace_hub' && (
               <div className="space-y-6 animate-fade-in">
@@ -752,7 +920,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
             {activeTab === 'simulator' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-display font-medium tracking-tight text-white">{t('simulatorTitle')}</h2>
+                  <h2 className="text-xl font-display font-medium tracking-tight text-white">
+                    {t('simulatorTitle')}
+                  </h2>
                   <p className="text-xs text-slate-450 mt-0.5 font-mono">{t('simulatorSub')}</p>
                 </div>
 
@@ -769,7 +939,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                         try {
                           await loadGoogleCalendar(googleToken);
                         } catch (err) {
-                          console.error("Refresh calendar failed:", err);
+                          console.error('Refresh calendar failed:', err);
                         }
                       }
                     }}
@@ -783,12 +953,17 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
       {/* Twilio Dialer Modal Container */}
       {isDialerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in" id="dialer-modal-backdrop">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          id="dialer-modal-backdrop"
+        >
           <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#080b12] p-5 shadow-2xl relative overflow-hidden flex flex-col space-y-4 animate-scale-in">
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow shadow-blue-500/40"></div>
-                <h4 className="text-xs font-mono font-bold tracking-widest text-slate-450 uppercase">Live Twilio voice line</h4>
+                <h4 className="text-xs font-mono font-bold tracking-widest text-slate-450 uppercase">
+                  Live Twilio voice line
+                </h4>
               </div>
               <button
                 type="button"
@@ -801,12 +976,18 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
 
             <div className="flex flex-col items-center text-center space-y-2">
               <div className="relative">
-                <div className={`w-20 h-20 rounded-full bg-slate-900 border-2 flex items-center justify-center shadow-lg transition-all ${
-                  dialerState === 'dialing' ? 'border-blue-500 animate-pulse' : 
-                  dialerState === 'connected' ? 'border-emerald-500 shadow-emerald-500/10' : 
-                  'border-slate-700'
-                }`}>
-                  <User className={`h-10 w-10 ${dialerState === 'dialing' ? 'text-blue-400' : dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                <div
+                  className={`w-20 h-20 rounded-full bg-slate-900 border-2 flex items-center justify-center shadow-lg transition-all ${
+                    dialerState === 'dialing'
+                      ? 'border-blue-500 animate-pulse'
+                      : dialerState === 'connected'
+                        ? 'border-emerald-500 shadow-emerald-500/10'
+                        : 'border-slate-700'
+                  }`}
+                >
+                  <User
+                    className={`h-10 w-10 ${dialerState === 'dialing' ? 'text-blue-400' : dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-400'}`}
+                  />
                 </div>
                 {dialerState === 'connected' && (
                   <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5">
@@ -817,7 +998,9 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-white font-display font-medium text-base tracking-tight">{dialerCustomerName || 'Customer'}</h3>
+                <h3 className="text-white font-display font-medium text-base tracking-tight">
+                  {dialerCustomerName || 'Customer'}
+                </h3>
                 <p className="text-xs text-slate-450 font-mono">{dialerCustomerNumber}</p>
               </div>
             </div>
@@ -828,30 +1011,39 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
                 {dialerState === 'connected' && 'Call Connected'}
                 {dialerState === 'ended' && 'Call Terminated'}
               </div>
-              <div className={`text-2xl font-bold font-mono tracking-wider ${dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-350'}`}>
-                {Math.floor(dialerTimer / 60).toString().padStart(2, '0')}:{(dialerTimer % 60).toString().padStart(2, '0')}
+              <div
+                className={`text-2xl font-bold font-mono tracking-wider ${dialerState === 'connected' ? 'text-emerald-400' : 'text-slate-350'}`}
+              >
+                {Math.floor(dialerTimer / 60)
+                  .toString()
+                  .padStart(2, '0')}
+                :{(dialerTimer % 60).toString().padStart(2, '0')}
               </div>
             </div>
 
             {(dialerState === 'dialing' || dialerState === 'connected') && (
               <div className="flex items-center gap-[3px] h-10 w-full justify-center py-2 px-6">
-                {[1, 2, 3, 4, 3, 2, 3, 4, 5, 4, 3, 2, 3, 4, 5, 6, 5, 4, 3, 2, 3, 4, 3, 2, 1].map((h, i) => {
-                  let activeHeight = `${h * 4}px`;
-                  if (dialerState === 'dialing') {
-                    activeHeight = `${3 + Math.sin((dialerTimer * 5) + i) * 10}px`;
-                  } else if (dialerState === 'connected') {
-                    activeHeight = `${Math.max(4, Math.sin(i * 0.8) * 12 + 10 + (Math.random() * 8))}px`;
+                {[1, 2, 3, 4, 3, 2, 3, 4, 5, 4, 3, 2, 3, 4, 5, 6, 5, 4, 3, 2, 3, 4, 3, 2, 1].map(
+                  (h, i) => {
+                    let activeHeight = `${h * 4}px`;
+                    if (dialerState === 'dialing') {
+                      activeHeight = `${3 + Math.sin(dialerTimer * 5 + i) * 10}px`;
+                    } else if (dialerState === 'connected') {
+                      activeHeight = `${Math.max(4, Math.sin(i * 0.8) * 12 + 10 + Math.random() * 8)}px`;
+                    }
+                    return (
+                      <span
+                        key={i}
+                        className={`w-[3px] rounded-full transition-all duration-150 ${
+                          dialerState === 'dialing'
+                            ? 'bg-blue-500/40'
+                            : 'bg-emerald-500/70 shadow-sm shadow-emerald-500/20'
+                        }`}
+                        style={{ height: activeHeight }}
+                      />
+                    );
                   }
-                  return (
-                    <span 
-                      key={i} 
-                      className={`w-[3px] rounded-full transition-all duration-150 ${
-                        dialerState === 'dialing' ? 'bg-blue-500/40' : 'bg-emerald-500/70 shadow-sm shadow-emerald-500/20'
-                      }`}
-                      style={{ height: activeHeight }}
-                    />
-                  );
-                })}
+                )}
               </div>
             )}
 
@@ -895,14 +1087,14 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
           setShowAddKb(true);
         }}
         onSyncCalendar={async () => {
-          alert("Google Calendar force-synchronized successfully!");
+          alert('Google Calendar force-synchronized successfully!');
         }}
         onExportReport={() => {
           const exportBtn = document.querySelector('button[title*="CSV"]') as HTMLButtonElement;
           if (exportBtn) {
             exportBtn.click();
           } else {
-            alert("Please navigate to Insights -> AI Performance to export the report.");
+            alert('Please navigate to Insights -> AI Performance to export the report.');
           }
         }}
       />

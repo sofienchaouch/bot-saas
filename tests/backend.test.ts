@@ -690,3 +690,35 @@ describe('Phase 1 production fixes', () => {
     });
   });
 });
+
+describe('POST /api/kb/extract-file (real KB upload)', () => {
+  it('extracts text content from a plain .txt upload', async () => {
+    const res = await request(app)
+      .post('/api/kb/extract-file')
+      .set('X-Test-Auth-Bypass', 'true')
+      .attach('file', Buffer.from('Business hours: 9am-5pm, Mon-Fri.'), 'hours.txt');
+
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe('hours');
+    expect(res.body.content).toContain('Business hours: 9am-5pm');
+  });
+
+  it('rejects an unsupported file extension with 400', async () => {
+    const res = await request(app)
+      .post('/api/kb/extract-file')
+      .set('X-Test-Auth-Bypass', 'true')
+      .attach('file', Buffer.from('binary-ish content'), 'archive.zip');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Unsupported file type');
+  });
+
+  it('rejects a request with no file attached', async () => {
+    const res = await request(app)
+      .post('/api/kb/extract-file')
+      .set('X-Test-Auth-Bypass', 'true');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Missing file upload');
+  });
+});
