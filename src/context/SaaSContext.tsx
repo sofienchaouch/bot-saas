@@ -2,8 +2,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent } from '../types';
 import { DEFAULT_TENANTS } from '../defaultData';
 import { googleSignIn, logout, initAuth } from '../firebase';
-import { listGoogleCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../googleCalendar';
-import { createGoogleSpreadsheet, appendRowToGoogleSpreadsheet, sendGmailMessage } from '../googleWorkspace';
+import {
+  listGoogleCalendarEvents,
+  createGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
+} from '../googleCalendar';
+import {
+  createGoogleSpreadsheet,
+  appendRowToGoogleSpreadsheet,
+  sendGmailMessage,
+} from '../googleWorkspace';
 import { User as FirebaseUser } from 'firebase/auth';
 import { useLanguage } from '../LanguageContext';
 
@@ -66,7 +74,12 @@ interface SaaSContextType {
   setDragActive: (val: boolean) => void;
 
   // KB Actions
-  handleSimulateFileUpload: (fileName: string, fileSize: string, content: string, titleName: string) => void;
+  handleSimulateFileUpload: (
+    fileName: string,
+    fileSize: string,
+    content: string,
+    titleName: string
+  ) => void;
   handleDrag: (e: React.DragEvent) => void;
   handleDrop: (e: React.DragEvent) => void;
   handleManualFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -97,7 +110,9 @@ interface SaaSContextType {
 
   // Live Chat / Takeover
   takeoverConvos: Record<string, { messages: any[]; assignedAgentName?: string }>;
-  setTakeoverConvos: React.Dispatch<React.SetStateAction<Record<string, { messages: any[]; assignedAgentName?: string }>>>;
+  setTakeoverConvos: React.Dispatch<
+    React.SetStateAction<Record<string, { messages: any[]; assignedAgentName?: string }>>
+  >;
   selectedConvoKey: string | null;
   setSelectedConvoKey: (key: string | null) => void;
   takeoverReplyText: string;
@@ -147,15 +162,26 @@ interface SaaSContextType {
   setAgentVoiceEnabledInput: (val: boolean) => void;
   agentActionSuccess: string | null;
   getTenantAgents: (tenant: Tenant) => Agent[];
-  handleApplyAgentArchetype: (archetype: 'sales' | 'faq' | 'booking' | 'support' | 'customer_support' | 'retail_sales') => void;
+  handleApplyAgentArchetype: (
+    archetype: 'sales' | 'faq' | 'booking' | 'support' | 'customer_support' | 'retail_sales'
+  ) => void;
   handleSelectActiveAgent: (agentId: string) => void;
   handleSaveAgent: (e: React.FormEvent) => void;
   handleStartEditAgent: (agentId: string) => void;
   handleDeleteAgent: (agentId: string) => void;
 
   // Prompt Sandbox Playground
-  playgroundMessages: { sender: 'customer' | 'bot'; text: string; timestamp?: string; action?: any }[];
-  setPlaygroundMessages: React.Dispatch<React.SetStateAction<{ sender: 'customer' | 'bot'; text: string; timestamp?: string; action?: any }[]>>;
+  playgroundMessages: {
+    sender: 'customer' | 'bot';
+    text: string;
+    timestamp?: string;
+    action?: any;
+  }[];
+  setPlaygroundMessages: React.Dispatch<
+    React.SetStateAction<
+      { sender: 'customer' | 'bot'; text: string; timestamp?: string; action?: any }[]
+    >
+  >;
   playgroundInput: string;
   setPlaygroundInput: (val: string) => void;
   playgroundInstruction: string;
@@ -292,7 +318,11 @@ interface SaaSContextType {
   setNurtureBodyTemplate: (val: string) => void;
   nurtureLogs: string[];
   setNurtureLogs: React.Dispatch<React.SetStateAction<string[]>>;
-  handleTriggerNurtureEmail: (leadName: string, leadEmail: string, currentStatus: string) => Promise<void>;
+  handleTriggerNurtureEmail: (
+    leadName: string,
+    leadEmail: string,
+    currentStatus: string
+  ) => Promise<void>;
 
   // Speech Recognition / Audio
   isRecordingAgent: boolean;
@@ -312,19 +342,16 @@ export const SaaSProvider: React.FC<{
   newSignUpTenant?: Tenant | null;
   sessionEmail: string | null;
   children: React.ReactNode;
-}> = ({
-  tenants,
-  setTenants,
-  initialTenantId,
-  newSignUpTenant,
-  sessionEmail,
-  children
-}) => {
-  const [selectedTenantId, setSelectedTenantId] = useState<string>(initialTenantId || 'zenith-fitness');
+}> = ({ tenants, setTenants, initialTenantId, newSignUpTenant, sessionEmail, children }) => {
+  const [selectedTenantId, setSelectedTenantId] = useState<string>(
+    initialTenantId || 'zenith-fitness'
+  );
   const [userRole, setUserRole] = useState<'admin' | 'support'>('admin');
 
   // Live Chat Takeover States
-  const [takeoverConvos, setTakeoverConvos] = useState<Record<string, { messages: any[]; assignedAgentName?: string }>>({});
+  const [takeoverConvos, setTakeoverConvos] = useState<
+    Record<string, { messages: any[]; assignedAgentName?: string }>
+  >({});
   const [selectedConvoKey, setSelectedConvoKey] = useState<string | null>(null);
   const [takeoverReplyText, setTakeoverReplyText] = useState('');
   const [isSendingTakeoverReply, setIsSendingTakeoverReply] = useState(false);
@@ -367,21 +394,27 @@ export const SaaSProvider: React.FC<{
     if (!selectedTenant?.id) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`);
+    const ws = new WebSocket(
+      `${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`
+    );
 
-    ws.onmessage = (msg) => {
+    ws.onmessage = msg => {
       try {
         const data = JSON.parse(msg.data);
         if (data.type === 'conversation-message' && data.payload?.convoKey) {
           const { convoKey, message } = data.payload;
-          setTakeoverConvos((prev) => {
+          setTakeoverConvos(prev => {
             const existing = prev[convoKey] || { messages: [] };
-            if (existing.messages.some((m: any) => m.timestamp === message.timestamp && m.text === message.text)) {
+            if (
+              existing.messages.some(
+                (m: any) => m.timestamp === message.timestamp && m.text === message.text
+              )
+            ) {
               return prev;
             }
             return {
               ...prev,
-              [convoKey]: { ...existing, messages: [...existing.messages, message] }
+              [convoKey]: { ...existing, messages: [...existing.messages, message] },
             };
           });
         }
@@ -408,16 +441,24 @@ export const SaaSProvider: React.FC<{
   // Modals / Forms inputs
   const [kbTitleInput, setKbTitleInput] = useState('');
   const [kbContentInput, setKbContentInput] = useState('');
-  const [kbTypeInput, setKbTypeInput] = useState<'faq' | 'document' | 'file' | 'url' | 'crawl'>('file');
+  const [kbTypeInput, setKbTypeInput] = useState<'faq' | 'document' | 'file' | 'url' | 'crawl'>(
+    'file'
+  );
   const [showAddKb, setShowAddKb] = useState(false);
 
   // Extended Knowledge Base variables
-  const [kbFileMeta, setKbFileMeta] = useState<{ name: string; size: string; type: string } | null>(null);
+  const [kbFileMeta, setKbFileMeta] = useState<{ name: string; size: string; type: string } | null>(
+    null
+  );
   const [kbUrlInput, setKbUrlInput] = useState('');
-  const [kbCrawlSource, setKbCrawlSource] = useState<'web' | 'instagram' | 'facebook' | 'linkedin' | 'twitter'>('web');
+  const [kbCrawlSource, setKbCrawlSource] = useState<
+    'web' | 'instagram' | 'facebook' | 'linkedin' | 'twitter'
+  >('web');
   const [kbCrawlDepth, setKbCrawlDepth] = useState(2);
   const [kbCrawlPages, setKbCrawlPages] = useState(15);
-  const [kbCrawlStatus, setKbCrawlStatus] = useState<'idle' | 'running' | 'completed' | 'failed'>('idle');
+  const [kbCrawlStatus, setKbCrawlStatus] = useState<'idle' | 'running' | 'completed' | 'failed'>(
+    'idle'
+  );
   const [kbCrawlProgress, setKbCrawlProgress] = useState(0);
   const [kbCrawlLogs, setKbCrawlLogs] = useState<string[]>([]);
   const [isProcessingKb, setIsProcessingKb] = useState(false);
@@ -433,7 +474,11 @@ export const SaaSProvider: React.FC<{
   const [leadsStatusFilter, setLeadsStatusFilter] = useState<string>('ALL');
 
   // Destructive Actions Custom Confirms
-  const [eventPendingDelete, setEventPendingDelete] = useState<{ id: string; name: string; isGoogle: boolean } | null>(null);
+  const [eventPendingDelete, setEventPendingDelete] = useState<{
+    id: string;
+    name: string;
+    isGoogle: boolean;
+  } | null>(null);
 
   // Welcome Message Templates Form & Edit States
   const [showAddTemplateForm, setShowAddTemplateForm] = useState(false);
@@ -446,15 +491,23 @@ export const SaaSProvider: React.FC<{
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const [agentNameInput, setAgentNameInput] = useState('');
   const [agentRoleInput, setAgentRoleInput] = useState('');
-  const [agentToneInput, setAgentToneInput] = useState<'professional' | 'friendly' | 'casual' | 'empathetic'>('friendly');
+  const [agentToneInput, setAgentToneInput] = useState<
+    'professional' | 'friendly' | 'casual' | 'empathetic'
+  >('friendly');
   const [agentSystemInstructionInput, setAgentSystemInstructionInput] = useState('');
   const [agentAvatarInput, setAgentAvatarInput] = useState('🤖');
   const [agentVoiceEnabledInput, setAgentVoiceEnabledInput] = useState(false);
   const [agentActionSuccess, setAgentActionSuccess] = useState<string | null>(null);
 
   // Interactive Prompt Playground State Variables
-  const [playgroundMessages, setPlaygroundMessages] = useState<{ sender: 'customer' | 'bot'; text: string; timestamp?: string; action?: any }[]>([
-    { sender: 'bot', text: 'Marhaba! 👋 Feel free to send me any sample message here in this sandbox playground. I will respond adhering strictly to your prompt instructions and document sources, and you can see my raw reasoning outputs instantly below!', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+  const [playgroundMessages, setPlaygroundMessages] = useState<
+    { sender: 'customer' | 'bot'; text: string; timestamp?: string; action?: any }[]
+  >([
+    {
+      sender: 'bot',
+      text: 'Marhaba! 👋 Feel free to send me any sample message here in this sandbox playground. I will respond adhering strictly to your prompt instructions and document sources, and you can see my raw reasoning outputs instantly below!',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
   ]);
   const [playgroundInput, setPlaygroundInput] = useState('');
   const [playgroundInstruction, setPlaygroundInstruction] = useState('');
@@ -466,14 +519,18 @@ export const SaaSProvider: React.FC<{
 
   // Webhook CRM Sync Simulator state variables
   const [webhookLeadId, setWebhookLeadId] = useState<string>('');
-  const [webhookStatus, setWebhookStatus] = useState<'idle' | 'sending' | 'success' | 'failed'>('idle');
+  const [webhookStatus, setWebhookStatus] = useState<'idle' | 'sending' | 'success' | 'failed'>(
+    'idle'
+  );
   const [webhookLogs, setWebhookLogs] = useState<string[]>([]);
 
   // WhatsApp Integration form state selectors
   const [waPhone, setWaPhone] = useState('');
   const [waSid, setWaSid] = useState('');
   const [waToken, setWaToken] = useState('');
-  const [waStatus, setWaStatus] = useState<'connected' | 'disconnected' | 'pending_verification'>('disconnected');
+  const [waStatus, setWaStatus] = useState<'connected' | 'disconnected' | 'pending_verification'>(
+    'disconnected'
+  );
   const [waShowToken, setWaShowToken] = useState(false);
   const [waTestMode, setWaTestMode] = useState(false);
 
@@ -483,13 +540,17 @@ export const SaaSProvider: React.FC<{
   const [waSandboxInputNumber, setWaSandboxInputNumber] = useState('');
   const [waSandboxCode, setWaSandboxCode] = useState('');
   const [waSandboxSentCode, setWaSandboxSentCode] = useState('');
-  const [waSandboxStep, setWaSandboxStep] = useState<'idle' | 'sending' | 'otp_sent' | 'verified'>('idle');
+  const [waSandboxStep, setWaSandboxStep] = useState<'idle' | 'sending' | 'otp_sent' | 'verified'>(
+    'idle'
+  );
   const [waSandboxError, setWaSandboxError] = useState<string | null>(null);
 
   // Messenger Integration form state selectors
   const [messengerPageId, setMessengerPageId] = useState('');
   const [messengerToken, setMessengerToken] = useState('');
-  const [messengerStatus, setMessengerStatus] = useState<'connected' | 'disconnected' | 'pending_verification'>('disconnected');
+  const [messengerStatus, setMessengerStatus] = useState<
+    'connected' | 'disconnected' | 'pending_verification'
+  >('disconnected');
   const [messengerShowToken, setMessengerShowToken] = useState(false);
   const [messengerSaveSuccess, setMessengerSaveSuccess] = useState(false);
 
@@ -499,20 +560,32 @@ export const SaaSProvider: React.FC<{
   const [messengerSandboxInputNumber, setMessengerSandboxInputNumber] = useState('');
   const [messengerSandboxCode, setMessengerSandboxCode] = useState('');
   const [messengerSandboxSentCode, setMessengerSandboxSentCode] = useState('');
-  const [messengerSandboxStep, setMessengerSandboxStep] = useState<'idle' | 'sending' | 'otp_sent' | 'verified'>('idle');
+  const [messengerSandboxStep, setMessengerSandboxStep] = useState<
+    'idle' | 'sending' | 'otp_sent' | 'verified'
+  >('idle');
   const [messengerSandboxError, setMessengerSandboxError] = useState<string | null>(null);
 
   // Active platform sub-tab inside Integrations Tab
-  const [activeChannelSubTab, setActiveChannelSubTab] = useState<'whatsapp' | 'messenger'>('whatsapp');
+  const [activeChannelSubTab, setActiveChannelSubTab] = useState<'whatsapp' | 'messenger'>(
+    'whatsapp'
+  );
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [connectionFeedback, setConnectionFeedback] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [connectionFeedback, setConnectionFeedback] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [isTestingMessengerConnection, setIsTestingMessengerConnection] = useState(false);
-  const [messengerConnectionFeedback, setMessengerConnectionFeedback] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [messengerConnectionFeedback, setMessengerConnectionFeedback] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Webhook Tester UI States
   const [testWebhookSenderName, setTestWebhookSenderName] = useState('Jane Doe');
   const [testWebhookSenderPhone, setTestWebhookSenderPhone] = useState('33612345678');
-  const [testWebhookMessage, setTestWebhookMessage] = useState('Hello, what are your group fitness rates?');
+  const [testWebhookMessage, setTestWebhookMessage] = useState(
+    'Hello, what are your group fitness rates?'
+  );
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [testWebhookLogs, setTestWebhookLogs] = useState<string[]>([]);
   const [testConversationsList, setTestConversationsList] = useState<any[]>([]);
@@ -520,9 +593,13 @@ export const SaaSProvider: React.FC<{
   const [payloadCopied, setPayloadCopied] = useState(false);
 
   // Messenger Webhook Tester UI States
-  const [testMessengerWebhookSenderName, setTestMessengerWebhookSenderName] = useState('Maria Sharapova');
-  const [testMessengerWebhookSenderPSID, setTestMessengerWebhookSenderPSID] = useState('psid_9281742');
-  const [testMessengerWebhookMessage, setTestMessengerWebhookMessage] = useState('Hi, I want to inquire about monthly subscriptions.');
+  const [testMessengerWebhookSenderName, setTestMessengerWebhookSenderName] =
+    useState('Maria Sharapova');
+  const [testMessengerWebhookSenderPSID, setTestMessengerWebhookSenderPSID] =
+    useState('psid_9281742');
+  const [testMessengerWebhookMessage, setTestMessengerWebhookMessage] = useState(
+    'Hi, I want to inquire about monthly subscriptions.'
+  );
   const [isTestingMessengerWebhook, setIsTestingMessengerWebhook] = useState(false);
   const [testMessengerWebhookLogs, setTestMessengerWebhookLogs] = useState<string[]>([]);
   const [testMessengerConversationsList, setTestMessengerConversationsList] = useState<any[]>([]);
@@ -549,7 +626,7 @@ export const SaaSProvider: React.FC<{
     'Hi {customer_name},\n\nWe saw you were recently marked as "{status}" in our system. We would love to schedule a custom follow-up and answer any questions you may have regarding our services!\n\nBest regards,\nThe {tenant_name} Team'
   );
   const [nurtureLogs, setNurtureLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] Email trigger automation daemon initialized.`
+    `[${new Date().toLocaleTimeString()}] Email trigger automation daemon initialized.`,
   ]);
 
   // System Instruction Speech Recording States
@@ -560,10 +637,13 @@ export const SaaSProvider: React.FC<{
 
   const startVoiceRecording = (target: 'agent' | 'playground') => {
     setSpeechError(null);
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      setSpeechError("Speech recognition is not supported in this browser. Please use Chrome/Safari/Edge.");
+      setSpeechError(
+        'Speech recognition is not supported in this browser. Please use Chrome/Safari/Edge.'
+      );
       return;
     }
 
@@ -599,17 +679,21 @@ export const SaaSProvider: React.FC<{
             finalTranscription += event.results[i][0].transcript + ' ';
           }
         }
-        
+
         if (finalTranscription) {
           if (target === 'agent') {
             setAgentSystemInstructionInput(prev => {
               const cleaned = prev.trim();
-              return cleaned ? `${cleaned} ${finalTranscription.trim()}` : finalTranscription.trim();
+              return cleaned
+                ? `${cleaned} ${finalTranscription.trim()}`
+                : finalTranscription.trim();
             });
           } else {
             setPlaygroundInstruction(prev => {
               const cleaned = prev.trim();
-              return cleaned ? `${cleaned} ${finalTranscription.trim()}` : finalTranscription.trim();
+              return cleaned
+                ? `${cleaned} ${finalTranscription.trim()}`
+                : finalTranscription.trim();
             });
           }
         }
@@ -752,25 +836,28 @@ export const SaaSProvider: React.FC<{
                   start: appt.start,
                   end: appt.end,
                   summary: appt.summary,
-                  notes: appt.notes
+                  notes: appt.notes,
                 });
 
                 updatedAppointments[i] = {
                   ...appt,
                   id: syncedAppt.id,
                   syncedWithGoogle: true,
-                  googleEventId: syncedAppt.id
+                  googleEventId: syncedAppt.id,
                 };
                 successCount++;
               } catch (err) {
-                console.error(`[CALENDAR_SYNC] Failed auto-syncing appointment ${appt.id} to Google:`, err);
+                console.error(
+                  `[CALENDAR_SYNC] Failed auto-syncing appointment ${appt.id} to Google:`,
+                  err
+                );
               }
             }
           }
 
           if (successCount > 0) {
             updateTenantFields({
-              appointments: updatedAppointments
+              appointments: updatedAppointments,
             });
             const reloadedEvents = await listGoogleCalendarEvents(token);
             setGoogleEvents(reloadedEvents);
@@ -798,7 +885,9 @@ export const SaaSProvider: React.FC<{
 
   const handleExportToSheets = async () => {
     if (!googleToken) {
-      setSheetsExportError('Missing Google authorization credentials. Please connect to Google Workspace first.');
+      setSheetsExportError(
+        'Missing Google authorization credentials. Please connect to Google Workspace first.'
+      );
       return;
     }
     setExportingToSheets(true);
@@ -807,9 +896,14 @@ export const SaaSProvider: React.FC<{
     try {
       const title = `${selectedTenant.name} - CRM Lead Inflow Report (${new Date().toLocaleDateString()})`;
       const sheet = await createGoogleSpreadsheet(googleToken, title);
-      
+
       await appendRowToGoogleSpreadsheet(googleToken, sheet.spreadsheetId, [
-        'NAME', 'EMAIL', 'PHONE NUMBER', 'LEAD STATUS', 'DATE CAPTURED', 'CRM AGENT NOTES'
+        'NAME',
+        'EMAIL',
+        'PHONE NUMBER',
+        'LEAD STATUS',
+        'DATE CAPTURED',
+        'CRM AGENT NOTES',
       ]);
 
       const activeLeads = selectedTenant.leads || [];
@@ -820,14 +914,14 @@ export const SaaSProvider: React.FC<{
           lead.phone || 'None',
           lead.status || 'New',
           lead.dateCaptured || 'None',
-          lead.note || 'AI Agent lead harvest.'
+          lead.note || 'AI Agent lead harvest.',
         ]);
       }
 
       setSheetsExportUrl(sheet.spreadsheetUrl);
       setNurtureLogs(prev => [
         `[${new Date().toLocaleTimeString()}] ✅ Exported all ${activeLeads.length} leads successfully to newly provisioned Cloud Sheet: "${title}"`,
-        ...prev
+        ...prev,
       ]);
     } catch (err: any) {
       console.error(err);
@@ -837,11 +931,15 @@ export const SaaSProvider: React.FC<{
     }
   };
 
-  const handleTriggerNurtureEmail = async (leadName: string, leadEmail: string, currentStatus: string) => {
+  const handleTriggerNurtureEmail = async (
+    leadName: string,
+    leadEmail: string,
+    currentStatus: string
+  ) => {
     if (!googleToken) {
       setNurtureLogs(prev => [
         `[${new Date().toLocaleTimeString()}] ⚠️ Failed to trigger nurture sequence: Google Authentication credentials missing.`,
-        ...prev
+        ...prev,
       ]);
       return;
     }
@@ -860,26 +958,31 @@ export const SaaSProvider: React.FC<{
       const response = await sendGmailMessage(googleToken, leadEmail, subject, body);
       setNurtureLogs(prev => [
         `[${new Date().toLocaleTimeString()}] ✅ [GMAIL TRANSMITTED] Successfully dispatched nurture sequence to "${leadName}" <${leadEmail}>. Gmail ID: ${response.id}`,
-        ...prev
+        ...prev,
       ]);
     } catch (e: any) {
       console.error('Gmail transmission failure:', e);
       setNurtureLogs(prev => [
         `[${new Date().toLocaleTimeString()}] ❌ [TRIGGER FAILED] Failed to transmit sequence message: ${e?.message || e}`,
-        ...prev
+        ...prev,
       ]);
     }
   };
 
   const updateTenantFields = (fields: Partial<Tenant>) => {
-    setTenants(prev => prev.map(t => t.id === selectedTenant.id ? { ...t, ...fields } : t));
+    setTenants(prev => prev.map(t => (t.id === selectedTenant.id ? { ...t, ...fields } : t)));
   };
 
-  const handleSimulateFileUpload = (fileName: string, fileSize: string, content: string, titleName: string) => {
+  const handleSimulateFileUpload = (
+    fileName: string,
+    fileSize: string,
+    content: string,
+    titleName: string
+  ) => {
     setIsProcessingKb(true);
     setKbProcessingStep('Reading binary headers from PDF/Doc...');
     setKbFileMeta({ name: fileName, size: fileSize, type: 'application/pdf' });
-    
+
     setTimeout(() => {
       setKbProcessingStep('Parsing XML format layout and nodes...');
       setTimeout(() => {
@@ -897,9 +1000,9 @@ export const SaaSProvider: React.FC<{
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
   };
@@ -913,9 +1016,14 @@ export const SaaSProvider: React.FC<{
       const file = e.dataTransfer.files[0];
       const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = event => {
         const text = event.target?.result as string;
-        handleSimulateFileUpload(file.name, sizeStr, text || "Parsed unstructured metadata content.", file.name.split('.')[0]);
+        handleSimulateFileUpload(
+          file.name,
+          sizeStr,
+          text || 'Parsed unstructured metadata content.',
+          file.name.split('.')[0]
+        );
       };
       reader.readAsText(file);
     }
@@ -926,9 +1034,14 @@ export const SaaSProvider: React.FC<{
       const file = e.target.files[0];
       const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = event => {
         const text = event.target?.result as string;
-        handleSimulateFileUpload(file.name, sizeStr, text || "Parsed unstructured metadata content.", file.name.split('.')[0]);
+        handleSimulateFileUpload(
+          file.name,
+          sizeStr,
+          text || 'Parsed unstructured metadata content.',
+          file.name.split('.')[0]
+        );
       };
       reader.readAsText(file);
     }
@@ -938,7 +1051,7 @@ export const SaaSProvider: React.FC<{
     if (!kbUrlInput.trim()) return;
     setIsProcessingKb(true);
     setKbProcessingStep('Resolving DNS route to host...');
-    
+
     setTimeout(() => {
       setKbProcessingStep('Downloading HTML document hierarchy...');
       setTimeout(() => {
@@ -946,10 +1059,11 @@ export const SaaSProvider: React.FC<{
         setTimeout(() => {
           setIsProcessingKb(false);
           setKbProcessingStep('');
-          
-          let parsedTitle = kbUrlInput.replace('https://', '').replace('http://', '').split('/')[0] + ' Info';
+
+          let parsedTitle =
+            kbUrlInput.replace('https://', '').replace('http://', '').split('/')[0] + ' Info';
           parsedTitle = parsedTitle.charAt(0).toUpperCase() + parsedTitle.slice(1);
-          
+
           setKbTitleInput(parsedTitle);
           setKbContentInput(`[Indexed URL Resource: ${kbUrlInput}]
 Scraped metadata from dynamic live portal on ${new Date().toLocaleDateString()}.
@@ -969,7 +1083,7 @@ Service catalog:
     setKbCrawlProgress(10);
     setKbCrawlLogs([
       `[${new Date().toLocaleTimeString()}] 🚀 Initiating specialized crawler daemon at target: ${kbUrlInput}`,
-      `[${new Date().toLocaleTimeString()}] 🔍 Validating SSRF rules (Checking target resolves to non-internal IP)...`
+      `[${new Date().toLocaleTimeString()}] 🔍 Validating SSRF rules (Checking target resolves to non-internal IP)...`,
     ]);
 
     setTimeout(() => {
@@ -978,7 +1092,7 @@ Service catalog:
         ...prev,
         `[${new Date().toLocaleTimeString()}] 🔑 SSRF Passed! Target resolved to safe external IP.`,
         `[${new Date().toLocaleTimeString()}] 🌐 Resolving sitemap.xml and depth levels (Depth: ${kbCrawlDepth}, Pages Budget: ${kbCrawlPages})...`,
-        `[${new Date().toLocaleTimeString()}] 🕷️ Crawling root entry node: ${kbUrlInput}`
+        `[${new Date().toLocaleTimeString()}] 🕷️ Crawling root entry node: ${kbUrlInput}`,
       ]);
     }, 1000);
 
@@ -988,7 +1102,7 @@ Service catalog:
         ...prev,
         `[${new Date().toLocaleTimeString()}] 📄 Scraped 3 internal sub-pages successfully.`,
         `[${new Date().toLocaleTimeString()}] ⚙️ Executing text chunking (Fixed 800-token sizes with 100-token overlaps)...`,
-        `[${new Date().toLocaleTimeString()}] 🧠 Requesting vector embeddings from Google Gemini API...`
+        `[${new Date().toLocaleTimeString()}] 🧠 Requesting vector embeddings from Google Gemini API...`,
       ]);
     }, 2200);
 
@@ -1001,8 +1115,8 @@ Service catalog:
             url: kbUrlInput.trim(),
             source: kbCrawlSource,
             depth: kbCrawlDepth,
-            pagesBudget: kbCrawlPages
-          })
+            pagesBudget: kbCrawlPages,
+          }),
         });
 
         if (response.ok) {
@@ -1012,7 +1126,7 @@ Service catalog:
           setKbCrawlLogs(prev => [
             ...prev,
             `[${new Date().toLocaleTimeString()}] 💾 Writing synchronized vector indexes to local cache stores...`,
-            `[${new Date().toLocaleTimeString()}] ✅ Success! Scraping completed. Embedded document "${resData.kbItem.title}" into Private Knowledge Base.`
+            `[${new Date().toLocaleTimeString()}] ✅ Success! Scraping completed. Embedded document "${resData.kbItem.title}" into Private Knowledge Base.`,
           ]);
 
           const freshRes = await fetch('/api/tenants');
@@ -1023,18 +1137,18 @@ Service catalog:
               setTenants(list);
             }
           }
-          
+
           setKbUrlInput('');
         } else {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Server rejected crawl process');
         }
       } catch (err: any) {
-        console.error("Crawl error:", err);
+        console.error('Crawl error:', err);
         setKbCrawlStatus('failed');
         setKbCrawlLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] ❌ Crawl aborted due to network failure: ${err.message}`
+          `[${new Date().toLocaleTimeString()}] ❌ Crawl aborted due to network failure: ${err.message}`,
         ]);
       }
     }, 3800);
@@ -1049,12 +1163,12 @@ Service catalog:
       type: kbTypeInput,
       title: kbTitleInput.trim(),
       content: kbContentInput.trim(),
-      dateAdded: new Date().toISOString().split('T')[0]
+      dateAdded: new Date().toISOString().split('T')[0],
     };
 
     const currentKb = selectedTenant.knowledgeBase || [];
     updateTenantFields({
-      knowledgeBase: [newItem, ...currentKb]
+      knowledgeBase: [newItem, ...currentKb],
     });
 
     setKbTitleInput('');
@@ -1066,7 +1180,7 @@ Service catalog:
   const handleAddLiveLead = (newLead: Lead) => {
     const currentLeads = selectedTenant.leads || [];
     updateTenantFields({
-      leads: [newLead, ...currentLeads]
+      leads: [newLead, ...currentLeads],
     });
   };
 
@@ -1081,7 +1195,7 @@ Service catalog:
       email: leadEmailInput.trim(),
       status: 'New',
       dateCaptured: new Date().toISOString(),
-      note: leadNoteInput.trim() || 'Manually added in dashboard.'
+      note: leadNoteInput.trim() || 'Manually added in dashboard.',
     };
 
     handleAddLiveLead(newLead);
@@ -1100,15 +1214,20 @@ Service catalog:
   const handleExportToCSV = () => {
     const activeLeads = selectedTenant.leads || [];
     const headers = 'Name,Email,Phone,Status,Date Captured,Notes\n';
-    const rows = activeLeads.map(l => 
-      `"${l.name}","${l.email}","${l.phone}","${l.status}","${l.dateCaptured}","${l.note}"`
-    ).join('\n');
-    
+    const rows = activeLeads
+      .map(
+        l => `"${l.name}","${l.email}","${l.phone}","${l.status}","${l.dateCaptured}","${l.note}"`
+      )
+      .join('\n');
+
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${selectedTenant.id}-leads-${new Date().toISOString().split('T')[0]}.csv`);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `${selectedTenant.id}-leads-${new Date().toISOString().split('T')[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1127,7 +1246,7 @@ Service catalog:
           start: appt.start,
           end: appt.end,
           summary: appt.summary,
-          notes: appt.notes
+          notes: appt.notes,
         });
 
         const syncedIndex = updated.findIndex(a => a.id === appt.id);
@@ -1136,10 +1255,10 @@ Service catalog:
             ...appt,
             id: syncedAppt.id,
             syncedWithGoogle: true,
-            googleEventId: syncedAppt.id
+            googleEventId: syncedAppt.id,
           };
         }
-        
+
         loadGoogleCalendar(googleToken, true);
       } catch (err) {
         console.error('[CALENDAR_MANUAL] Failed syncing appt to Google:', err);
@@ -1147,7 +1266,7 @@ Service catalog:
     }
 
     updateTenantFields({
-      appointments: updated
+      appointments: updated,
     });
   };
 
@@ -1165,12 +1284,12 @@ Service catalog:
     }
 
     const currentAppts = selectedTenant.appointments || [];
-    const updated = currentAppts.filter(a => 
-      a.id !== eventPendingDelete.id && a.googleEventId !== eventPendingDelete.id
+    const updated = currentAppts.filter(
+      a => a.id !== eventPendingDelete.id && a.googleEventId !== eventPendingDelete.id
     );
 
     updateTenantFields({
-      appointments: updated
+      appointments: updated,
     });
 
     setEventPendingDelete(null);
@@ -1179,7 +1298,7 @@ Service catalog:
   const handleToggleBotStatus = () => {
     const nextStatus = selectedTenant.status === 'active' ? 'suspended' : 'active';
     updateTenantFields({
-      status: nextStatus
+      status: nextStatus,
     });
   };
 
@@ -1189,7 +1308,7 @@ Service catalog:
       whatsAppPhoneNumber: waPhone,
       whatsAppVerifiedSid: waSid,
       whatsAppApiKey: waToken,
-      whatsAppStatus: waStatus
+      whatsAppStatus: waStatus,
     });
   };
 
@@ -1200,15 +1319,22 @@ Service catalog:
 
     setTimeout(() => {
       setIsTestingConnection(false);
-      const isTokenPlaceholder = !waToken || waToken === 'dummy' || waToken.includes('...') || waToken.length < 30;
+      const isTokenPlaceholder =
+        !waToken || waToken === 'dummy' || waToken.includes('...') || waToken.length < 30;
       if (waSid && waToken && !isTokenPlaceholder) {
         setWaStatus('connected');
         updateTenantFields({ whatsAppStatus: 'connected' });
-        setConnectionFeedback({ type: 'success', text: 'Connection Established: Meta Graph credentials verified successfully!' });
+        setConnectionFeedback({
+          type: 'success',
+          text: 'Connection Established: Meta Graph credentials verified successfully!',
+        });
       } else {
         setWaStatus('pending_verification');
         updateTenantFields({ whatsAppStatus: 'pending_verification' });
-        setConnectionFeedback({ type: 'error', text: 'Verification Failed: Please enter authentic SID and active system token.' });
+        setConnectionFeedback({
+          type: 'error',
+          text: 'Verification Failed: Please enter authentic SID and active system token.',
+        });
       }
     }, 2000);
   };
@@ -1220,15 +1346,25 @@ Service catalog:
 
     setTimeout(() => {
       setIsTestingMessengerConnection(false);
-      const isTokenPlaceholder = !messengerToken || messengerToken === 'dummy' || messengerToken.includes('...') || messengerToken.length < 30;
+      const isTokenPlaceholder =
+        !messengerToken ||
+        messengerToken === 'dummy' ||
+        messengerToken.includes('...') ||
+        messengerToken.length < 30;
       if (messengerPageId && messengerToken && !isTokenPlaceholder) {
         setMessengerStatus('connected');
         updateTenantFields({ messengerStatus: 'connected' });
-        setMessengerConnectionFeedback({ type: 'success', text: 'Page webhook connected successfully!' });
+        setMessengerConnectionFeedback({
+          type: 'success',
+          text: 'Page webhook connected successfully!',
+        });
       } else {
         setMessengerStatus('pending_verification');
         updateTenantFields({ messengerStatus: 'pending_verification' });
-        setMessengerConnectionFeedback({ type: 'error', text: 'Verification Failed: Token credentials rejected.' });
+        setMessengerConnectionFeedback({
+          type: 'error',
+          text: 'Verification Failed: Token credentials rejected.',
+        });
       }
     }, 2000);
   };
@@ -1248,7 +1384,9 @@ Service catalog:
       const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
       setWaSandboxSentCode(generatedCode);
       setWaSandboxStep('otp_sent');
-      console.log(`[SIMULATOR SMS DEV OTP] Verification Code for ${waSandboxInputNumber}: ${generatedCode}`);
+      console.log(
+        `[SIMULATOR SMS DEV OTP] Verification Code for ${waSandboxInputNumber}: ${generatedCode}`
+      );
     }, 1800);
   };
 
@@ -1281,7 +1419,7 @@ Service catalog:
     updateTenantFields({
       messengerPageId: messengerPageId,
       messengerToken: messengerToken,
-      messengerStatus: messengerStatus
+      messengerStatus: messengerStatus,
     });
     setMessengerSaveSuccess(true);
     setTimeout(() => setMessengerSaveSuccess(false), 3000);
@@ -1302,7 +1440,9 @@ Service catalog:
       const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
       setMessengerSandboxSentCode(generatedCode);
       setMessengerSandboxStep('otp_sent');
-      console.log(`[MESSENGER SIMULATOR SMS DEV OTP] Verification Code for Page User: ${generatedCode}`);
+      console.log(
+        `[MESSENGER SIMULATOR SMS DEV OTP] Verification Code for Page User: ${generatedCode}`
+      );
     }, 1800);
   };
 
@@ -1333,7 +1473,7 @@ Service catalog:
   const handleTriggerMessengerWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isTestingMessengerWebhook) return;
-    
+
     setIsTestingMessengerWebhook(true);
     const logs: string[] = [];
     const timestampSec = Math.floor(Date.now() / 1000).toString();
@@ -1345,60 +1485,66 @@ Service catalog:
     };
 
     try {
-       addLog(`🚀 Reformatting simulated Meta Graph API Messenger Webhook payload...`);
-       if (messengerInputIsVoiceNote) {
-         addLog(`🎙️ Simulating voice note attachment upload (converting speech to audio payload binary)...`);
-       }
-      
+      addLog(`🚀 Reformatting simulated Meta Graph API Messenger Webhook payload...`);
+      if (messengerInputIsVoiceNote) {
+        addLog(
+          `🎙️ Simulating voice note attachment upload (converting speech to audio payload binary)...`
+        );
+      }
+
       const payload = {
-        object: "page",
+        object: 'page',
         entry: [
           {
-            id: messengerPageId || "1098273812739",
+            id: messengerPageId || '1098273812739',
             time: timestampSec,
             messaging: [
               {
                 sender: {
-                  id: testMessengerWebhookSenderPSID || "psid_9281742"
+                  id: testMessengerWebhookSenderPSID || 'psid_9281742',
                 },
                 recipient: {
-                  id: messengerPageId || "1098273812739"
+                  id: messengerPageId || '1098273812739',
                 },
                 timestamp: timestampSec,
                 message: {
                   mid: `mid.simulated_messenger.${Date.now()}`,
-                  text: testMessengerWebhookMessage || "Hello",
-                  isAudio: messengerInputIsVoiceNote
-                }
-              }
-            ]
-          }
-        ]
+                  text: testMessengerWebhookMessage || 'Hello',
+                  isAudio: messengerInputIsVoiceNote,
+                },
+              },
+            ],
+          },
+        ],
       };
 
-      addLog(`📡 POSTing graph message parcel to tenant webhook: /v1/whatsapp/webhook/${selectedTenant.id}?sender_name=${encodeURIComponent(testMessengerWebhookSenderName)}`);
-      
+      addLog(
+        `📡 POSTing graph message parcel to tenant webhook: /v1/whatsapp/webhook/${selectedTenant.id}?sender_name=${encodeURIComponent(testMessengerWebhookSenderName)}`
+      );
+
       const endpoint = `${window.location.origin}/v1/whatsapp/webhook/${selectedTenant.id}?sender_name=${encodeURIComponent(testMessengerWebhookSenderName)}`;
       const response = await fetch(endpoint, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json"
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Graph API simulator endpoint returned HTTP ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Graph API simulator endpoint returned HTTP ${response.status} ${response.statusText}`
+        );
       }
 
       const resJson = await response.json();
       addLog(`✅ Meta Cloud Handshake Acknowledged: ${JSON.stringify(resJson)}`);
       addLog(`🧠 Dispatching prompt template context with specialist role instructions...`);
-      
+
       await new Promise(r => setTimeout(r, 2600));
-      
+
       addLog(`🔄 Synchronizing CRM pipeline leads and conversation threads...`);
-      
+
       const convRes = await fetch(`/api/conversations/${selectedTenant.id}`);
       if (convRes.ok) {
         const conversations = await convRes.json();
@@ -1431,12 +1577,13 @@ Service catalog:
   };
 
   const toggleMessengerChatMic = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       const timeStr = new Date().toLocaleTimeString();
       setTestMessengerWebhookLogs(prev => [
         ...prev,
-        `[${timeStr}] ⚠️ SPEECH ERROR: Browser SpeechRecognition API not supported inside this sandbox.`
+        `[${timeStr}] ⚠️ SPEECH ERROR: Browser SpeechRecognition API not supported inside this sandbox.`,
       ]);
       return;
     }
@@ -1460,7 +1607,7 @@ Service catalog:
         const timeStr = new Date().toLocaleTimeString();
         setTestMessengerWebhookLogs(prev => [
           ...prev,
-          `[${timeStr}] 🎙️ VOICE INPUT INITIALIZED: Microphone listening active... Speak clearly.`
+          `[${timeStr}] 🎙️ VOICE INPUT INITIALIZED: Microphone listening active... Speak clearly.`,
         ]);
       };
 
@@ -1472,7 +1619,7 @@ Service catalog:
           const timeStr = new Date().toLocaleTimeString();
           setTestMessengerWebhookLogs(prev => [
             ...prev,
-            `[${timeStr}] ✅ VOICE TRANSCRIBED: Captured payload: "${transcript}"`
+            `[${timeStr}] ✅ VOICE TRANSCRIBED: Captured payload: "${transcript}"`,
           ]);
         }
       };
@@ -1484,12 +1631,12 @@ Service catalog:
         if (e.error === 'not-allowed') {
           setTestMessengerWebhookLogs(prev => [
             ...prev,
-            `[${timeStr}] 🛡️ ACCESS LOCKED: Microphone permissions blocked inside iframe. Please open the app in a new tab to bypass security sandboxes!`
+            `[${timeStr}] 🛡️ ACCESS LOCKED: Microphone permissions blocked inside iframe. Please open the app in a new tab to bypass security sandboxes!`,
           ]);
         } else {
           setTestMessengerWebhookLogs(prev => [
             ...prev,
-            `[${timeStr}] ⚠️ SPEECH RECOGNITION ERROR: ${e.error}`
+            `[${timeStr}] ⚠️ SPEECH RECOGNITION ERROR: ${e.error}`,
           ]);
         }
       };
@@ -1508,9 +1655,12 @@ Service catalog:
 
   const handleClearMessengerConversations = async () => {
     try {
-      await fetch(`/api/conversations/${selectedTenant.id}/clear`, { method: "POST" });
+      await fetch(`/api/conversations/${selectedTenant.id}/clear`, { method: 'POST' });
       setTestMessengerConversationsList([]);
-      setTestMessengerWebhookLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] 🧹 Messenger conversation cleared.`]);
+      setTestMessengerWebhookLogs(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] 🧹 Messenger conversation cleared.`,
+      ]);
     } catch (e: any) {
       console.error(e);
     }
@@ -1519,7 +1669,7 @@ Service catalog:
   const handleTriggerTestWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isTestingWebhook) return;
-    
+
     setIsTestingWebhook(true);
     const logs: string[] = [];
     const timestampSec = Math.floor(Date.now() / 1000).toString();
@@ -1533,56 +1683,56 @@ Service catalog:
 
     try {
       addLog(`🚀 Formatting simulated Meta Cloud WhatsApp Webhook payload ...`);
-      
+
       const payload = {
-        object: "whatsapp_business_account",
+        object: 'whatsapp_business_account',
         entry: [
           {
-            id: "wamid.entry." + Date.now(),
+            id: 'wamid.entry.' + Date.now(),
             changes: [
               {
                 value: {
-                  messaging_product: "whatsapp",
+                  messaging_product: 'whatsapp',
                   metadata: {
-                    display_phone_number: selectedTenant.whatsAppPhoneNumber || "15550192830",
-                    phone_number_id: selectedTenant.whatsAppVerifiedSid || "104128374912038"
+                    display_phone_number: selectedTenant.whatsAppPhoneNumber || '15550192830',
+                    phone_number_id: selectedTenant.whatsAppVerifiedSid || '104128374912038',
                   },
                   contacts: [
                     {
                       profile: {
-                        name: testWebhookSenderName || "Jane Doe"
+                        name: testWebhookSenderName || 'Jane Doe',
                       },
-                      wa_id: cleanPhone || "33612345678"
-                    }
+                      wa_id: cleanPhone || '33612345678',
+                    },
                   ],
                   messages: [
                     {
-                      from: cleanPhone || "33612345678",
+                      from: cleanPhone || '33612345678',
                       id: `wamid.SimulatedHook${Date.now()}`,
                       timestamp: timestampSec,
                       text: {
-                        body: testWebhookMessage || "Hello"
+                        body: testWebhookMessage || 'Hello',
                       },
-                      type: "text"
-                    }
-                  ]
+                      type: 'text',
+                    },
+                  ],
                 },
-                field: "messages"
-              }
-            ]
-          }
-        ]
+                field: 'messages',
+              },
+            ],
+          },
+        ],
       };
 
       addLog(`📡 POSTing simulated envelope to route: /v1/whatsapp/webhook/${selectedTenant.id}`);
-      
+
       const endpoint = `${window.location.origin}/v1/whatsapp/webhook/${selectedTenant.id}`;
       const response = await fetch(endpoint, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json"
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -1592,11 +1742,11 @@ Service catalog:
       const resJson = await response.json();
       addLog(`✅ Server Acknowledged Payload with status: ${JSON.stringify(resJson)}`);
       addLog(`🧠 Invoking Gemini AI model flow for tenant "${selectedTenant.name}"...`);
-      
+
       await new Promise(r => setTimeout(r, 2600));
-      
+
       addLog(`🔄 Syncing live conversations database and leads table...`);
-      
+
       const convRes = await fetch(`/api/conversations/${selectedTenant.id}`);
       if (convRes.ok) {
         const conversations = await convRes.json();
@@ -1607,7 +1757,9 @@ Service catalog:
           addLog(`🤖 Bot Response generated successfully! Reply: "${lastMsg.text}"`);
           setTestConversationsList(thread.messages);
         } else {
-          addLog(`❓ Webhook completed, but no bot responses registered under conversation key "${convoKey}" yet.`);
+          addLog(
+            `❓ Webhook completed, but no bot responses registered under conversation key "${convoKey}" yet.`
+          );
         }
       }
 
@@ -1630,9 +1782,12 @@ Service catalog:
 
   const handleClearTestConversations = async () => {
     try {
-      await fetch(`/api/conversations/${selectedTenant.id}/clear`, { method: "POST" });
+      await fetch(`/api/conversations/${selectedTenant.id}/clear`, { method: 'POST' });
       setTestConversationsList([]);
-      setTestWebhookLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] 🧹 Webhook conversations store cleared.`]);
+      setTestWebhookLogs(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] 🧹 Webhook conversations store cleared.`,
+      ]);
     } catch (e: any) {
       console.error(e);
     }
@@ -1644,20 +1799,22 @@ Service catalog:
       const response = await fetch(`/api/tenant/${selectedTenant.id}/autopilot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled })
+        body: JSON.stringify({ enabled }),
       });
       if (response.ok) {
-        setTenants(prev => prev.map(t => {
-          if (t.id === selectedTenant.id) {
-            return { ...t, autopilotEnabled: enabled };
-          }
-          return t;
-        }));
+        setTenants(prev =>
+          prev.map(t => {
+            if (t.id === selectedTenant.id) {
+              return { ...t, autopilotEnabled: enabled };
+            }
+            return t;
+          })
+        );
       } else {
-        console.error("Failed to toggle autopilot");
+        console.error('Failed to toggle autopilot');
       }
     } catch (err) {
-      console.error("Error toggling autopilot:", err);
+      console.error('Error toggling autopilot:', err);
     }
   };
 
@@ -1689,7 +1846,7 @@ Service catalog:
       const response = await fetch(`/api/conversations/${selectedTenant.id}/${customerId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: takeoverReplyText, isInternal: isInternalNote })
+        body: JSON.stringify({ text: takeoverReplyText, isInternal: isInternalNote }),
       });
       if (response.ok) {
         setTakeoverReplyText('');
@@ -1700,10 +1857,10 @@ Service catalog:
           setTakeoverConvos(data);
         }
       } else {
-        console.error("Failed to send takeover reply");
+        console.error('Failed to send takeover reply');
       }
     } catch (err) {
-      console.error("Error sending takeover reply:", err);
+      console.error('Error sending takeover reply:', err);
     } finally {
       setIsSendingTakeoverReply(false);
     }
@@ -1716,26 +1873,26 @@ Service catalog:
     const currentTemplates = selectedTenant.welcomeTemplates || [];
 
     if (editingTemplateId) {
-      const updated = currentTemplates.map(t => 
-        t.id === editingTemplateId 
-          ? { ...t, name: templateNameInput.trim(), text: templateTextInput.trim() } 
+      const updated = currentTemplates.map(t =>
+        t.id === editingTemplateId
+          ? { ...t, name: templateNameInput.trim(), text: templateTextInput.trim() }
           : t
       );
       updateTenantFields({
-        welcomeTemplates: updated
+        welcomeTemplates: updated,
       });
     } else {
       const newTemplate = {
         id: 'wt-' + Date.now(),
         name: templateNameInput.trim(),
-        text: templateTextInput.trim()
+        text: templateTextInput.trim(),
       };
       const updated = [...currentTemplates, newTemplate];
       const nextActiveId = selectedTenant.activeWelcomeTemplateId || newTemplate.id;
 
       updateTenantFields({
         welcomeTemplates: updated,
-        activeWelcomeTemplateId: nextActiveId
+        activeWelcomeTemplateId: nextActiveId,
       });
     }
 
@@ -1748,7 +1905,7 @@ Service catalog:
   const handleDeleteWelcomeTemplate = (templateId: string) => {
     const currentTemplates = selectedTenant.welcomeTemplates || [];
     const updated = currentTemplates.filter(t => t.id !== templateId);
-    
+
     let nextActiveId = selectedTenant.activeWelcomeTemplateId;
     if (nextActiveId === templateId) {
       nextActiveId = updated.length > 0 ? updated[0].id : undefined;
@@ -1756,7 +1913,7 @@ Service catalog:
 
     updateTenantFields({
       welcomeTemplates: updated,
-      activeWelcomeTemplateId: nextActiveId
+      activeWelcomeTemplateId: nextActiveId,
     });
   };
 
@@ -1773,7 +1930,7 @@ Service catalog:
 
   const handleSetActiveWelcomeTemplate = (templateId: string) => {
     updateTenantFields({
-      activeWelcomeTemplateId: templateId
+      activeWelcomeTemplateId: templateId,
     });
   };
 
@@ -1785,13 +1942,16 @@ Service catalog:
         name: tenant.botName,
         role: 'Primary Bot Assistant',
         tone: tenant.tone,
-        systemInstruction: tenant.systemInstruction || 'Assist customers with questions and bookings.',
-        avatar: tenant.avatar || '🤖'
-      }
+        systemInstruction:
+          tenant.systemInstruction || 'Assist customers with questions and bookings.',
+        avatar: tenant.avatar || '🤖',
+      },
     ];
   };
 
-  const handleApplyAgentArchetype = (archetype: 'sales' | 'faq' | 'booking' | 'support' | 'customer_support' | 'retail_sales') => {
+  const handleApplyAgentArchetype = (
+    archetype: 'sales' | 'faq' | 'booking' | 'support' | 'customer_support' | 'retail_sales'
+  ) => {
     const isFitness = selectedTenant.id === 'zenith-fitness';
     const isMedspa = selectedTenant.id === 'elysian-medspa';
 
@@ -1933,34 +2093,48 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
 
     setWebhookLeadId(lead.id);
     setWebhookStatus('sending');
-    
-    const formattedTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const formattedTimestamp = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
     setWebhookLogs([
       `[${formattedTimestamp}] 📤 Initializing secure outbox router for partner webhook stream...`,
       `[${formattedTimestamp}] 🔑 Reading workspace API key (Using secure client sandbox secret: WABA_JWT_DEV_ENV)`,
-      `[${formattedTimestamp}] 📄 Formatting payload matching CRM standard schemas (JSON V4)`
+      `[${formattedTimestamp}] 📄 Formatting payload matching CRM standard schemas (JSON V4)`,
     ]);
 
     setTimeout(() => {
-      const ts2 = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const ts2 = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
       setWebhookLogs(prev => [
         ...prev,
         `[${ts2}] 📡 Dispatching POST request to https://ext-crm.hubspot.com/v1/contacts/ingest...`,
-        `[${ts2}] 📦 Dynamic Headers:\n   - Authorization: Bearer waba_dev_******\n   - Content-Type: application/json`
+        `[${ts2}] 📦 Dynamic Headers:\n   - Authorization: Bearer waba_dev_******\n   - Content-Type: application/json`,
       ]);
     }, 1200);
 
     setTimeout(() => {
-      const ts3 = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const ts3 = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
       setWebhookStatus('success');
       setWebhookLogs(prev => [
         ...prev,
         `[${ts3}] ✅ Connection established. Response Received: HTTP 200 OK`,
-        `[${ts3}] 🎉 Synchronized successfully! Dynamic Record created under mapping ID: ext-uid-${lead.id.slice(-6)}`
+        `[${ts3}] 🎉 Synchronized successfully! Dynamic Record created under mapping ID: ext-uid-${lead.id.slice(-6)}`,
       ]);
 
       updateTenantFields({
-        leads: selectedTenant.leads.map(l => l.id === lead.id ? { ...l, status: 'Contacted' } : l)
+        leads: selectedTenant.leads.map(l =>
+          l.id === lead.id ? { ...l, status: 'Contacted' } : l
+        ),
       });
     }, 2800);
   };
@@ -1975,10 +2149,12 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
       activeAgentId: agentId,
       botName: targetAgent.name,
       tone: targetAgent.tone,
-      systemInstruction: targetAgent.systemInstruction
+      systemInstruction: targetAgent.systemInstruction,
     });
 
-    setAgentActionSuccess(`Activated Specialist Agent @${targetAgent.name} (${targetAgent.role}) successfully!`);
+    setAgentActionSuccess(
+      `Activated Specialist Agent @${targetAgent.name} (${targetAgent.role}) successfully!`
+    );
     setTimeout(() => {
       setAgentActionSuccess(null);
     }, 4000);
@@ -1993,14 +2169,21 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
 
     const updatedMessages = [
       ...playgroundMessages,
-      { sender: 'customer' as const, text: userMsg, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      {
+        sender: 'customer' as const,
+        text: userMsg,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
     ];
     setPlaygroundMessages(updatedMessages);
     setPlaygroundIsLoading(true);
     setPlaygroundRawResponse(null);
 
     const agents = getTenantAgents(selectedTenant);
-    const activeTestBot = agents.find(a => a.id === (playgroundSelectedAgentId || selectedTenant.activeAgentId || agents[0]?.id)) || agents[0];
+    const activeTestBot =
+      agents.find(
+        a => a.id === (playgroundSelectedAgentId || selectedTenant.activeAgentId || agents[0]?.id)
+      ) || agents[0];
 
     try {
       const response = await fetch('/api/playground/test', {
@@ -2015,8 +2198,8 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
           tenantName: selectedTenant.name,
           tenantIndustry: selectedTenant.industry,
           tenantDescription: selectedTenant.description,
-          systemInstruction: playgroundInstruction.trim() || activeTestBot?.systemInstruction || ''
-        })
+          systemInstruction: playgroundInstruction.trim() || activeTestBot?.systemInstruction || '',
+        }),
       });
 
       if (!response.ok) {
@@ -2024,15 +2207,15 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
       }
 
       const data = await response.json();
-      
+
       setPlaygroundMessages(prev => [
         ...prev,
-        { 
-          sender: 'bot' as const, 
-          text: data.reply || 'No response reply.', 
+        {
+          sender: 'bot' as const,
+          text: data.reply || 'No response reply.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          action: data.actionTriggered
-        }
+          action: data.actionTriggered,
+        },
       ]);
 
       setPlaygroundRawResponse(data);
@@ -2040,14 +2223,14 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
         setPlaygroundSystemPromptUsed(data.systemPrompt);
       }
     } catch (err: any) {
-      console.error("Playground processing error:", err);
+      console.error('Playground processing error:', err);
       setPlaygroundMessages(prev => [
         ...prev,
-        { 
-          sender: 'bot' as const, 
-          text: `⚠️ Playground Exception: ${err.message}`, 
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-        }
+        {
+          sender: 'bot' as const,
+          text: `⚠️ Playground Exception: ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
       ]);
     } finally {
       setPlaygroundIsLoading(false);
@@ -2062,15 +2245,17 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     const updatedAgentsList = [...agentsList];
     updatedAgentsList[targetAgentIndex] = {
       ...updatedAgentsList[targetAgentIndex],
-      systemInstruction: playgroundInstruction.trim()
+      systemInstruction: playgroundInstruction.trim(),
     };
 
     const tenantUpdates: any = {
-      agents: updatedAgentsList
+      agents: updatedAgentsList,
     };
 
-    if (selectedTenant.activeAgentId === playgroundSelectedAgentId || 
-        (!selectedTenant.activeAgentId && agentsList[0]?.id === playgroundSelectedAgentId)) {
+    if (
+      selectedTenant.activeAgentId === playgroundSelectedAgentId ||
+      (!selectedTenant.activeAgentId && agentsList[0]?.id === playgroundSelectedAgentId)
+    ) {
       tenantUpdates.systemInstruction = playgroundInstruction.trim();
       tenantUpdates.botName = updatedAgentsList[targetAgentIndex].name;
       tenantUpdates.tone = updatedAgentsList[targetAgentIndex].tone;
@@ -2078,7 +2263,9 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
 
     updateTenantFields(tenantUpdates);
 
-    setPlaygroundSuccessMsg("Successfully applied sandbox prompt updates to the live specialty agent!");
+    setPlaygroundSuccessMsg(
+      'Successfully applied sandbox prompt updates to the live specialty agent!'
+    );
     setTimeout(() => {
       setPlaygroundSuccessMsg(null);
     }, 4000);
@@ -2086,13 +2273,14 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
 
   const handleSaveAgent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agentNameInput.trim() || !agentRoleInput.trim() || !agentSystemInstructionInput.trim()) return;
+    if (!agentNameInput.trim() || !agentRoleInput.trim() || !agentSystemInstructionInput.trim())
+      return;
 
     const currentAgents = getTenantAgents(selectedTenant);
 
     if (editingAgentId) {
-      const updatedAgents = currentAgents.map(a => 
-        a.id === editingAgentId 
+      const updatedAgents = currentAgents.map(a =>
+        a.id === editingAgentId
           ? {
               ...a,
               name: agentNameInput.trim(),
@@ -2100,25 +2288,31 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
               tone: agentToneInput,
               systemInstruction: agentSystemInstructionInput.trim(),
               avatar: agentAvatarInput,
-              voiceEnabled: agentVoiceEnabledInput
+              voiceEnabled: agentVoiceEnabledInput,
             }
           : a
       );
 
-      const isActiveActive = selectedTenant.activeAgentId === editingAgentId || (!selectedTenant.activeAgentId && editingAgentId.startsWith('default-agent-'));
-      const syncFields = isActiveActive ? {
-        botName: agentNameInput.trim(),
-        tone: agentToneInput,
-        systemInstruction: agentSystemInstructionInput.trim()
-      } : {};
+      const isActiveActive =
+        selectedTenant.activeAgentId === editingAgentId ||
+        (!selectedTenant.activeAgentId && editingAgentId.startsWith('default-agent-'));
+      const syncFields = isActiveActive
+        ? {
+            botName: agentNameInput.trim(),
+            tone: agentToneInput,
+            systemInstruction: agentSystemInstructionInput.trim(),
+          }
+        : {};
 
       updateTenantFields({
         agents: updatedAgents,
         activeAgentId: selectedTenant.activeAgentId || editingAgentId,
-        ...syncFields
+        ...syncFields,
       });
 
-      setAgentActionSuccess(`Successfully updated settings for specialist agent @${agentNameInput.trim()}.`);
+      setAgentActionSuccess(
+        `Successfully updated settings for specialist agent @${agentNameInput.trim()}.`
+      );
     } else {
       const newAgent: Agent = {
         id: 'agent-' + Date.now(),
@@ -2128,7 +2322,7 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
         systemInstruction: agentSystemInstructionInput.trim(),
         avatar: agentAvatarInput,
         isCustom: true,
-        voiceEnabled: agentVoiceEnabledInput
+        voiceEnabled: agentVoiceEnabledInput,
       };
 
       const updatedAgents = [...currentAgents, newAgent];
@@ -2137,10 +2331,12 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
         activeAgentId: newAgent.id,
         botName: newAgent.name,
         tone: newAgent.tone,
-        systemInstruction: newAgent.systemInstruction
+        systemInstruction: newAgent.systemInstruction,
       });
 
-      setAgentActionSuccess(`Created and hot-deployed specialized AI agent @${newAgent.name} successfully!`);
+      setAgentActionSuccess(
+        `Created and hot-deployed specialized AI agent @${newAgent.name} successfully!`
+      );
     }
 
     setTimeout(() => {
@@ -2189,14 +2385,14 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
       syncFields = {
         botName: fallbackAgent.name,
         tone: fallbackAgent.tone,
-        systemInstruction: fallbackAgent.systemInstruction
+        systemInstruction: fallbackAgent.systemInstruction,
       };
     }
 
     updateTenantFields({
       agents: updatedAgents,
       activeAgentId: nextActiveId,
-      ...syncFields
+      ...syncFields,
     });
 
     setAgentActionSuccess('Selected specialized agent removed successfully.');
@@ -2233,15 +2429,17 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
     const voices = window.speechSynthesis.getVoices();
-    let selectedVoice = voices.find(voice => voice.lang.includes('en-GB') || voice.lang.includes('en-US'));
+    let selectedVoice = voices.find(
+      voice => voice.lang.includes('en-GB') || voice.lang.includes('en-US')
+    );
     if (selectedVoice) utterance.voice = selectedVoice;
 
     utterance.onend = () => {
       setPlayingMessengerMessageId(null);
     };
 
-    utterance.onerror = (e) => {
-      console.warn("SpeechSynthesis error:", e);
+    utterance.onerror = e => {
+      console.warn('SpeechSynthesis error:', e);
       setPlayingMessengerMessageId(null);
     };
 
@@ -2540,14 +2738,10 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     startVoiceRecording,
     stopVoiceRecording,
     handlePlayVoice,
-    handleAutopilotToggle
+    handleAutopilotToggle,
   };
 
-  return (
-    <SaaSContext.Provider value={value}>
-      {children}
-    </SaaSContext.Provider>
-  );
+  return <SaaSContext.Provider value={value}>{children}</SaaSContext.Provider>;
 };
 
 export const useSaaS = () => {

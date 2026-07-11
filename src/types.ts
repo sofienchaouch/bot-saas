@@ -35,7 +35,7 @@ export interface Appointment {
   customerPhone: string;
   email: string;
   start: string; // ISO string
-  end: string;   // ISO string
+  end: string; // ISO string
   summary: string;
   notes?: string;
   syncedWithGoogle: boolean;

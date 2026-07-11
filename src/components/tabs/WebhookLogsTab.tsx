@@ -16,7 +16,7 @@ import {
   Smartphone,
   MessageSquare,
   Bot,
-  Zap
+  Zap,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,11 +38,31 @@ interface WebhookEvent {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const CHANNEL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  whatsapp:  { label: 'WhatsApp',  color: 'text-green-400 bg-green-500/10 border-green-500/20',  icon: <Smartphone className="h-3 w-3" /> },
-  messenger: { label: 'Messenger', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',     icon: <MessageSquare className="h-3 w-3" /> },
-  telegram:  { label: 'Telegram',  color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',        icon: <Zap className="h-3 w-3" /> },
-  sms:       { label: 'SMS',       color: 'text-violet-400 bg-violet-500/10 border-violet-500/20', icon: <MessageSquare className="h-3 w-3" /> },
-  simulator: { label: 'Simulator', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',  icon: <Bot className="h-3 w-3" /> },
+  whatsapp: {
+    label: 'WhatsApp',
+    color: 'text-green-400 bg-green-500/10 border-green-500/20',
+    icon: <Smartphone className="h-3 w-3" />,
+  },
+  messenger: {
+    label: 'Messenger',
+    color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    icon: <MessageSquare className="h-3 w-3" />,
+  },
+  telegram: {
+    label: 'Telegram',
+    color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+    icon: <Zap className="h-3 w-3" />,
+  },
+  sms: {
+    label: 'SMS',
+    color: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+    icon: <MessageSquare className="h-3 w-3" />,
+  },
+  simulator: {
+    label: 'Simulator',
+    color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    icon: <Bot className="h-3 w-3" />,
+  },
 };
 
 function formatTs(iso: string): string {
@@ -103,11 +123,15 @@ const EventRow: React.FC<{ event: WebhookEvent }> = ({ event }) => {
         {/* Timestamp */}
         <div className="shrink-0 w-20 text-right">
           <p className="text-[10px] font-mono text-slate-500">{formatDate(event.timestamp)}</p>
-          <p className="text-[11px] font-mono text-slate-300 font-semibold">{formatTs(event.timestamp)}</p>
+          <p className="text-[11px] font-mono text-slate-300 font-semibold">
+            {formatTs(event.timestamp)}
+          </p>
         </div>
 
         {/* Channel badge */}
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border uppercase shrink-0 ${meta.color}`}>
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border uppercase shrink-0 ${meta.color}`}
+        >
           {meta.icon} {meta.label}
         </span>
 
@@ -213,14 +237,16 @@ export const WebhookLogsTab: React.FC = () => {
     if (!selectedTenant || !liveMode) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`);
+    const ws = new WebSocket(
+      `${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`
+    );
 
-    ws.onmessage = (msg) => {
+    ws.onmessage = msg => {
       try {
         const data = JSON.parse(msg.data);
         if (data.type === 'webhook-event' && data.payload) {
-          setEvents((prev) => {
-            if (prev.some((e) => e.id === data.payload.id)) return prev;
+          setEvents(prev => {
+            if (prev.some(e => e.id === data.payload.id)) return prev;
             return [data.payload, ...prev].slice(0, 100);
           });
         }
@@ -235,12 +261,17 @@ export const WebhookLogsTab: React.FC = () => {
   // Clear logs
   const handleClear = async () => {
     if (!selectedTenant) return;
-    if (!clearConfirm) { setClearConfirm(true); return; }
+    if (!clearConfirm) {
+      setClearConfirm(true);
+      return;
+    }
     try {
       await fetch(`/api/tenant/${selectedTenant.id}/webhook-events`, { method: 'DELETE' });
       setEvents([]);
       setClearConfirm(false);
-    } catch { setClearConfirm(false); }
+    } catch {
+      setClearConfirm(false);
+    }
   };
 
   if (!selectedTenant) return null;
@@ -314,12 +345,29 @@ export const WebhookLogsTab: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Events', value: events.length, color: 'text-white' },
-          { label: 'Inbound', value: events.filter(e => e.direction === 'inbound').length, color: 'text-blue-400' },
-          { label: 'Outbound', value: events.filter(e => e.direction === 'outbound').length, color: 'text-purple-400' },
-          { label: 'Errors', value: errorCount, color: errorCount > 0 ? 'text-red-400' : 'text-slate-500' },
+          {
+            label: 'Inbound',
+            value: events.filter(e => e.direction === 'inbound').length,
+            color: 'text-blue-400',
+          },
+          {
+            label: 'Outbound',
+            value: events.filter(e => e.direction === 'outbound').length,
+            color: 'text-purple-400',
+          },
+          {
+            label: 'Errors',
+            value: errorCount,
+            color: errorCount > 0 ? 'text-red-400' : 'text-slate-500',
+          },
         ].map(s => (
-          <div key={s.label} className="bg-[#080b12] border border-white/5 rounded-xl p-3.5 flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{s.label}</span>
+          <div
+            key={s.label}
+            className="bg-[#080b12] border border-white/5 rounded-xl p-3.5 flex items-center justify-between"
+          >
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+              {s.label}
+            </span>
             <span className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</span>
           </div>
         ))}
@@ -328,7 +376,9 @@ export const WebhookLogsTab: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-[#080b12] border border-white/5 rounded-xl">
         <Filter className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest shrink-0">Filters:</span>
+        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest shrink-0">
+          Filters:
+        </span>
 
         {/* Channel */}
         <select
@@ -381,7 +431,8 @@ export const WebhookLogsTab: React.FC = () => {
             <Activity className="h-10 w-10 text-slate-700 mb-3" />
             <p className="text-sm font-semibold text-slate-500">No webhook events yet</p>
             <p className="text-xs text-slate-600 mt-1 max-w-xs">
-              Events will appear here as messages flow through WhatsApp, the Simulator, and other channels.
+              Events will appear here as messages flow through WhatsApp, the Simulator, and other
+              channels.
             </p>
           </div>
         ) : (

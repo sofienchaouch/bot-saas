@@ -1,10 +1,10 @@
-import { WebSocketServer } from "ws";
-import { Modality } from "@google/genai";
-import { ai } from "./gemini";
-import { readTenantsStore } from "./db";
-import { buildSystemPrompt } from "./promptBuilder";
-import { registerAdminClient } from "./realtime";
-import { logger } from "../lib/logger";
+import { WebSocketServer } from 'ws';
+import { Modality } from '@google/genai';
+import { ai } from './gemini';
+import { readTenantsStore } from './db';
+import { buildSystemPrompt } from './promptBuilder';
+import { registerAdminClient } from './realtime';
+import { logger } from '../lib/logger';
 
 // Transcoding helpers for Twilio VoIP G.711 mu-law <-> PCM 16kHz
 const muLawToPcmTable = new Int16Array(256);
@@ -12,7 +12,7 @@ for (let i = 0; i < 256; i++) {
   let raw = ~i;
   let sign = raw & 0x80;
   let exponent = (raw & 0x70) >> 4;
-  let mantissa = raw & 0x0F;
+  let mantissa = raw & 0x0f;
   let sample = (mantissa << 3) + 132;
   sample <<= exponent;
   sample -= 132;
@@ -26,7 +26,8 @@ function decodeMuLawToPcm16k(muLawBuffer: Buffer): Buffer {
 
   for (let i = 0; i < muLawBuffer.length; i++) {
     const currentSample = muLawToPcmTable[muLawBuffer[i]];
-    const nextSample = i < muLawBuffer.length - 1 ? muLawToPcmTable[muLawBuffer[i + 1]] : currentSample;
+    const nextSample =
+      i < muLawBuffer.length - 1 ? muLawToPcmTable[muLawBuffer[i + 1]] : currentSample;
 
     // Sample 1
     outBuf.writeInt16LE(currentSample, outIdx);
@@ -42,7 +43,7 @@ function decodeMuLawToPcm16k(muLawBuffer: Buffer): Buffer {
 }
 
 function encodePcmSampleToMuLaw(sample: number): number {
-  const sign = (sample < 0) ? 0x80 : 0x00;
+  const sign = sample < 0 ? 0x80 : 0x00;
   if (sample < 0) sample = -sample;
   if (sample > 32635) sample = 32635;
   sample += 132;
@@ -50,8 +51,8 @@ function encodePcmSampleToMuLaw(sample: number): number {
   for (let mask = 0x4000; (sample & mask) === 0 && exponent > 0; mask >>= 1) {
     exponent--;
   }
-  const mantissa = (sample >> (exponent + 3)) & 0x0F;
-  return ~(sign | (exponent << 4) | mantissa) & 0xFF;
+  const mantissa = (sample >> (exponent + 3)) & 0x0f;
+  return ~(sign | (exponent << 4) | mantissa) & 0xff;
 }
 
 function encodePcm16kToMuLaw(pcmBuffer: Buffer): Buffer {
@@ -75,19 +76,20 @@ export function setupWebSocket(server: any) {
   const twilioWss = new WebSocketServer({ noServer: true });
   const adminWss = new WebSocketServer({ noServer: true });
 
-  server.on("upgrade", (request: any, socket: any, head: any) => {
-    const pathname = new URL(request.url || "", `http://${request.headers.host || "localhost"}`).pathname;
-    if (pathname === "/api/live-ws") {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit("connection", ws, request);
+  server.on('upgrade', (request: any, socket: any, head: any) => {
+    const pathname = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`)
+      .pathname;
+    if (pathname === '/api/live-ws') {
+      wss.handleUpgrade(request, socket, head, ws => {
+        wss.emit('connection', ws, request);
       });
-    } else if (pathname === "/api/twilio-voice") {
-      twilioWss.handleUpgrade(request, socket, head, (ws) => {
-        twilioWss.emit("connection", ws, request);
+    } else if (pathname === '/api/twilio-voice') {
+      twilioWss.handleUpgrade(request, socket, head, ws => {
+        twilioWss.emit('connection', ws, request);
       });
-    } else if (pathname === "/api/admin-events") {
-      adminWss.handleUpgrade(request, socket, head, (ws) => {
-        adminWss.emit("connection", ws, request);
+    } else if (pathname === '/api/admin-events') {
+      adminWss.handleUpgrade(request, socket, head, ws => {
+        adminWss.emit('connection', ws, request);
       });
     } else {
       socket.destroy();
@@ -95,30 +97,30 @@ export function setupWebSocket(server: any) {
   });
 
   // Admin dashboard push channel: new webhook events / conversation messages
-  adminWss.on("connection", (clientWs, req) => {
-    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
-    const tenantId = url.searchParams.get("tenantId");
+  adminWss.on('connection', (clientWs, req) => {
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const tenantId = url.searchParams.get('tenantId');
     if (!tenantId) {
       clientWs.close();
       return;
     }
-    logger.info({ tenantId }, "[ADMIN WS] Dashboard client connected");
+    logger.info({ tenantId }, '[ADMIN WS] Dashboard client connected');
     registerAdminClient(tenantId, clientWs);
   });
 
   // Live Web client handler
-  wss.on("connection", async (clientWs, req) => {
-    logger.info("[LIVE WS] Client connected to real-time voice bridge");
-    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
-    const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
+  wss.on('connection', async (clientWs, req) => {
+    logger.info('[LIVE WS] Client connected to real-time voice bridge');
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const tenantId = url.searchParams.get('tenantId') || 'zenith-fitness';
     await handleVoiceBridgeConnection(clientWs, tenantId, false);
   });
 
   // Twilio Voice handler
-  twilioWss.on("connection", async (clientWs, req) => {
-    logger.info("[TWILIO WS] Twilio stream connected to real-time voice bridge");
-    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
-    const tenantId = url.searchParams.get("tenantId") || "zenith-fitness";
+  twilioWss.on('connection', async (clientWs, req) => {
+    logger.info('[TWILIO WS] Twilio stream connected to real-time voice bridge');
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const tenantId = url.searchParams.get('tenantId') || 'zenith-fitness';
     await handleVoiceBridgeConnection(clientWs, tenantId, true);
   });
 
@@ -128,25 +130,31 @@ export function setupWebSocket(server: any) {
       const store = await readTenantsStore();
       tenant = store[tenantId] || {};
     } catch (err) {
-      logger.error({ err, tenantId }, "[VOICE WS] Failed to read tenants store");
+      logger.error({ err, tenantId }, '[VOICE WS] Failed to read tenants store');
     }
 
-    const botName = tenant.botName || "Assistant";
-    const tone = tenant.tone || "friendly";
-    const tenantName = tenant.name || "Our Business";
-    const tenantIndustry = tenant.industry || "General Services";
-    const tenantDescription = tenant.description || "";
+    const botName = tenant.botName || 'Assistant';
+    const tone = tenant.tone || 'friendly';
+    const tenantName = tenant.name || 'Our Business';
+    const tenantIndustry = tenant.industry || 'General Services';
+    const tenantDescription = tenant.description || '';
     const knowledgeBase = tenant.knowledgeBase || [];
     const appointmentsList = tenant.appointments || [];
-    const systemInstruction = tenant.systemInstruction || "";
+    const systemInstruction = tenant.systemInstruction || '';
 
-    const kbContext = knowledgeBase && knowledgeBase.length > 0
-      ? knowledgeBase.map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`).join("\n\n")
-      : "No private documents loaded.";
+    const kbContext =
+      knowledgeBase && knowledgeBase.length > 0
+        ? knowledgeBase
+            .map((item: any) => `[DOCUMENT: ${item.title}]\n${item.content}`)
+            .join('\n\n')
+        : 'No private documents loaded.';
 
-    const scheduleContext = appointmentsList && appointmentsList.length > 0
-      ? appointmentsList.map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`).join("\n")
-      : "No conflicting scheduled bookings.";
+    const scheduleContext =
+      appointmentsList && appointmentsList.length > 0
+        ? appointmentsList
+            .map((app: any) => `- Booked Slot: From ${app.start} to ${app.end}`)
+            .join('\n')
+        : 'No conflicting scheduled bookings.';
 
     const additionalVoiceRules = `\n\nCRITICAL ANTI-HALLUCINATION & GROUND TRUTH MANDATES:
 1. STRICT TRUTH ONLY: Do NOT invent, fabricate, or guess facts, operations, URLs, email addresses, phone numbers, or treatment prices under any circumstances. Everything you say MUST be explicitly stated within your PRIVATE KNOWLEDGE BASE. Do not extrapolate.
@@ -179,25 +187,27 @@ Your direct objectives in the telephone call are:
       systemInstruction,
       kbContext,
       scheduleContext,
-      additionalRules: additionalVoiceRules
+      additionalRules: additionalVoiceRules,
     });
 
     if (!ai) {
-      logger.warn("[VOICE WS] Gemini API client is uninitialized. Activating telemetry demo loop.");
-      clientWs.on("message", (msg: any) => {
+      logger.warn('[VOICE WS] Gemini API client is uninitialized. Activating telemetry demo loop.');
+      clientWs.on('message', (msg: any) => {
         try {
           if (isTwilio) {
             const parsed = JSON.parse(msg.toString());
-            if (parsed.event === "media") {
+            if (parsed.event === 'media') {
               // Echo mock response or log
             }
           } else {
             const parsed = JSON.parse(msg.toString());
-            if (parsed.type === "text" && parsed.text) {
-              clientWs.send(JSON.stringify({
-                type: "text",
-                text: `[Simulation Mode] GEMINI_API_KEY is not defined in Settings. Real voice streaming requires an authentic Gemini API key. Please specify it in the secrets menu! You said: "${parsed.text}"`
-              }));
+            if (parsed.type === 'text' && parsed.text) {
+              clientWs.send(
+                JSON.stringify({
+                  type: 'text',
+                  text: `[Simulation Mode] GEMINI_API_KEY is not defined in Settings. Real voice streaming requires an authentic Gemini API key. Please specify it in the secrets menu! You said: "${parsed.text}"`,
+                })
+              );
             }
           }
         } catch (e) {}
@@ -206,21 +216,24 @@ Your direct objectives in the telephone call are:
     }
 
     try {
-      logger.info({ isTwilio }, "[VOICE WS] Starting real Gemini Live connection via .live.connect");
-      
-      let streamSid = "";
+      logger.info(
+        { isTwilio },
+        '[VOICE WS] Starting real Gemini Live connection via .live.connect'
+      );
+
+      let streamSid = '';
 
       const session = await ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+        model: 'gemini-3.1-flash-live-preview',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: tenant.twilioVoiceName || "Zephyr" }
-            }
+              prebuiltVoiceConfig: { voiceName: tenant.twilioVoiceName || 'Zephyr' },
+            },
           },
           systemInstruction: systemPrompt,
-          outputAudioTranscription: {}
+          outputAudioTranscription: {},
         },
         callbacks: {
           onmessage: (message: any) => {
@@ -228,105 +241,110 @@ Your direct objectives in the telephone call are:
             if (audio) {
               if (isTwilio) {
                 // Transcode from PCM 16kHz to Mu-law 8kHz
-                const pcmBuf = Buffer.from(audio, "base64");
+                const pcmBuf = Buffer.from(audio, 'base64');
                 const muLawBuf = encodePcm16kToMuLaw(pcmBuf);
-                const base64MuLaw = muLawBuf.toString("base64");
+                const base64MuLaw = muLawBuf.toString('base64');
 
-                clientWs.send(JSON.stringify({
-                  event: "media",
-                  streamSid: streamSid,
-                  media: {
-                    payload: base64MuLaw
-                  }
-                }));
+                clientWs.send(
+                  JSON.stringify({
+                    event: 'media',
+                    streamSid: streamSid,
+                    media: {
+                      payload: base64MuLaw,
+                    },
+                  })
+                );
               } else {
-                clientWs.send(JSON.stringify({ type: "audio", audio }));
+                clientWs.send(JSON.stringify({ type: 'audio', audio }));
               }
             }
-            
+
             const textPart = message.serverContent?.modelTurn?.parts?.find((p: any) => p.text);
             if (textPart && textPart.text) {
               if (!isTwilio) {
-                clientWs.send(JSON.stringify({ type: "text", text: textPart.text }));
+                clientWs.send(JSON.stringify({ type: 'text', text: textPart.text }));
               }
             }
-            
+
             if (message.serverContent?.interrupted) {
               if (isTwilio) {
-                clientWs.send(JSON.stringify({
-                  event: "clear",
-                  streamSid: streamSid
-                }));
+                clientWs.send(
+                  JSON.stringify({
+                    event: 'clear',
+                    streamSid: streamSid,
+                  })
+                );
               } else {
-                clientWs.send(JSON.stringify({ type: "interrupted" }));
+                clientWs.send(JSON.stringify({ type: 'interrupted' }));
               }
             }
           },
           onclose: () => {
-            logger.info("[VOICE WS] Gemini Live session finished.");
+            logger.info('[VOICE WS] Gemini Live session finished.');
             clientWs.close();
           },
           onerror: (err: any) => {
-            logger.error({ err }, "[VOICE WS] Gemini Live API core error");
+            logger.error({ err }, '[VOICE WS] Gemini Live API core error');
             if (!isTwilio) {
-              clientWs.send(JSON.stringify({ type: "error", error: err.message || "Gemini Live API failure" }));
+              clientWs.send(
+                JSON.stringify({ type: 'error', error: err.message || 'Gemini Live API failure' })
+              );
             }
-          }
-        }
+          },
+        },
       });
 
-      logger.info("[VOICE WS] Gemini Live linked and synchronized.");
+      logger.info('[VOICE WS] Gemini Live linked and synchronized.');
 
-      clientWs.on("message", (data: any) => {
+      clientWs.on('message', (data: any) => {
         try {
           if (isTwilio) {
             const parsed = JSON.parse(data.toString());
-            if (parsed.event === "start") {
+            if (parsed.event === 'start') {
               streamSid = parsed.start.streamSid;
-              logger.info({ streamSid }, "[TWILIO WS] Call stream started");
-            } else if (parsed.event === "media" && parsed.media?.payload) {
+              logger.info({ streamSid }, '[TWILIO WS] Call stream started');
+            } else if (parsed.event === 'media' && parsed.media?.payload) {
               // Transcode inbound audio from Mu-law 8kHz to PCM 16kHz
-              const muLawBuf = Buffer.from(parsed.media.payload, "base64");
+              const muLawBuf = Buffer.from(parsed.media.payload, 'base64');
               const pcmBuf = decodeMuLawToPcm16k(muLawBuf);
-              const base64Pcm = pcmBuf.toString("base64");
+              const base64Pcm = pcmBuf.toString('base64');
 
               session.sendRealtimeInput({
-                audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" }
+                audio: { data: base64Pcm, mimeType: 'audio/pcm;rate=16000' },
               });
-            } else if (parsed.event === "stop") {
-              logger.info({ streamSid }, "[TWILIO WS] Call stream stopped");
+            } else if (parsed.event === 'stop') {
+              logger.info({ streamSid }, '[TWILIO WS] Call stream stopped');
               session.close();
             }
           } else {
             const parsed = JSON.parse(data.toString());
-            if (parsed.type === "audio" && parsed.audio) {
+            if (parsed.type === 'audio' && parsed.audio) {
               session.sendRealtimeInput({
-                audio: { data: parsed.audio, mimeType: "audio/pcm;rate=16000" }
+                audio: { data: parsed.audio, mimeType: 'audio/pcm;rate=16000' },
               });
-            } else if (parsed.type === "text" && parsed.text) {
+            } else if (parsed.type === 'text' && parsed.text) {
               session.sendRealtimeInput({
-                text: parsed.text
+                text: parsed.text,
               });
             }
           }
         } catch (mErr) {
-            logger.error({ err: mErr }, "[VOICE WS] Error processing socket message");
+          logger.error({ err: mErr }, '[VOICE WS] Error processing socket message');
         }
       });
 
-      clientWs.on("close", () => {
-        logger.info("[VOICE WS] Socket connection shut down. Terminating Gemini Session.");
+      clientWs.on('close', () => {
+        logger.info('[VOICE WS] Socket connection shut down. Terminating Gemini Session.');
         session.close();
       });
 
-      clientWs.on("error", () => {
+      clientWs.on('error', () => {
         session.close();
       });
-
     } catch (connErr: any) {
-      logger.error({ err: connErr }, "[VOICE WS] Handshake sequence aborted");
+      logger.error({ err: connErr }, '[VOICE WS] Handshake sequence aborted');
       if (!isTwilio) {
-        clientWs.send(JSON.stringify({ type: "error", error: connErr.message }));
+        clientWs.send(JSON.stringify({ type: 'error', error: connErr.message }));
       }
       clientWs.close();
     }

@@ -1,13 +1,15 @@
-import Stripe from "stripe";
-import { STRIPE_SECRET_KEY, STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS } from "../config";
-import { logger } from "../lib/logger";
+import Stripe from 'stripe';
+import { STRIPE_SECRET_KEY, STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS } from '../config';
+import { logger } from '../lib/logger';
 
 export let stripeClient: Stripe | null = null;
 
 if (STRIPE_SECRET_KEY) {
   stripeClient = new Stripe(STRIPE_SECRET_KEY);
 } else {
-  logger.warn("STRIPE_SECRET_KEY is not defined in the environment. Billing checkout is disabled; tiers are informational only.");
+  logger.warn(
+    'STRIPE_SECRET_KEY is not defined in the environment. Billing checkout is disabled; tiers are informational only.'
+  );
 }
 
 // Maps a self-serve subscription tier to its Stripe Price ID. Configured via

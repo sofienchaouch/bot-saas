@@ -1,5 +1,5 @@
-import { WebSocket } from "ws";
-import { logger } from "../lib/logger";
+import { WebSocket } from 'ws';
+import { logger } from '../lib/logger';
 
 // Lightweight per-tenant pub/sub for pushing admin-dashboard updates (new
 // webhook events, new conversation messages) over WebSocket instead of the
@@ -14,13 +14,16 @@ export function registerAdminClient(tenantId: string, ws: WebSocket): void {
   }
   set.add(ws);
 
-  ws.on("close", () => {
+  ws.on('close', () => {
     set!.delete(ws);
     if (set!.size === 0) tenantClients.delete(tenantId);
   });
 }
 
-export function broadcastToTenant(tenantId: string, message: { type: string; payload: unknown }): void {
+export function broadcastToTenant(
+  tenantId: string,
+  message: { type: string; payload: unknown }
+): void {
   const set = tenantClients.get(tenantId);
   if (!set || set.size === 0) return;
 
@@ -30,7 +33,7 @@ export function broadcastToTenant(tenantId: string, message: { type: string; pay
       try {
         ws.send(data);
       } catch (err) {
-        logger.warn({ err, tenantId }, "[REALTIME] Failed to send to admin client");
+        logger.warn({ err, tenantId }, '[REALTIME] Failed to send to admin client');
       }
     }
   }

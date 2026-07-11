@@ -37,19 +37,28 @@ async function schedulePendingCrawls(): Promise<void> {
       if (!tenant.crawlSchedule || tenant.crawlSchedule === 'none') continue;
 
       const isDev = NODE_ENV !== 'production';
-      const intervalMs = tenant.crawlSchedule === 'daily'
-        ? (isDev ? 2 * 60 * 1000 : 24 * 60 * 60 * 1000)
-        : (isDev ? 5 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000);
+      const intervalMs =
+        tenant.crawlSchedule === 'daily'
+          ? isDev
+            ? 2 * 60 * 1000
+            : 24 * 60 * 60 * 1000
+          : isDev
+            ? 5 * 60 * 1000
+            : 7 * 24 * 60 * 60 * 1000;
 
       const lastCrawl = tenant.lastCrawlTime ? new Date(tenant.lastCrawlTime) : new Date(0);
       if (now.getTime() - lastCrawl.getTime() >= intervalMs) {
-        await crawlQueue.add('scheduled-crawl', { tenantId }, {
-          jobId: `crawl-${tenantId}-${now.getTime()}`,
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 5000 },
-          removeOnComplete: 100,
-          removeOnFail: 50,
-        });
+        await crawlQueue.add(
+          'scheduled-crawl',
+          { tenantId },
+          {
+            jobId: `crawl-${tenantId}-${now.getTime()}`,
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: 100,
+            removeOnFail: 50,
+          }
+        );
         logger.info({ tenantId, schedule: tenant.crawlSchedule }, 'Scheduled crawl job enqueued');
       }
     }

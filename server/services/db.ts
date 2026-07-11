@@ -1,7 +1,14 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { getDb, isDbAvailable, schema } from "../db/index";
-import { encryptTenant, decryptTenant, decryptText } from "./encryption";
-import type { Tenant, Lead, Appointment, KnowledgeBaseItem, Agent, WelcomeTemplate } from "../../src/types";
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { getDb, isDbAvailable, schema } from '../db/index';
+import { encryptTenant, decryptTenant, decryptText } from './encryption';
+import type {
+  Tenant,
+  Lead,
+  Appointment,
+  KnowledgeBaseItem,
+  Agent,
+  WelcomeTemplate,
+} from '../../src/types';
 
 // ── In-memory fallback (used when DATABASE_URL is not set, e.g. vitest without Docker) ──
 
@@ -25,8 +32,8 @@ function rowToTenant(
     description: row.description,
     avatar: row.avatar,
     botName: row.botName,
-    tone: row.tone as Tenant["tone"],
-    status: row.status as Tenant["status"],
+    tone: row.tone as Tenant['tone'],
+    status: row.status as Tenant['status'],
     ownerId: row.ownerId ?? undefined,
     subscriptionTier: row.subscriptionTier,
     messageCount: row.messageCount,
@@ -37,27 +44,27 @@ function rowToTenant(
     telegramBotToken: row.telegramBotTokenEnc ? decryptText(row.telegramBotTokenEnc) : undefined,
     systemInstruction: row.systemInstruction ?? undefined,
     activeWelcomeTemplateId: row.activeWelcomeTemplateId ?? undefined,
-    welcomeTemplates: wts.map((w) => ({ id: w.id, name: w.name, text: w.text })),
-    agents: agts.map((a) => ({
+    welcomeTemplates: wts.map(w => ({ id: w.id, name: w.name, text: w.text })),
+    agents: agts.map(a => ({
       id: a.id,
       name: a.name,
       role: a.role,
-      tone: a.tone as Agent["tone"],
+      tone: a.tone as Agent['tone'],
       systemInstruction: a.systemInstruction,
       avatar: a.avatar,
       isCustom: a.isCustom ?? undefined,
       voiceEnabled: a.voiceEnabled ?? undefined,
     })),
-    leads: lds.map((l) => ({
+    leads: lds.map(l => ({
       id: l.id,
       name: l.name,
       phone: l.phone,
       email: l.email,
-      status: l.status as Lead["status"],
+      status: l.status as Lead['status'],
       dateCaptured: l.dateCaptured?.toISOString() ?? new Date().toISOString(),
       note: l.note ?? undefined,
     })),
-    appointments: apts.map((a) => ({
+    appointments: apts.map(a => ({
       id: a.id,
       customerName: a.customerName,
       customerPhone: a.customerPhone,
@@ -69,32 +76,36 @@ function rowToTenant(
       syncedWithGoogle: a.syncedWithGoogle ?? false,
       googleEventId: a.googleEventId ?? undefined,
     })),
-    knowledgeBase: docs.map((d) => ({
+    knowledgeBase: docs.map(d => ({
       id: d.id,
-      type: d.type as KnowledgeBaseItem["type"],
+      type: d.type as KnowledgeBaseItem['type'],
       title: d.title,
       content: d.content,
       dateAdded: d.dateAdded?.toISOString() ?? new Date().toISOString(),
-      fileType: d.fileType as KnowledgeBaseItem["fileType"] ?? undefined,
+      fileType: (d.fileType as KnowledgeBaseItem['fileType']) ?? undefined,
       fileSize: d.fileSize ?? undefined,
       url: d.url ?? undefined,
       crawlDepth: d.crawlDepth ?? undefined,
-      crawlStatus: d.crawlStatus as KnowledgeBaseItem["crawlStatus"] ?? undefined,
+      crawlStatus: (d.crawlStatus as KnowledgeBaseItem['crawlStatus']) ?? undefined,
       crawlPagesCount: d.crawlPagesCount ?? undefined,
-      socialNetwork: d.socialNetwork as KnowledgeBaseItem["socialNetwork"] ?? undefined,
-      chunks: [],   // chunks live in kb_chunks table; not loaded here (RAG queries DB directly)
+      socialNetwork: (d.socialNetwork as KnowledgeBaseItem['socialNetwork']) ?? undefined,
+      chunks: [], // chunks live in kb_chunks table; not loaded here (RAG queries DB directly)
     })),
     whatsAppPhoneNumber: row.whatsAppPhoneNumber ?? undefined,
     whatsAppVerifiedSid: row.whatsAppVerifiedSid ?? undefined,
-    whatsAppStatus: row.whatsAppStatus as Tenant["whatsAppStatus"] ?? undefined,
+    whatsAppStatus: (row.whatsAppStatus as Tenant['whatsAppStatus']) ?? undefined,
     // Decrypt secrets on read
-    whatsAppApiKey: row.whatsAppApiKeyEnc ? decryptTenant({ whatsAppApiKey: row.whatsAppApiKeyEnc }).whatsAppApiKey : undefined,
+    whatsAppApiKey: row.whatsAppApiKeyEnc
+      ? decryptTenant({ whatsAppApiKey: row.whatsAppApiKeyEnc }).whatsAppApiKey
+      : undefined,
     whatsAppSandboxActive: row.whatsAppSandboxActive ?? undefined,
     whatsAppSandboxNumbers: (row.whatsAppSandboxNumbers as string[]) ?? undefined,
     whatsAppTestMode: row.whatsAppTestMode ?? undefined,
     messengerPageId: row.messengerPageId ?? undefined,
-    messengerToken: row.messengerTokenEnc ? decryptTenant({ messengerToken: row.messengerTokenEnc }).messengerToken : undefined,
-    messengerStatus: row.messengerStatus as Tenant["messengerStatus"] ?? undefined,
+    messengerToken: row.messengerTokenEnc
+      ? decryptTenant({ messengerToken: row.messengerTokenEnc }).messengerToken
+      : undefined,
+    messengerStatus: (row.messengerStatus as Tenant['messengerStatus']) ?? undefined,
     messengerSandboxActive: row.messengerSandboxActive ?? undefined,
     messengerSandboxNumbers: (row.messengerSandboxNumbers as string[]) ?? undefined,
     messengerVoiceEnabled: row.messengerVoiceEnabled ?? undefined,
@@ -102,7 +113,7 @@ function rowToTenant(
     googleCalendarAutoSchedule: row.googleCalendarAutoSchedule ?? undefined,
     twilioVoiceActive: row.twilioVoiceActive ?? undefined,
     twilioVoiceName: row.twilioVoiceName ?? undefined,
-    crawlSchedule: row.crawlSchedule as Tenant["crawlSchedule"] ?? undefined,
+    crawlSchedule: (row.crawlSchedule as Tenant['crawlSchedule']) ?? undefined,
     lastCrawlTime: row.lastCrawlTime?.toISOString() ?? undefined,
   };
 }
@@ -112,7 +123,9 @@ function rowToTenant(
 export async function readTenantsStore(): Promise<Record<string, any>> {
   if (!isDbAvailable()) {
     const result: Record<string, any> = {};
-    _memTenants.forEach((v, k) => { result[k] = v; });
+    _memTenants.forEach((v, k) => {
+      result[k] = v;
+    });
     return result;
   }
 
@@ -120,7 +133,7 @@ export async function readTenantsStore(): Promise<Record<string, any>> {
   const tenantRows = await db.select().from(schema.tenants);
   if (tenantRows.length === 0) return {};
 
-  const ids = tenantRows.map((t) => t.id);
+  const ids = tenantRows.map(t => t.id);
 
   const [wts, agts, lds, apts, docs] = await Promise.all([
     db.select().from(schema.welcomeTemplates).where(inArray(schema.welcomeTemplates.tenantId, ids)),
@@ -134,11 +147,11 @@ export async function readTenantsStore(): Promise<Record<string, any>> {
   for (const row of tenantRows) {
     result[row.id] = rowToTenant(
       row,
-      wts.filter((w) => w.tenantId === row.id),
-      agts.filter((a) => a.tenantId === row.id),
-      lds.filter((l) => l.tenantId === row.id),
-      apts.filter((a) => a.tenantId === row.id),
-      docs.filter((d) => d.tenantId === row.id)
+      wts.filter(w => w.tenantId === row.id),
+      agts.filter(a => a.tenantId === row.id),
+      lds.filter(l => l.tenantId === row.id),
+      apts.filter(a => a.tenantId === row.id),
+      docs.filter(d => d.tenantId === row.id)
     );
   }
   return result;
@@ -170,25 +183,27 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
         // ownerId is set on insert only — client-posted tenant blobs must never
         // overwrite ownership (see claimTenantOwnership / tenantAccessMiddleware)
         ownerId: tenant.ownerId ?? null,
-        subscriptionTier: tenant.subscriptionTier ?? "Free",
+        subscriptionTier: tenant.subscriptionTier ?? 'Free',
         messageCount: tenant.messageCount ?? 0,
         autopilotEnabled: tenant.autopilotEnabled ?? true,
         telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
         stripeCustomerId: tenant.stripeCustomerId ?? null,
         stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
-        billingCycleAnchor: tenant.billingCycleAnchor ? new Date(tenant.billingCycleAnchor) : new Date(),
+        billingCycleAnchor: tenant.billingCycleAnchor
+          ? new Date(tenant.billingCycleAnchor)
+          : new Date(),
         systemInstruction: tenant.systemInstruction ?? null,
         activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
         whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
         whatsAppVerifiedSid: tenant.whatsAppVerifiedSid ?? null,
-        whatsAppStatus: tenant.whatsAppStatus ?? "disconnected",
+        whatsAppStatus: tenant.whatsAppStatus ?? 'disconnected',
         whatsAppApiKeyEnc: encrypted.whatsAppApiKey ?? null,
         whatsAppSandboxActive: tenant.whatsAppSandboxActive ?? false,
         whatsAppSandboxNumbers: (tenant.whatsAppSandboxNumbers ?? []) as string[],
         whatsAppTestMode: tenant.whatsAppTestMode ?? false,
         messengerPageId: tenant.messengerPageId ?? null,
         messengerTokenEnc: encrypted.messengerToken ?? null,
-        messengerStatus: tenant.messengerStatus ?? "disconnected",
+        messengerStatus: tenant.messengerStatus ?? 'disconnected',
         messengerSandboxActive: tenant.messengerSandboxActive ?? false,
         messengerSandboxNumbers: (tenant.messengerSandboxNumbers ?? []) as string[],
         messengerVoiceEnabled: tenant.messengerVoiceEnabled ?? false,
@@ -196,7 +211,7 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
         googleCalendarAutoSchedule: tenant.googleCalendarAutoSchedule ?? false,
         twilioVoiceActive: tenant.twilioVoiceActive ?? false,
         twilioVoiceName: tenant.twilioVoiceName ?? null,
-        crawlSchedule: tenant.crawlSchedule ?? "none",
+        crawlSchedule: tenant.crawlSchedule ?? 'none',
         lastCrawlTime: tenant.lastCrawlTime ? new Date(tenant.lastCrawlTime) : null,
         updatedAt: new Date(),
       })
@@ -210,7 +225,7 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
           botName: tenant.botName,
           tone: tenant.tone,
           status: tenant.status,
-          subscriptionTier: tenant.subscriptionTier ?? "Free",
+          subscriptionTier: tenant.subscriptionTier ?? 'Free',
           messageCount: tenant.messageCount ?? 0,
           autopilotEnabled: tenant.autopilotEnabled ?? true,
           telegramBotTokenEnc: encrypted.telegramBotToken ?? null,
@@ -223,14 +238,14 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
           activeWelcomeTemplateId: tenant.activeWelcomeTemplateId ?? null,
           whatsAppPhoneNumber: tenant.whatsAppPhoneNumber ?? null,
           whatsAppVerifiedSid: tenant.whatsAppVerifiedSid ?? null,
-          whatsAppStatus: tenant.whatsAppStatus ?? "disconnected",
+          whatsAppStatus: tenant.whatsAppStatus ?? 'disconnected',
           whatsAppApiKeyEnc: encrypted.whatsAppApiKey ?? null,
           whatsAppSandboxActive: tenant.whatsAppSandboxActive ?? false,
           whatsAppSandboxNumbers: (tenant.whatsAppSandboxNumbers ?? []) as string[],
           whatsAppTestMode: tenant.whatsAppTestMode ?? false,
           messengerPageId: tenant.messengerPageId ?? null,
           messengerTokenEnc: encrypted.messengerToken ?? null,
-          messengerStatus: tenant.messengerStatus ?? "disconnected",
+          messengerStatus: tenant.messengerStatus ?? 'disconnected',
           messengerSandboxActive: tenant.messengerSandboxActive ?? false,
           messengerSandboxNumbers: (tenant.messengerSandboxNumbers ?? []) as string[],
           messengerVoiceEnabled: tenant.messengerVoiceEnabled ?? false,
@@ -238,7 +253,7 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
           googleCalendarAutoSchedule: tenant.googleCalendarAutoSchedule ?? false,
           twilioVoiceActive: tenant.twilioVoiceActive ?? false,
           twilioVoiceName: tenant.twilioVoiceName ?? null,
-          crawlSchedule: tenant.crawlSchedule ?? "none",
+          crawlSchedule: tenant.crawlSchedule ?? 'none',
           lastCrawlTime: tenant.lastCrawlTime ? new Date(tenant.lastCrawlTime) : null,
           updatedAt: new Date(),
         },
@@ -247,9 +262,16 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
     // Welcome templates: delete then insert (full replace)
     await db.delete(schema.welcomeTemplates).where(eq(schema.welcomeTemplates.tenantId, tenant.id));
     if (tenant.welcomeTemplates && tenant.welcomeTemplates.length > 0) {
-      await db.insert(schema.welcomeTemplates).values(
-        tenant.welcomeTemplates.map((w: WelcomeTemplate) => ({ id: w.id, tenantId: tenant.id, name: w.name, text: w.text }))
-      );
+      await db
+        .insert(schema.welcomeTemplates)
+        .values(
+          tenant.welcomeTemplates.map((w: WelcomeTemplate) => ({
+            id: w.id,
+            tenantId: tenant.id,
+            name: w.name,
+            text: w.text,
+          }))
+        );
     }
 
     // Agents: delete then insert
@@ -376,7 +398,9 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
 export async function readConversationsStore(): Promise<Record<string, any>> {
   if (!isDbAvailable()) {
     const result: Record<string, any> = {};
-    _memConversations.forEach((v, k) => { result[k] = v; });
+    _memConversations.forEach((v, k) => {
+      result[k] = v;
+    });
     return result;
   }
 
@@ -397,7 +421,7 @@ export async function writeConversationsStore(store: Record<string, any>): Promi
 
   const db = getDb();
   for (const [key, data] of Object.entries(store)) {
-    const tenantId = key.split("_")[0];
+    const tenantId = key.split('_')[0];
     await db
       .insert(schema.conversations)
       .values({ key, tenantId, data, updatedAt: new Date() })

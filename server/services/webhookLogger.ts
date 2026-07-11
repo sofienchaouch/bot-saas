@@ -1,13 +1,13 @@
-import { eq, desc, sql } from "drizzle-orm";
-import { getDb, isDbAvailable, schema } from "../db/index";
-import { broadcastToTenant } from "./realtime";
-import { logger } from "../lib/logger";
+import { eq, desc, sql } from 'drizzle-orm';
+import { getDb, isDbAvailable, schema } from '../db/index';
+import { broadcastToTenant } from './realtime';
+import { logger } from '../lib/logger';
 
 // ── Types (unchanged) ─────────────────────────────────────────────────────────
 
-export type WebhookChannel = "whatsapp" | "messenger" | "telegram" | "sms" | "simulator";
-export type WebhookDirection = "inbound" | "outbound";
-export type WebhookStatus = "success" | "error";
+export type WebhookChannel = 'whatsapp' | 'messenger' | 'telegram' | 'sms' | 'simulator';
+export type WebhookDirection = 'inbound' | 'outbound';
+export type WebhookStatus = 'success' | 'error';
 
 export interface WebhookEvent {
   id: string;
@@ -35,7 +35,7 @@ function truncatePayload(payload: unknown): unknown {
     if (str.length <= MAX_PAYLOAD_BYTES) return payload;
     return { _truncated: true, preview: str.slice(0, MAX_PAYLOAD_BYTES) };
   } catch {
-    return { _error: "Could not serialize payload" };
+    return { _error: 'Could not serialize payload' };
   }
 }
 
@@ -44,7 +44,7 @@ function truncatePayload(payload: unknown): unknown {
 /** Fire-and-forget. Never throws. */
 export function logWebhookEvent(
   tenantId: string,
-  event: Omit<WebhookEvent, "id" | "timestamp" | "tenantId">
+  event: Omit<WebhookEvent, 'id' | 'timestamp' | 'tenantId'>
 ): void {
   const record: WebhookEvent = {
     id: `wh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -54,7 +54,7 @@ export function logWebhookEvent(
     payload: truncatePayload(event.payload),
   };
 
-  broadcastToTenant(tenantId, { type: "webhook-event", payload: record });
+  broadcastToTenant(tenantId, { type: 'webhook-event', payload: record });
 
   if (!isDbAvailable()) {
     const list = _memEvents.get(tenantId) ?? [];
@@ -87,7 +87,7 @@ export function logWebhookEvent(
         )`
       );
     })
-    .catch((err) => logger.error({ err }, "[webhookLogger] logWebhookEvent error"));
+    .catch(err => logger.error({ err }, '[webhookLogger] logWebhookEvent error'));
 }
 
 export async function getWebhookEvents(tenantId: string, limit = 50): Promise<WebhookEvent[]> {
@@ -104,7 +104,7 @@ export async function getWebhookEvents(tenantId: string, limit = 50): Promise<We
     .orderBy(desc(schema.webhookEvents.timestamp))
     .limit(limit);
 
-  return rows.map((r) => ({
+  return rows.map(r => ({
     id: r.id,
     tenantId: r.tenantId,
     timestamp: (r.timestamp as Date).toISOString(),

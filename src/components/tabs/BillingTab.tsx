@@ -12,8 +12,8 @@ export const BillingTab: React.FC = () => {
 
   useEffect(() => {
     fetch('/api/billing/config')
-      .then((res) => (res.ok ? res.json() : { enabled: false, availableTiers: [] }))
-      .then((data) => {
+      .then(res => (res.ok ? res.json() : { enabled: false, availableTiers: [] }))
+      .then(data => {
         setBillingEnabled(!!data.enabled);
         setAvailableTiers(data.availableTiers || []);
       })
@@ -32,13 +32,12 @@ export const BillingTab: React.FC = () => {
     Free: { max: 50, price: '$0', desc: 'Ideal for trial and sandbox validation.' },
     Starter: { max: 500, price: '$49/mo', desc: 'Perfect for growing businesses.' },
     Business: { max: 5000, price: '$149/mo', desc: 'Full multi-channel AI automation.' },
-    Enterprise: { max: Infinity, price: 'Custom', desc: 'Unlimited scale and custom SLAs.' }
+    Enterprise: { max: Infinity, price: 'Custom', desc: 'Unlimited scale and custom SLAs.' },
   };
 
   const currentLimit = limits[currentTier as keyof typeof limits]?.max || 50;
-  const progressPercent = currentLimit === Infinity
-    ? 0
-    : Math.min(100, Math.round((currentCount / currentLimit) * 100));
+  const progressPercent =
+    currentLimit === Infinity ? 0 : Math.min(100, Math.round((currentCount / currentLimit) * 100));
 
   const handleUpgrade = async (tier: string) => {
     // Real checkout when Stripe is configured for this tier (Starter/Business).
@@ -48,7 +47,7 @@ export const BillingTab: React.FC = () => {
         const res = await fetch(`/api/tenant/${selectedTenant.id}/checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier })
+          body: JSON.stringify({ tier }),
         });
         const data = await res.json();
         if (res.ok && data.url) {
@@ -66,7 +65,7 @@ export const BillingTab: React.FC = () => {
     // which have no self-serve checkout): update locally as before.
     updateTenantFields({
       subscriptionTier: tier,
-      messageCount: 0
+      messageCount: 0,
     });
   };
 
@@ -87,7 +86,7 @@ export const BillingTab: React.FC = () => {
       {/* Overview Card */}
       <div className="border border-white/5 rounded-2xl bg-[#090d16] p-6 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
-        
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -106,8 +105,12 @@ export const BillingTab: React.FC = () => {
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-mono text-slate-500 uppercase">Current Billing Cycle</div>
-              <div className="text-xs text-slate-200 font-medium">Renews automatically next month</div>
+              <div className="text-[10px] font-mono text-slate-500 uppercase">
+                Current Billing Cycle
+              </div>
+              <div className="text-xs text-slate-200 font-medium">
+                Renews automatically next month
+              </div>
             </div>
             {billingEnabled && selectedTenant.stripeCustomerId && (
               <button
@@ -129,17 +132,18 @@ export const BillingTab: React.FC = () => {
                 <span>Monthly Message Usage</span>
               </div>
               <span className="font-mono text-slate-350">
-                <strong className="text-white font-bold">{currentCount}</strong> / {currentLimit} messages
+                <strong className="text-white font-bold">{currentCount}</strong> / {currentLimit}{' '}
+                messages
               </span>
             </div>
 
             <div className="h-2 w-full bg-[#0d121d] rounded-full overflow-hidden border border-white/5">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 rounded-full ${
-                  progressPercent > 90 
-                    ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]' 
-                    : progressPercent > 70 
-                      ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]' 
+                  progressPercent > 90
+                    ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                    : progressPercent > 70
+                      ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
                       : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.4)]'
                 }`}
                 style={{ width: `${progressPercent}%` }}
@@ -149,7 +153,9 @@ export const BillingTab: React.FC = () => {
             <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
               <span>{progressPercent}% Consumed</span>
               {progressPercent > 80 && (
-                <span className="text-amber-400 font-bold animate-pulse">⚠️ Approaching plan limits. Consider upgrading.</span>
+                <span className="text-amber-400 font-bold animate-pulse">
+                  ⚠️ Approaching plan limits. Consider upgrading.
+                </span>
               )}
             </div>
           </div>
@@ -158,15 +164,18 @@ export const BillingTab: React.FC = () => {
 
       {/* Pricing Options */}
       <div className="space-y-4">
-        <h3 className="text-xs uppercase font-mono tracking-widest text-slate-400 font-bold">Select Subscription Tier</h3>
+        <h3 className="text-xs uppercase font-mono tracking-widest text-slate-400 font-bold">
+          Select Subscription Tier
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
           {/* Free Tier */}
-          <div className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
-            currentTier === 'Free' 
-              ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-              : 'border-white/5 hover:border-white/10'
-          }`}>
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
+              currentTier === 'Free'
+                ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400">Free Sandbox</span>
@@ -208,11 +217,13 @@ export const BillingTab: React.FC = () => {
           </div>
 
           {/* Starter Tier */}
-          <div className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
-            currentTier === 'Starter' 
-              ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-              : 'border-white/5 hover:border-white/10'
-          }`}>
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
+              currentTier === 'Starter'
+                ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400">Starter</span>
@@ -249,16 +260,22 @@ export const BillingTab: React.FC = () => {
                   : 'bg-blue-600 hover:bg-blue-550 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]'
               }`}
             >
-              {currentTier === 'Starter' ? 'Active Plan' : checkoutLoading === 'Starter' ? 'Redirecting…' : 'Select Starter'}
+              {currentTier === 'Starter'
+                ? 'Active Plan'
+                : checkoutLoading === 'Starter'
+                  ? 'Redirecting…'
+                  : 'Select Starter'}
             </button>
           </div>
 
           {/* Business Tier */}
-          <div className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
-            currentTier === 'Business' 
-              ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-              : 'border-white/5 hover:border-white/10'
-          }`}>
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
+              currentTier === 'Business'
+                ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400">Business</span>
@@ -295,16 +312,22 @@ export const BillingTab: React.FC = () => {
                   : 'bg-blue-600 hover:bg-blue-550 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]'
               }`}
             >
-              {currentTier === 'Business' ? 'Active Plan' : checkoutLoading === 'Business' ? 'Redirecting…' : 'Select Business'}
+              {currentTier === 'Business'
+                ? 'Active Plan'
+                : checkoutLoading === 'Business'
+                  ? 'Redirecting…'
+                  : 'Select Business'}
             </button>
           </div>
 
           {/* Enterprise Tier */}
-          <div className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
-            currentTier === 'Enterprise' 
-              ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-              : 'border-white/5 hover:border-white/10'
-          }`}>
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between transition-all bg-[#090d16] ${
+              currentTier === 'Enterprise'
+                ? 'border-blue-500 bg-blue-500/[0.02] shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400">Enterprise</span>
@@ -344,7 +367,6 @@ export const BillingTab: React.FC = () => {
               {currentTier === 'Enterprise' ? 'Active Plan' : 'Contact Sales'}
             </button>
           </div>
-
         </div>
       </div>
     </div>

@@ -1,18 +1,18 @@
-import { z } from "zod";
-import dotenv from "dotenv";
-import path from "path";
-import dns from "dns";
-import { promisify } from "util";
+import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+import dns from 'dns';
+import { promisify } from 'util';
 
 dotenv.config();
 
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
-  ENCRYPTION_KEY: z.string().default("aura_platform_encryption_master_key_2026"),
-  WHATSAPP_VERIFY_TOKEN: z.string().default("aura_platform_verify_token_2026"),
-  WHATSAPP_APP_SECRET: z.string().default("aura_whatsapp_app_secret_fallback_2026"),
+  ENCRYPTION_KEY: z.string().default('aura_platform_encryption_master_key_2026'),
+  WHATSAPP_VERIFY_TOKEN: z.string().default('aura_platform_verify_token_2026'),
+  WHATSAPP_APP_SECRET: z.string().default('aura_whatsapp_app_secret_fallback_2026'),
   PORT: z.coerce.number().default(3000),
-  NODE_ENV: z.string().default("development"),
+  NODE_ENV: z.string().default('development'),
   APP_URL: z.string().optional(),
   DATABASE_URL: z.string().optional(),
   SENTRY_DSN: z.string().url().optional(),
@@ -28,33 +28,57 @@ const envSchema = z.object({
 const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {
   // eslint-disable-next-line no-console
-  console.error("❌ Environment validation failed:", parsedEnv.error.format());
+  console.error('❌ Environment validation failed:', parsedEnv.error.format());
   process.exit(1);
 }
 
-if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.ENCRYPTION_KEY === "aura_platform_encryption_master_key_2026") {
+if (
+  parsedEnv.data.NODE_ENV === 'production' &&
+  parsedEnv.data.ENCRYPTION_KEY === 'aura_platform_encryption_master_key_2026'
+) {
   // eslint-disable-next-line no-console
-  console.error("❌ Security blockade: Default ENCRYPTION_KEY is not permitted in production environment!");
+  console.error(
+    '❌ Security blockade: Default ENCRYPTION_KEY is not permitted in production environment!'
+  );
   process.exit(1);
 }
 
-if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.WHATSAPP_APP_SECRET === "aura_whatsapp_app_secret_fallback_2026") {
+if (
+  parsedEnv.data.NODE_ENV === 'production' &&
+  parsedEnv.data.WHATSAPP_APP_SECRET === 'aura_whatsapp_app_secret_fallback_2026'
+) {
   // eslint-disable-next-line no-console
-  console.error("❌ Security blockade: Default WHATSAPP_APP_SECRET is not permitted in production environment!");
+  console.error(
+    '❌ Security blockade: Default WHATSAPP_APP_SECRET is not permitted in production environment!'
+  );
   process.exit(1);
 }
 
 export const {
-  ENCRYPTION_KEY, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET, PORT, NODE_ENV, APP_URL,
-  GEMINI_API_KEY, DATABASE_URL, SENTRY_DSN, REDIS_URL, BYPASS_AUTH_IN_DEV,
-  STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET,
-  STRIPE_PRICE_STARTER, STRIPE_PRICE_BUSINESS,
+  ENCRYPTION_KEY,
+  WHATSAPP_VERIFY_TOKEN,
+  WHATSAPP_APP_SECRET,
+  PORT,
+  NODE_ENV,
+  APP_URL,
+  GEMINI_API_KEY,
+  DATABASE_URL,
+  SENTRY_DSN,
+  REDIS_URL,
+  BYPASS_AUTH_IN_DEV,
+  STRIPE_SECRET_KEY,
+  STRIPE_PUBLISHABLE_KEY,
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_STARTER,
+  STRIPE_PRICE_BUSINESS,
 } = parsedEnv.data;
 export const lookupAsync = promisify(dns.lookup);
 
-export const TENANTS_FILE = NODE_ENV === "test"
-  ? path.join(process.cwd(), "tenants_store.test.json")
-  : path.join(process.cwd(), "tenants_store.json");
-export const CONVERSATIONS_FILE = NODE_ENV === "test"
-  ? path.join(process.cwd(), "webhook_conversations.test.json")
-  : path.join(process.cwd(), "webhook_conversations.json");
+export const TENANTS_FILE =
+  NODE_ENV === 'test'
+    ? path.join(process.cwd(), 'tenants_store.test.json')
+    : path.join(process.cwd(), 'tenants_store.json');
+export const CONVERSATIONS_FILE =
+  NODE_ENV === 'test'
+    ? path.join(process.cwd(), 'webhook_conversations.test.json')
+    : path.join(process.cwd(), 'webhook_conversations.json');

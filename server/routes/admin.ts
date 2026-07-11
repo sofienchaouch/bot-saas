@@ -446,7 +446,13 @@ router.post(
       isInternal: internalNote,
     });
     await writeConversationsStore(conversations);
-    broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
+    broadcastToTenant(tenantId, {
+      type: 'conversation-message',
+      payload: {
+        convoKey,
+        message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1],
+      },
+    });
 
     if (internalNote) {
       logger.info({ convoKey }, '[CONVERSATION INTERNAL NOTE] Stored internal note for thread');
