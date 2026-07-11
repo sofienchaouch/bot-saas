@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSaaS } from '../../context/SaaSContext';
+import { useDialerStore } from '../../stores/dialerStore';
 import { useLanguage } from '../../LanguageContext';
 import { Lead } from '../../types';
 import {
@@ -56,11 +57,6 @@ export const LeadsTab: React.FC = () => {
     isSendingTakeoverReply,
     isInternalNote,
     setIsInternalNote,
-    setDialerCustomerNumber,
-    setDialerCustomerName,
-    setIsDialerModalOpen,
-    setDialerState,
-    setDialerTimer,
     user,
     userRole,
     updateTenantFields,
@@ -84,6 +80,9 @@ export const LeadsTab: React.FC = () => {
     nurtureLogs,
     handleTriggerNurtureEmail
   } = useSaaS();
+
+  const { setDialerCustomerNumber, setDialerCustomerName, setIsDialerModalOpen, setDialerState, setDialerTimer } =
+    useDialerStore();
 
   React.useEffect(() => {
     const fetchConvos = async () => {

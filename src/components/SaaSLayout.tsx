@@ -5,6 +5,7 @@ import { SaasHeader } from './SaasHeader';
 import { CommandPalette } from './widgets/CommandPalette';
 import { useLanguage } from '../LanguageContext';
 import { useSaaS, SaaSProvider } from '../context/SaaSContext';
+import { useDialerStore } from '../stores/dialerStore';
 import { WorkspaceHub } from './WorkspaceHub';
 import { WhatsAppStatusIndicator } from './WhatsAppStatusIndicator';
 
@@ -120,15 +121,6 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
     handleGoogleLogout,
     handleAutopilotToggle,
 
-    // Dialer
-    isDialerModalOpen,
-    setIsDialerModalOpen,
-    dialerCustomerNumber,
-    dialerCustomerName,
-    dialerState,
-    setDialerState,
-    dialerTimer,
-
     // WhatsApp Status
     waPhone,
     waStatus,
@@ -142,8 +134,40 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
     handleLiveAppointmentBooked,
   } = useSaaS();
 
+  const {
+    isDialerModalOpen,
+    setIsDialerModalOpen,
+    dialerCustomerNumber,
+    dialerCustomerName,
+    dialerState,
+    setDialerState,
+    dialerTimer,
+    setDialerTimer,
+  } = useDialerStore();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Dialer call timer tick hook (relocated from SaaSContext — dialerStore.ts)
+  useEffect(() => {
+    let interval: any;
+    if (isDialerModalOpen && dialerState === 'connected') {
+      interval = setInterval(() => {
+        setDialerTimer((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isDialerModalOpen, dialerState, setDialerTimer]);
+
+  // Simulate call progression: dialing -> connected after 2.5 seconds
+  useEffect(() => {
+    if (isDialerModalOpen && dialerState === 'dialing') {
+      const timer = setTimeout(() => {
+        setDialerState('connected');
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDialerModalOpen, dialerState, setDialerState]);
 
   // Command Palette global keyboard trigger Ctrl+K
   useEffect(() => {

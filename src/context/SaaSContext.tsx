@@ -114,15 +114,6 @@ interface SaaSContextType {
   setTakeoverReplyText: (val: string) => void;
   isSendingTakeoverReply: boolean;
   isFetchingTakeoverConvos: boolean;
-  isDialerModalOpen: boolean;
-  setIsDialerModalOpen: (val: boolean) => void;
-  dialerCustomerNumber: string;
-  setDialerCustomerNumber: (val: string) => void;
-  dialerCustomerName: string;
-  setDialerCustomerName: (val: string) => void;
-  dialerState: 'dialing' | 'connected' | 'ended';
-  setDialerState: (val: 'dialing' | 'connected' | 'ended') => void;
-  dialerTimer: number;
   isInternalNote: boolean;
   setIsInternalNote: (val: boolean) => void;
   handleSendTakeoverReply: (customerId: string) => Promise<void>;
@@ -358,11 +349,6 @@ export const SaaSProvider: React.FC<{
   const [takeoverReplyText, setTakeoverReplyText] = useState('');
   const [isSendingTakeoverReply, setIsSendingTakeoverReply] = useState(false);
   const [isFetchingTakeoverConvos, setIsFetchingTakeoverConvos] = useState(false);
-  const [isDialerModalOpen, setIsDialerModalOpen] = useState(false);
-  const [dialerCustomerNumber, setDialerCustomerNumber] = useState('');
-  const [dialerCustomerName, setDialerCustomerName] = useState('');
-  const [dialerState, setDialerState] = useState<'dialing' | 'connected' | 'ended'>('dialing');
-  const [dialerTimer, setDialerTimer] = useState(0);
   const [isInternalNote, setIsInternalNote] = useState(false);
 
   // Load new signup tenant if supplied
@@ -1854,27 +1840,6 @@ Service catalog:
     }
   };
 
-  // Dialer call timer tick hook
-  useEffect(() => {
-    let interval: any;
-    if (isDialerModalOpen && dialerState === 'connected') {
-      interval = setInterval(() => {
-        setDialerTimer(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isDialerModalOpen, dialerState]);
-
-  // Simulate call progression: dialing -> connected after 2.5 seconds
-  useEffect(() => {
-    if (isDialerModalOpen && dialerState === 'dialing') {
-      const timer = setTimeout(() => {
-        setDialerState('connected');
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [isDialerModalOpen, dialerState]);
-
   const handleSendTakeoverReply = async (customerId: string) => {
     if (!takeoverReplyText.trim() || !selectedTenant) return;
     setIsSendingTakeoverReply(true);
@@ -2577,15 +2542,6 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     setTakeoverReplyText,
     isSendingTakeoverReply,
     isFetchingTakeoverConvos,
-    isDialerModalOpen,
-    setIsDialerModalOpen,
-    dialerCustomerNumber,
-    setDialerCustomerNumber,
-    dialerCustomerName,
-    setDialerCustomerName,
-    dialerState,
-    setDialerState,
-    dialerTimer,
     isInternalNote,
     setIsInternalNote,
     handleSendTakeoverReply,
