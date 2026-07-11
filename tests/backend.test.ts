@@ -6,7 +6,14 @@ import request from 'supertest';
 process.env.NODE_ENV = 'test';
 
 import { app, cosineSimilarity, chunkText, encryptText, decryptText } from '../server';
-import { readTenantsStore, writeTenantsStore, readConversationsStore, writeConversationsStore, _setMemTenant, _clearMemStore } from '../server/services/db';
+import {
+  readTenantsStore,
+  writeTenantsStore,
+  readConversationsStore,
+  writeConversationsStore,
+  _setMemTenant,
+  _clearMemStore,
+} from '../server/services/db';
 import { getRAGContext } from '../server/services/rag';
 import { logger } from '../server/lib/logger';
 import { isOverQuota } from '../server/services/quota';
@@ -81,7 +88,7 @@ describe('Backend API Integration Tests', () => {
       whatsAppSandboxActive: true,
       knowledgeBase: [],
       leads: [],
-      appointments: []
+      appointments: [],
     });
   });
 
@@ -91,9 +98,7 @@ describe('Backend API Integration Tests', () => {
 
   describe('GET /api/health (enhanced)', () => {
     it('returns status and checks object', async () => {
-      const res = await request(app)
-        .get('/api/health')
-        .set('X-Test-Auth-Bypass', 'true');
+      const res = await request(app).get('/api/health').set('X-Test-Auth-Bypass', 'true');
       expect([200, 503]).toContain(res.status);
       expect(res.body.status).toMatch(/^(ok|degraded)$/);
       expect(res.body.checks).toBeDefined();
@@ -126,7 +131,7 @@ describe('Backend API Integration Tests', () => {
       email: 'kent.c@dailyplanet.org',
       start: '2026-06-20T10:00:00',
       end: '2026-06-20T11:00:00',
-      summary: 'Standard consultation'
+      summary: 'Standard consultation',
     };
 
     const res = await request(app)
@@ -155,7 +160,7 @@ describe('Backend API Integration Tests', () => {
       url: 'https://example-fitness-studio.com',
       source: 'web',
       depth: 1,
-      pagesBudget: 10
+      pagesBudget: 10,
     };
 
     const res = await request(app)
@@ -166,7 +171,9 @@ describe('Backend API Integration Tests', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('status', 'success');
     expect(res.body.kbItem.title).toContain('Test Business Corp Website Index');
-    expect(res.body.kbItem.content).toContain('Root website URL: https://example-fitness-studio.com');
+    expect(res.body.kbItem.content).toContain(
+      'Root website URL: https://example-fitness-studio.com'
+    );
 
     // Verify item is saved to database
     const getRes = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
@@ -176,33 +183,31 @@ describe('Backend API Integration Tests', () => {
   });
 
   it('POST /api/webhook should block requests with missing signature', async () => {
-    const payload = { object: "whatsapp_business_account", entry: [] };
-    const res = await request(app)
-      .post('/api/webhook')
-      .send(payload);
+    const payload = { object: 'whatsapp_business_account', entry: [] };
+    const res = await request(app).post('/api/webhook').send(payload);
 
     expect(res.status).toBe(401);
-    expect(res.text).toContain("Missing X-Hub-Signature-256 signature");
+    expect(res.text).toContain('Missing X-Hub-Signature-256 signature');
   });
 
   it('POST /api/webhook should block requests with invalid signature', async () => {
-    const payload = { object: "whatsapp_business_account", entry: [] };
+    const payload = { object: 'whatsapp_business_account', entry: [] };
     const res = await request(app)
       .post('/api/webhook')
       .set('X-Hub-Signature-256', 'sha256=invalidhashvalue')
       .send(payload);
 
     expect(res.status).toBe(403);
-    expect(res.text).toContain("signature verification failed");
+    expect(res.text).toContain('signature verification failed');
   });
 
   it('POST /api/webhook should allow requests with valid signature', async () => {
-    const payload = { object: "whatsapp_business_account", entry: [] };
+    const payload = { object: 'whatsapp_business_account', entry: [] };
     const rawBody = JSON.stringify(payload);
-    const crypto = await import("crypto");
-    const hmac = crypto.createHmac("sha256", "aura_whatsapp_app_secret_fallback_2026");
+    const crypto = await import('crypto');
+    const hmac = crypto.createHmac('sha256', 'aura_whatsapp_app_secret_fallback_2026');
     hmac.update(rawBody);
-    const signature = `sha256=${hmac.digest("hex")}`;
+    const signature = `sha256=${hmac.digest('hex')}`;
 
     const res = await request(app)
       .post('/api/webhook')
@@ -210,17 +215,15 @@ describe('Backend API Integration Tests', () => {
       .send(payload);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("status", "received");
+    expect(res.body).toHaveProperty('status', 'received');
   });
 
   it('Express global error handler should format route exceptions as JSON', async () => {
-    const errRes = await request(app)
-      .get('/api/test-error')
-      .set('X-Test-Auth-Bypass', 'true');
+    const errRes = await request(app).get('/api/test-error').set('X-Test-Auth-Bypass', 'true');
 
     expect(errRes.status).toBe(500);
-    expect(errRes.body).toHaveProperty("status", "error");
-    expect(errRes.body).toHaveProperty("message");
+    expect(errRes.body).toHaveProperty('status', 'error');
+    expect(errRes.body).toHaveProperty('message');
   });
 
   it('POST /api/webhook/telegram/:tenantId should parse Telegram payload and reply', async () => {
@@ -228,14 +231,12 @@ describe('Backend API Integration Tests', () => {
       update_id: 12345,
       message: {
         chat: { id: 98765 },
-        from: { first_name: "Bruce" },
-        text: "Inquire about rates"
-      }
+        from: { first_name: 'Bruce' },
+        text: 'Inquire about rates',
+      },
     };
 
-    const res = await request(app)
-      .post('/api/webhook/telegram/test-tenant')
-      .send(payload);
+    const res = await request(app).post('/api/webhook/telegram/test-tenant').send(payload);
 
     expect(res.status).toBe(200);
   });
@@ -243,7 +244,7 @@ describe('Backend API Integration Tests', () => {
   it('POST /api/webhook/twilio/sms/:tenantId should parse Twilio SMS and return TwiML XML', async () => {
     const res = await request(app)
       .post('/api/webhook/twilio/sms/test-tenant')
-      .send({ Body: "Hello studio", From: "+15550199" });
+      .send({ Body: 'Hello studio', From: '+15550199' });
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/xml');
@@ -260,16 +261,14 @@ describe('Backend API Integration Tests', () => {
     const payload = {
       message: {
         chat: { id: 98765 },
-        from: { first_name: "Bruce" },
-        text: "Will fail"
-      }
+        from: { first_name: 'Bruce' },
+        text: 'Will fail',
+      },
     };
-    const res = await request(app)
-      .post('/api/webhook/telegram/test-tenant')
-      .send(payload);
+    const res = await request(app).post('/api/webhook/telegram/test-tenant').send(payload);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toContain("Quota Exceeded");
+    expect(res.body.error).toContain('Quota Exceeded');
 
     // Reset quota
     store['test-tenant'].messageCount = 0;
@@ -279,10 +278,14 @@ describe('Backend API Integration Tests', () => {
   it('GET /api/conversations/:tenantId should support q search and limit pagination parameters', async () => {
     const conversations = await readConversationsStore();
     conversations['test-tenant_custom-user-1'] = {
-      messages: [{ sender: "customer", text: "Alpha secret code word", timestamp: new Date().toISOString() }]
+      messages: [
+        { sender: 'customer', text: 'Alpha secret code word', timestamp: new Date().toISOString() },
+      ],
     };
     conversations['test-tenant_custom-user-2'] = {
-      messages: [{ sender: "customer", text: "Beta text details", timestamp: new Date().toISOString() }]
+      messages: [
+        { sender: 'customer', text: 'Beta text details', timestamp: new Date().toISOString() },
+      ],
     };
     await writeConversationsStore(conversations);
 
@@ -316,7 +319,9 @@ describe('Backend API Integration Tests', () => {
   it('GET /api/conversations/:tenantId/:customerId/export should return CSV data', async () => {
     const conversations = await readConversationsStore();
     conversations['test-tenant_custom-user-1'] = {
-      messages: [{ sender: "customer", text: "Alpha secret code word", timestamp: new Date().toISOString() }]
+      messages: [
+        { sender: 'customer', text: 'Alpha secret code word', timestamp: new Date().toISOString() },
+      ],
     };
     await writeConversationsStore(conversations);
 
@@ -354,24 +359,33 @@ describe('Backend API Integration Tests', () => {
         if (urlStr.endsWith('robots.txt')) {
           return Promise.resolve({
             ok: true,
-            text: () => Promise.resolve('User-agent: *\nDisallow: /private/\nSitemap: https://example.com/sitemap.xml')
+            text: () =>
+              Promise.resolve(
+                'User-agent: *\nDisallow: /private/\nSitemap: https://example.com/sitemap.xml'
+              ),
           } as any);
         }
         if (urlStr.endsWith('sitemap.xml')) {
           return Promise.resolve({
             ok: true,
-            text: () => Promise.resolve('<urlset><url><loc>https://example.com/public-page</loc></url><url><loc>https://example.com/private/secret-page</loc></url></urlset>')
+            text: () =>
+              Promise.resolve(
+                '<urlset><url><loc>https://example.com/public-page</loc></url><url><loc>https://example.com/private/secret-page</loc></url></urlset>'
+              ),
           } as any);
         }
         if (urlStr.endsWith('public-page') || urlStr.endsWith('example.com/')) {
           return Promise.resolve({
             ok: true,
-            text: () => Promise.resolve('<html><head><title>Public Gym Website</title></head><body>Welcome to public gym page. <a href="https://example.com/other-page">other page link</a></body></html>')
+            text: () =>
+              Promise.resolve(
+                '<html><head><title>Public Gym Website</title></head><body>Welcome to public gym page. <a href="https://example.com/other-page">other page link</a></body></html>'
+              ),
           } as any);
         }
         return Promise.resolve({
           ok: false,
-          text: () => Promise.resolve('')
+          text: () => Promise.resolve(''),
         } as any);
       });
 
@@ -382,7 +396,7 @@ describe('Backend API Integration Tests', () => {
           url: 'https://example.com/',
           source: 'web',
           depth: 1,
-          pagesBudget: 2
+          pagesBudget: 2,
         });
 
       expect(res.status).toBe(200);
@@ -420,8 +434,7 @@ describe('tenantAccessMiddleware', () => {
 
   it('blocks unauthenticated cross-tenant requests', async () => {
     // No auth header, no bypass — should return 401
-    const res = await request(app)
-      .get('/api/tenant/any-tenant-id/analytics');
+    const res = await request(app).get('/api/tenant/any-tenant-id/analytics');
     expect(res.status).toBe(401);
   });
 });
@@ -465,9 +478,7 @@ describe('BullMQ queue definitions', () => {
 
 describe('requestId middleware', () => {
   it('sets X-Request-Id response header', async () => {
-    const res = await request(app)
-      .get('/api/health')
-      .set('X-Test-Auth-Bypass', 'true');
+    const res = await request(app).get('/api/health').set('X-Test-Auth-Bypass', 'true');
     expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
   });
 
@@ -486,9 +497,7 @@ describe('tenantRateLimiter', () => {
     // In test mode (NODE_ENV=test), the limiter should always call next()
     // Verify by hitting a tenant route many times without getting 429
     const requests = Array.from({ length: 10 }, () =>
-      request(app)
-        .get('/api/tenant/test-tenant-1/analytics')
-        .set('X-Test-Auth-Bypass', 'true')
+      request(app).get('/api/tenant/test-tenant-1/analytics').set('X-Test-Auth-Bypass', 'true')
     );
     const results = await Promise.all(requests);
     // None should be 429 in test mode
@@ -528,7 +537,7 @@ describe('Phase 1 production fixes', () => {
         autopilotEnabled: false,
         knowledgeBase: [],
         leads: [],
-        appointments: []
+        appointments: [],
       });
 
       const store = await readTenantsStore();
@@ -571,14 +580,12 @@ describe('Phase 1 production fixes', () => {
         messageCount: 500,
         knowledgeBase: [],
         leads: [],
-        appointments: []
+        appointments: [],
       });
 
       const payload = { message: { chat: { id: 1 }, from: { first_name: 'X' }, text: 'hi' } };
 
-      const overRes = await request(app)
-        .post('/api/webhook/telegram/starter-tenant')
-        .send(payload);
+      const overRes = await request(app).post('/api/webhook/telegram/starter-tenant').send(payload);
       expect(overRes.status).toBe(403);
 
       const store = await readTenantsStore();
@@ -594,7 +601,7 @@ describe('Phase 1 production fixes', () => {
 
   describe('webhook signature verification (timingSafeEqual)', () => {
     it('rejects a malformed (non-hex) signature with 403, not 500', async () => {
-      const payload = { object: "whatsapp_business_account", entry: [] };
+      const payload = { object: 'whatsapp_business_account', entry: [] };
       const res = await request(app)
         .post('/api/webhook')
         .set('X-Hub-Signature-256', 'sha256=not-valid-hex!!')
@@ -605,7 +612,7 @@ describe('Phase 1 production fixes', () => {
     });
 
     it('rejects a well-formed but wrong-value hex signature with 403', async () => {
-      const payload = { object: "whatsapp_business_account", entry: [] };
+      const payload = { object: 'whatsapp_business_account', entry: [] };
       const wrongButValidHex = 'a'.repeat(64);
       const res = await request(app)
         .post('/api/webhook')
@@ -631,21 +638,28 @@ describe('Phase 1 production fixes', () => {
         whatsAppVerifiedSid: 'pn-1',
         knowledgeBase: [],
         leads: [],
-        appointments: []
+        appointments: [],
       });
 
       const whatsapp = await import('../server/services/whatsapp');
-      const sendSpy = vi.spyOn(whatsapp, 'sendWhatsAppMessage').mockResolvedValue({ ok: true } as any);
+      const sendSpy = vi
+        .spyOn(whatsapp, 'sendWhatsAppMessage')
+        .mockResolvedValue({ ok: true } as any);
 
       const { processOutboundMessage } = await import('../server/workers/messageWorker');
       await processOutboundMessage({
         tenantId: 'worker-tenant',
         to: '+15551234',
         text: 'hello',
-        channel: 'whatsapp'
+        channel: 'whatsapp',
       });
 
-      expect(sendSpy).toHaveBeenCalledWith('pn-1', 'real-whatsapp-access-token-1234567890', '+15551234', 'hello');
+      expect(sendSpy).toHaveBeenCalledWith(
+        'pn-1',
+        'real-whatsapp-access-token-1234567890',
+        '+15551234',
+        'hello'
+      );
       sendSpy.mockRestore();
     });
 
@@ -654,7 +668,12 @@ describe('Phase 1 production fixes', () => {
       const { processOutboundMessage } = await import('../server/workers/messageWorker');
 
       await expect(
-        processOutboundMessage({ tenantId: 'does-not-exist', to: '+1', text: 'x', channel: 'whatsapp' })
+        processOutboundMessage({
+          tenantId: 'does-not-exist',
+          to: '+1',
+          text: 'x',
+          channel: 'whatsapp',
+        })
       ).rejects.toThrow(UnrecoverableError);
     });
   });
@@ -683,7 +702,20 @@ describe('Phase 1 production fixes', () => {
 
   describe('GET /api/tenants ownership filtering', () => {
     it('returns all tenants under the test auth bypass (no uid on request)', async () => {
-      _setMemTenant('owned-by-a', { id: 'owned-by-a', ownerId: 'uid-a', name: 'A', industry: '', description: '', avatar: '', botName: 'Aura', tone: 'friendly', status: 'active', knowledgeBase: [], leads: [], appointments: [] });
+      _setMemTenant('owned-by-a', {
+        id: 'owned-by-a',
+        ownerId: 'uid-a',
+        name: 'A',
+        industry: '',
+        description: '',
+        avatar: '',
+        botName: 'Aura',
+        tone: 'friendly',
+        status: 'active',
+        knowledgeBase: [],
+        leads: [],
+        appointments: [],
+      });
       const res = await request(app).get('/api/tenants').set('X-Test-Auth-Bypass', 'true');
       expect(res.status).toBe(200);
       expect(res.body['owned-by-a']).toBeDefined();
@@ -714,9 +746,7 @@ describe('POST /api/kb/extract-file (real KB upload)', () => {
   });
 
   it('rejects a request with no file attached', async () => {
-    const res = await request(app)
-      .post('/api/kb/extract-file')
-      .set('X-Test-Auth-Bypass', 'true');
+    const res = await request(app).post('/api/kb/extract-file').set('X-Test-Auth-Bypass', 'true');
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Missing file upload');

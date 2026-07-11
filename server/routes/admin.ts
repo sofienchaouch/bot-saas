@@ -17,7 +17,7 @@ import { authMiddleware } from '../middleware/auth';
 import { tenantAccessMiddleware } from '../middleware/tenantAccess';
 import { tenantRateLimiter } from '../middleware/rateLimit';
 import { outboundMessageQueue } from '../services/queue';
-import { NODE_ENV } from '../config';
+import { NODE_ENV, APP_URL } from '../config';
 import { getAnalytics, clearAnalytics } from '../services/analytics';
 import { getWebhookEvents, clearWebhookEvents } from '../services/webhookLogger';
 import { validateUrlForSsrf, crawlWebsite } from '../services/crawler';
@@ -42,6 +42,7 @@ router.use(
     '/api/tenant/:id/crawl',
     '/api/tenant/:id/autopilot',
     '/api/tenant/:id/schedule',
+    '/api/tenant/:id/telegram',
     '/api/conversations/:id',
   ],
   tenantAccessMiddleware
@@ -304,6 +305,76 @@ router.post(
   })
 );
 
+router.post(
+  '/api/tenant/:id/telegram/connect',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.params.id;
+    const { botToken } = req.body;
+    if (!botToken || !botToken.trim()) {
+      return res.status(400).json({ error: 'Missing bot token.' });
+    }
+
+    const store = await readTenantsStore();
+    const tenant = store[tenantId];
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    try {
+      const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const meData = await meRes.json();
+      if (!meData.ok) {
+        return res.status(400).json({ error: 'Invalid bot token: Telegram rejected it.' });
+      }
+
+      const webhookUrl = `${APP_URL || `${req.protocol}://${req.get('host')}`}/api/webhook/telegram/${tenantId}`;
+      const hookRes = await fetch(
+        `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
+      );
+      const hookData = await hookRes.json();
+      if (!hookData.ok) {
+        return res.status(502).json({ error: 'Telegram rejected the webhook registration.' });
+      }
+
+      tenant.telegramBotToken = botToken;
+      store[tenantId] = tenant;
+      await writeTenantsStore(store);
+
+      logger.info({ tenantId, botUsername: meData.result?.username }, '[TELEGRAM CONNECT] Bot connected and webhook registered');
+      res.json({ status: 'success', botUsername: meData.result?.username });
+    } catch (err: any) {
+      logger.error({ err: err.message, tenantId }, '[TELEGRAM CONNECT] Failed to connect bot');
+      res.status(502).json({ error: 'Failed to reach Telegram API.' });
+    }
+  })
+);
+
+router.post(
+  '/api/tenant/:id/telegram/disconnect',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.params.id;
+    const store = await readTenantsStore();
+    const tenant = store[tenantId];
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const botToken = tenant.telegramBotToken;
+    if (botToken) {
+      try {
+        await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`);
+      } catch (err: any) {
+        logger.warn({ err: err.message, tenantId }, '[TELEGRAM DISCONNECT] Failed to unregister webhook');
+      }
+    }
+
+    tenant.telegramBotToken = undefined;
+    store[tenantId] = tenant;
+    await writeTenantsStore(store);
+    res.json({ status: 'success' });
+  })
+);
+
 const kbUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -325,7 +396,10 @@ router.post(
         fileSize: `${(req.file.size / 1024).toFixed(1)} KB`,
       });
     } catch (err: any) {
-      logger.warn({ err: err.message, filename: req.file.originalname }, '[KB UPLOAD] Extraction failed');
+      logger.warn(
+        { err: err.message, filename: req.file.originalname },
+        '[KB UPLOAD] Extraction failed'
+      );
       res.status(400).json({ error: err.message || 'Failed to extract text from file.' });
     }
   })

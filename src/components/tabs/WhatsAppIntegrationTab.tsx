@@ -32,6 +32,13 @@ export const WhatsAppIntegrationTab: React.FC = () => {
   const {
     activeChannelSubTab,
     setActiveChannelSubTab,
+    telegramBotTokenInput,
+    setTelegramBotTokenInput,
+    telegramConnecting,
+    telegramError,
+    telegramConnectedUsername,
+    handleConnectTelegram,
+    handleDisconnectTelegram,
     waStatus,
     setWaStatus,
     messengerStatus,
@@ -155,20 +162,20 @@ export const WhatsAppIntegrationTab: React.FC = () => {
         </div>
         
         {/* Dynamic Visual Connection status badge depending on active sub-tab */}
-        <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 bg-white/2 px-3 py-1.5 rounded-2xl border border-white/5">
-          <span className="text-slate-400">Handshake State:</span>
-          {activeChannelSubTab === 'whatsapp' ? (
-            waStatus === 'connected' ? (
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-bold">
-                ● CONNECTED
-              </span>
-            ) : (
-              <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1 font-bold">
-                ● OFFLINE
-              </span>
-            )
-          ) : (
-            messengerStatus === 'connected' ? (
+        {(activeChannelSubTab === 'whatsapp' || activeChannelSubTab === 'messenger') && (
+          <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 bg-white/2 px-3 py-1.5 rounded-2xl border border-white/5">
+            <span className="text-slate-400">Handshake State:</span>
+            {activeChannelSubTab === 'whatsapp' ? (
+              waStatus === 'connected' ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-bold">
+                  ● CONNECTED
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1 font-bold">
+                  ● OFFLINE
+                </span>
+              )
+            ) : messengerStatus === 'connected' ? (
               <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1 font-bold shadow-[0_0_10px_rgba(59,130,246,0.25)]">
                 ● ACTIVE (LIVE)
               </span>
@@ -176,9 +183,23 @@ export const WhatsAppIntegrationTab: React.FC = () => {
               <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1 font-bold">
                 ● DISCONNECTED
               </span>
-            )
-          )}
-        </div>
+            )}
+          </div>
+        )}
+        {activeChannelSubTab === 'telegram' && (
+          <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 bg-white/2 px-3 py-1.5 rounded-2xl border border-white/5">
+            <span className="text-slate-400">Handshake State:</span>
+            {selectedTenant.telegramBotToken ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-bold">
+                ● CONNECTED
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1 font-bold">
+                ● OFFLINE
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Sub-channel switch button bars */}
@@ -205,7 +226,128 @@ export const WhatsAppIntegrationTab: React.FC = () => {
         >
           🔵 Facebook Messenger API
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveChannelSubTab('telegram')}
+          className={`flex-1 md:flex-initial px-4 py-2 text-center rounded-xl font-medium transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeChannelSubTab === 'telegram'
+              ? 'bg-sky-500/15 text-sky-400 font-semibold border border-sky-500/20 shadow-[0_0_10px_rgba(14,165,233,0.15)]'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          ✈️ Telegram
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveChannelSubTab('sms')}
+          className={`flex-1 md:flex-initial px-4 py-2 text-center rounded-xl font-medium transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeChannelSubTab === 'sms'
+              ? 'bg-violet-500/15 text-violet-400 font-semibold border border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.15)]'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          💬 SMS (Twilio)
+        </button>
       </div>
+
+      {activeChannelSubTab === 'telegram' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 border border-white/10 bg-[#080b12] rounded-3xl space-y-5 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="space-y-1 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                <span>✈️ Telegram Bot Connection</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Create a bot with{' '}
+                <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
+                  @BotFather
+                </a>{' '}
+                on Telegram, then paste its token below. We register the webhook automatically.
+              </p>
+            </div>
+
+            {selectedTenant.telegramBotToken ? (
+              <div className="space-y-3 relative z-10">
+                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <h4 className="text-white text-xs font-bold">
+                      Connected{telegramConnectedUsername ? ` as @${telegramConnectedUsername}` : ''}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      Inbound messages are routed to your AI agent automatically.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisconnectTelegram}
+                  disabled={telegramConnecting}
+                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {telegramConnecting ? 'Disconnecting…' : 'Disconnect Bot'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 relative z-10">
+                <input
+                  type="text"
+                  value={telegramBotTokenInput}
+                  onChange={e => setTelegramBotTokenInput(e.target.value)}
+                  placeholder="123456789:AAExampleBotFatherTokenHere"
+                  className="w-full px-4 py-2.5 bg-[#0d121d] border border-white/10 rounded-xl text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50"
+                />
+                {telegramError && (
+                  <p className="text-[11px] text-red-400 font-mono">{telegramError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleConnectTelegram}
+                  disabled={telegramConnecting || !telegramBotTokenInput.trim()}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-[0_0_12px_rgba(14,165,233,0.4)]"
+                >
+                  {telegramConnecting ? 'Connecting…' : 'Connect Bot'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeChannelSubTab === 'sms' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 border border-white/10 bg-[#080b12] rounded-3xl space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-violet-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="space-y-1 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                💬 SMS via Twilio
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                No credentials to store here — Twilio replies happen directly in the webhook
+                response. Paste this URL into your Twilio phone number's{' '}
+                <strong className="text-slate-300">"A Message Comes In"</strong> webhook field.
+              </p>
+            </div>
+            <div className="relative z-10 flex items-center gap-2 p-3 bg-[#0d121d] border border-white/10 rounded-xl">
+              <code className="flex-1 text-[11px] text-violet-300 font-mono truncate select-all">
+                {window.location.origin}/api/webhook/twilio/sms/{selectedTenant.id}
+              </code>
+              <button
+                type="button"
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    `${window.location.origin}/api/webhook/twilio/sms/${selectedTenant.id}`
+                  )
+                }
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-lg text-[10px] font-semibold shrink-0 cursor-pointer"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeChannelSubTab === 'whatsapp' && (
         <div className="space-y-6 animate-fadeIn">

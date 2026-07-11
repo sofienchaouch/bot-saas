@@ -242,8 +242,15 @@ interface SaaSContextType {
   messengerSandboxSentCode: string;
   messengerSandboxStep: 'idle' | 'sending' | 'otp_sent' | 'verified';
   messengerSandboxError: string | null;
-  activeChannelSubTab: 'whatsapp' | 'messenger';
-  setActiveChannelSubTab: (val: 'whatsapp' | 'messenger') => void;
+  activeChannelSubTab: 'whatsapp' | 'messenger' | 'telegram' | 'sms';
+  setActiveChannelSubTab: (val: 'whatsapp' | 'messenger' | 'telegram' | 'sms') => void;
+  telegramBotTokenInput: string;
+  setTelegramBotTokenInput: (val: string) => void;
+  telegramConnecting: boolean;
+  telegramError: string | null;
+  telegramConnectedUsername: string | null;
+  handleConnectTelegram: () => Promise<void>;
+  handleDisconnectTelegram: () => Promise<void>;
   isTestingConnection: boolean;
   connectionFeedback: { type: 'success' | 'error'; text: string } | null;
   setConnectionFeedback: (val: { type: 'success' | 'error'; text: string } | null) => void;
@@ -561,9 +568,13 @@ export const SaaSProvider: React.FC<{
   const [messengerSandboxError, setMessengerSandboxError] = useState<string | null>(null);
 
   // Active platform sub-tab inside Integrations Tab
-  const [activeChannelSubTab, setActiveChannelSubTab] = useState<'whatsapp' | 'messenger'>(
-    'whatsapp'
-  );
+  const [activeChannelSubTab, setActiveChannelSubTab] = useState<
+    'whatsapp' | 'messenger' | 'telegram' | 'sms'
+  >('whatsapp');
+  const [telegramBotTokenInput, setTelegramBotTokenInput] = useState('');
+  const [telegramConnecting, setTelegramConnecting] = useState(false);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+  const [telegramConnectedUsername, setTelegramConnectedUsername] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionFeedback, setConnectionFeedback] = useState<{
     type: 'success' | 'error';
@@ -971,7 +982,11 @@ export const SaaSProvider: React.FC<{
   const handleFileUpload = async (file: File) => {
     setIsProcessingKb(true);
     setKbProcessingStep('Uploading and extracting text...');
-    setKbFileMeta({ name: file.name, size: `${(file.size / 1024).toFixed(1)} KB`, type: file.type });
+    setKbFileMeta({
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(1)} KB`,
+      type: file.type,
+    });
 
     try {
       const formData = new FormData();
@@ -1790,6 +1805,52 @@ Service catalog:
       }
     } catch (err) {
       console.error('Error toggling autopilot:', err);
+    }
+  };
+
+  const handleConnectTelegram = async () => {
+    if (!selectedTenant || !telegramBotTokenInput.trim()) return;
+    setTelegramConnecting(true);
+    setTelegramError(null);
+    try {
+      const response = await fetch(`/api/tenant/${selectedTenant.id}/telegram/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: telegramBotTokenInput.trim() }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        updateTenantFields({ telegramBotToken: telegramBotTokenInput.trim() });
+        setTelegramConnectedUsername(data.botUsername || null);
+        setTelegramBotTokenInput('');
+      } else {
+        setTelegramError(data.error || 'Failed to connect Telegram bot.');
+      }
+    } catch (err) {
+      setTelegramError('Network error while connecting to Telegram.');
+    } finally {
+      setTelegramConnecting(false);
+    }
+  };
+
+  const handleDisconnectTelegram = async () => {
+    if (!selectedTenant) return;
+    setTelegramConnecting(true);
+    setTelegramError(null);
+    try {
+      const response = await fetch(`/api/tenant/${selectedTenant.id}/telegram/disconnect`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        updateTenantFields({ telegramBotToken: undefined });
+        setTelegramConnectedUsername(null);
+      } else {
+        setTelegramError('Failed to disconnect Telegram bot.');
+      }
+    } catch (err) {
+      setTelegramError('Network error while disconnecting Telegram.');
+    } finally {
+      setTelegramConnecting(false);
     }
   };
 
@@ -2635,6 +2696,13 @@ Highlight their gourmet flavor profiles, recommend culinary pairings, and captur
     messengerSandboxError,
     activeChannelSubTab,
     setActiveChannelSubTab,
+    telegramBotTokenInput,
+    setTelegramBotTokenInput,
+    telegramConnecting,
+    telegramError,
+    telegramConnectedUsername,
+    handleConnectTelegram,
+    handleDisconnectTelegram,
     isTestingConnection,
     connectionFeedback,
     setConnectionFeedback,
