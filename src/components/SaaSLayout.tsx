@@ -153,7 +153,7 @@ const SaaSLayoutInner: React.FC<SaaSLayoutProps> = ({
     let interval: any;
     if (isDialerModalOpen && dialerState === 'connected') {
       interval = setInterval(() => {
-        setDialerTimer((prev) => prev + 1);
+        setDialerTimer(prev => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);

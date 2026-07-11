@@ -14,7 +14,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message: m,
   selectedTenant,
   playingMessageId,
-  setPlayingMessageId
+  setPlayingMessageId,
 }) => {
   const meta = getMessageMetadata(m.text, m.sender);
   const agentsList = selectedTenant.agents || [];
@@ -38,7 +38,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           ) : (
             <Sparkles className="h-3 w-3 animate-bounce" />
           )}
-          <span>{m.actionsTriggered.type.replace('_', ' ')}: {m.actionsTriggered.details || 'Active'}</span>
+          <span>
+            {m.actionsTriggered.type.replace('_', ' ')}: {m.actionsTriggered.details || 'Active'}
+          </span>
         </div>
       )}
 
@@ -59,11 +61,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   const indLower = (selectedTenant.industry || '').toLowerCase();
                   let selectedVoice = null;
                   if (indLower.includes('ar')) {
-                    selectedVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('AR'));
+                    selectedVoice = voices.find(
+                      v => v.lang.startsWith('ar') || v.lang.includes('AR')
+                    );
                   } else if (indLower.includes('fr')) {
-                    selectedVoice = voices.find(v => v.lang.startsWith('fr') || v.lang.includes('FR'));
+                    selectedVoice = voices.find(
+                      v => v.lang.startsWith('fr') || v.lang.includes('FR')
+                    );
                   } else {
-                    selectedVoice = voices.find(v => v.lang.startsWith('en') || v.lang.includes('EN'));
+                    selectedVoice = voices.find(
+                      v => v.lang.startsWith('en') || v.lang.includes('EN')
+                    );
                   }
                   if (selectedVoice) {
                     utterance.voice = selectedVoice;
@@ -77,7 +85,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             }}
             type="button"
             className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-sm active:scale-95 transition-all text-xs"
-            title={isCurrentPlayingValue ? "Pause vocal speech" : "Replay voice note"}
+            title={isCurrentPlayingValue ? 'Pause vocal speech' : 'Replay voice note'}
           >
             {isCurrentPlayingValue ? (
               <VolumeX className="h-3.5 w-3.5 animate-pulse" />
@@ -87,7 +95,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1 mb-0.5">
-              <span className="text-[9px] font-bold text-slate-500 font-mono tracking-wide uppercase">🎙️ Voice Note</span>
+              <span className="text-[9px] font-bold text-slate-500 font-mono tracking-wide uppercase">
+                🎙️ Voice Note
+              </span>
               {isCurrentPlayingValue && (
                 <span className="text-[8px] font-mono font-bold text-emerald-600 bg-emerald-100/60 px-1 py-[0.5px] rounded animate-pulse">
                   PLAYING
@@ -96,18 +106,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
             {/* Adaptive wave graphic */}
             <div className="flex items-center gap-[1.5px] h-3.5 px-0.5 overflow-hidden">
-              {[1.5, 3, 2, 4, 1.5, 3, 4.5, 2, 1.5, 3.5, 5, 3, 1.5, 2, 3.5, 3, 1.5, 3.5, 2, 1.5, 2.5, 3, 2, 4, 1.5].map((h, i) => (
+              {[
+                1.5, 3, 2, 4, 1.5, 3, 4.5, 2, 1.5, 3.5, 5, 3, 1.5, 2, 3.5, 3, 1.5, 3.5, 2, 1.5, 2.5,
+                3, 2, 4, 1.5,
+              ].map((h, i) => (
                 <div
                   key={i}
                   className={`w-[1.5px] rounded-full transition-all duration-300 ${
-                    isCurrentPlayingValue
-                      ? 'bg-emerald-500 h-full animate-pulse'
-                      : 'bg-slate-300'
+                    isCurrentPlayingValue ? 'bg-emerald-500 h-full animate-pulse' : 'bg-slate-300'
                   }`}
                   style={{
                     height: `${h * 2}px`,
                     animationDelay: `${i * 60}ms`,
-                    animationDuration: '0.8s'
+                    animationDuration: '0.8s',
                   }}
                 />
               ))}
@@ -121,7 +132,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="mt-2 pt-1.5 border-t border-black/5 flex flex-wrap gap-1 items-center text-[9.5px] font-mono text-slate-500">
           <span className="font-bold text-teal-600">Sources:</span>
           {m.citations.map((cite: string, idx: number) => (
-            <span key={idx} className="bg-slate-100 px-1 py-0.2 rounded border border-slate-200 text-slate-650">{cite}</span>
+            <span
+              key={idx}
+              className="bg-slate-100 px-1 py-0.2 rounded border border-slate-200 text-slate-650"
+            >
+              {cite}
+            </span>
           ))}
         </div>
       )}
@@ -134,7 +150,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <span>{meta.icon}</span>
               <strong className="text-slate-600 uppercase font-black">{meta.intent}</strong>
             </span>
-            <span className={`px-1 rounded-sm border ${meta.sentimentColor} text-[7.5px] font-bold`}>
+            <span
+              className={`px-1 rounded-sm border ${meta.sentimentColor} text-[7.5px] font-bold`}
+            >
               {meta.sentimentLabel}
             </span>
           </>
@@ -153,9 +171,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       <div className="flex items-center justify-end gap-1 text-[9px] text-slate-400 self-end mt-1 font-mono">
         <span>{m.timestamp}</span>
-        {m.status === 'sent' && (
-          <Check className="h-3 w-3 text-slate-400" title="Sent" />
-        )}
+        {m.status === 'sent' && <Check className="h-3 w-3 text-slate-400" title="Sent" />}
         {m.status === 'delivered' && (
           <CheckCheck className="h-3 w-3 text-slate-400" title="Delivered" />
         )}

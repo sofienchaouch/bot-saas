@@ -51,7 +51,7 @@ export const TeamTab: React.FC = () => {
       const res = await fetch(`/api/tenant/${selectedTenant.id}/team/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole })
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -100,7 +100,7 @@ export const TeamTab: React.FC = () => {
           <input
             type="email"
             value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
+            onChange={e => setInviteEmail(e.target.value)}
             placeholder="teammate@company.com"
             className="w-full px-3 py-2 bg-[#0d121d] border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50"
           />
@@ -109,7 +109,7 @@ export const TeamTab: React.FC = () => {
           <label className="text-[10px] font-bold font-mono uppercase text-slate-450">Role</label>
           <select
             value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'support')}
+            onChange={e => setInviteRole(e.target.value as 'admin' | 'support')}
             className="px-3 py-2 bg-[#0d121d] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500/50"
           >
             <option value="support">Support Agent</option>
@@ -121,7 +121,11 @@ export const TeamTab: React.FC = () => {
           disabled={inviting || !inviteEmail.trim()}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
         >
-          {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+          {inviting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <UserPlus className="h-3.5 w-3.5" />
+          )}
           <span>{inviting ? 'Inviting…' : 'Invite'}</span>
         </button>
       </form>
@@ -156,7 +160,7 @@ export const TeamTab: React.FC = () => {
           </div>
         )}
 
-        {members.map((m) => (
+        {members.map(m => (
           <div key={m.id} className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">

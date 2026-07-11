@@ -19,7 +19,7 @@ import {
   MicOff,
   PhoneOff,
   Volume2,
-  VolumeX
+  VolumeX,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MessageBubble } from './simulator/MessageBubble';
@@ -41,11 +41,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
   googleAccessToken,
   appointmentsList,
   onConnectGoogle,
-  onRefreshCalendar
+  onRefreshCalendar,
 }) => {
   const getWelcomeText = (tenant: Tenant): string => {
     if (tenant.welcomeTemplates && tenant.welcomeTemplates.length > 0) {
-      const active = tenant.activeWelcomeTemplateId 
+      const active = tenant.activeWelcomeTemplateId
         ? tenant.welcomeTemplates.find(t => t.id === tenant.activeWelcomeTemplateId)
         : tenant.welcomeTemplates[0];
       if (active && active.text.trim()) {
@@ -61,8 +61,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       sender: 'bot',
       text: getWelcomeText(selectedTenant),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'read'
-    }
+      status: 'read',
+    },
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -78,20 +78,24 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
   const [simulatorSender, setSimulatorSender] = useState<'customer' | 'bot'>('customer');
 
   const [simulatorLogs, setSimulatorLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] Polling service initialized. Listening for message delivery notifications...`
+    `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] Polling service initialized. Listening for message delivery notifications...`,
   ]);
 
   // Real-Time Gemini Voice Call States
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
-  const [voiceCallStatus, setVoiceCallStatus] = useState<'dialing' | 'connected' | 'listening' | 'speaking' | 'ended'>('dialing');
+  const [voiceCallStatus, setVoiceCallStatus] = useState<
+    'dialing' | 'connected' | 'listening' | 'speaking' | 'ended'
+  >('dialing');
   const [callDuration, setCallDuration] = useState(0);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
   const [isChatMicActive, setIsChatMicActive] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState<{ sender: 'customer' | 'bot'; text: string }[]>([]);
+  const [voiceTranscript, setVoiceTranscript] = useState<
+    { sender: 'customer' | 'bot'; text: string }[]
+  >([]);
   const [voiceCallInputText, setVoiceCallInputText] = useState('');
-  
+
   const recognitionRef = useRef<any>(null);
   const chatRecognitionRef = useRef<any>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,7 +111,12 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
   // Timer effect for voice calls
   useEffect(() => {
-    if (isVoiceCallActive && (voiceCallStatus === 'connected' || voiceCallStatus === 'listening' || voiceCallStatus === 'speaking')) {
+    if (
+      isVoiceCallActive &&
+      (voiceCallStatus === 'connected' ||
+        voiceCallStatus === 'listening' ||
+        voiceCallStatus === 'speaking')
+    ) {
       callTimerRef.current = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
@@ -138,20 +147,30 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         liveWsRef.current.close();
       }
       if (scriptProcessorRef.current) {
-        try { scriptProcessorRef.current.disconnect(); } catch (e) {}
+        try {
+          scriptProcessorRef.current.disconnect();
+        } catch (e) {}
       }
       if (micStreamRef.current) {
-        try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
+        try {
+          micStreamRef.current.getTracks().forEach(t => t.stop());
+        } catch (e) {}
       }
       if (inputAudioCtxRef.current) {
-        try { inputAudioCtxRef.current.close(); } catch (e) {}
+        try {
+          inputAudioCtxRef.current.close();
+        } catch (e) {}
       }
       audioQueueRef.current.forEach(source => {
-        try { source.stop(); } catch (e) {}
+        try {
+          source.stop();
+        } catch (e) {}
       });
       audioQueueRef.current = [];
       if (liveAudioCtxRef.current) {
-        try { liveAudioCtxRef.current.close(); } catch (e) {}
+        try {
+          liveAudioCtxRef.current.close();
+        } catch (e) {}
       }
       if (liveSpeakingTimeoutRef.current) {
         clearTimeout(liveSpeakingTimeoutRef.current);
@@ -166,37 +185,38 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
   };
 
   const startListeningLoop = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
-    
+
     if (isMicMuted || !isVoiceCallActive) return;
-    
+
     try {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
-      
+
       const rec = new SpeechRecognition();
       rec.continuous = false;
       rec.interimResults = false;
       rec.lang = 'en-US';
-      
+
       rec.onstart = () => {
         setIsMicActive(true);
       };
-      
+
       rec.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         if (transcript.trim()) {
           processVoiceInput(transcript);
         }
       };
-      
+
       rec.onerror = (e: any) => {
-        console.warn("SpeechRec error:", e);
+        console.warn('SpeechRec error:', e);
         setIsMicActive(false);
       };
-      
+
       rec.onend = () => {
         setIsMicActive(false);
         // Automatically restart speech recognition listener loop if call is active and still listening
@@ -206,11 +226,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           } catch (err) {}
         }
       };
-      
+
       recognitionRef.current = rec;
       rec.start();
     } catch (e) {
-      console.warn("Could not start SpeechRec loop:", e);
+      console.warn('Could not start SpeechRec loop:', e);
     }
   };
 
@@ -221,8 +241,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         liveAudioCtxRef.current = new AudioCtx({ sampleRate: 24000 });
       }
       const ctx = liveAudioCtxRef.current;
-      
-      if (ctx.state === "suspended") {
+
+      if (ctx.state === 'suspended') {
         ctx.resume();
       }
 
@@ -231,35 +251,35 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       for (let i = 0; i < binary.length; i++) {
         bytes[i] = binary.charCodeAt(i);
       }
-      
+
       const int16Array = new Int16Array(bytes.buffer);
       const float32Array = new Float32Array(int16Array.length);
       for (let i = 0; i < int16Array.length; i++) {
         float32Array[i] = int16Array[i] / 32768.0;
       }
-      
+
       const audioBuffer = ctx.createBuffer(1, float32Array.length, 24000);
       audioBuffer.getChannelData(0).set(float32Array);
-      
+
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
-      
+
       const currentTime = ctx.currentTime;
       let startTime = nextAudioStartTimeRef.current;
       if (startTime < currentTime) {
         startTime = currentTime + 0.05;
       }
-      
+
       source.start(startTime);
       nextAudioStartTimeRef.current = startTime + audioBuffer.duration;
-      
+
       audioQueueRef.current.push(source);
       source.onended = () => {
         audioQueueRef.current = audioQueueRef.current.filter(s => s !== source);
       };
     } catch (err) {
-      console.error("Playback error:", err);
+      console.error('Playback error:', err);
     }
   };
 
@@ -267,45 +287,45 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      
+
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioCtx({ sampleRate: 16000 });
       inputAudioCtxRef.current = ctx;
-      
+
       const source = ctx.createMediaStreamSource(stream);
       const processor = ctx.createScriptProcessor(2048, 1, 1);
       scriptProcessorRef.current = processor;
-      
+
       source.connect(processor);
       processor.connect(ctx.destination);
-      
-      processor.onaudioprocess = (e) => {
+
+      processor.onaudioprocess = e => {
         if (isMicMuted) return;
-        
+
         const float32Array = e.inputBuffer.getChannelData(0);
         let l = float32Array.length;
         const int16Array = new Int16Array(l);
         while (l--) {
           const s = Math.max(-1, Math.min(1, float32Array[l]));
-          int16Array[l] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          int16Array[l] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
-        
-        let binary = "";
+
+        let binary = '';
         const bytes = new Uint8Array(int16Array.buffer);
         const len = bytes.byteLength;
         for (let i = 0; i < len; i++) {
           binary += String.fromCharCode(bytes[i]);
         }
         const base64 = btoa(binary);
-        
+
         if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: "audio", audio: base64 }));
+          socket.send(JSON.stringify({ type: 'audio', audio: base64 }));
         }
       };
-      
+
       setIsMicActive(true);
     } catch (err) {
-      console.warn("[VOICE CALL] Failed to access real microphone:", err);
+      console.warn('[VOICE CALL] Failed to access real microphone:', err);
       triggerNotification(
         'info',
         'Physical Microphone Blocked',
@@ -316,26 +336,36 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
   const cleanupLiveAudioContexts = () => {
     setIsMicActive(false);
-    
+
     if (scriptProcessorRef.current) {
-      try { scriptProcessorRef.current.disconnect(); } catch (e) {}
+      try {
+        scriptProcessorRef.current.disconnect();
+      } catch (e) {}
       scriptProcessorRef.current = null;
     }
     if (micStreamRef.current) {
-      try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
+      try {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+      } catch (e) {}
       micStreamRef.current = null;
     }
     if (inputAudioCtxRef.current) {
-      try { inputAudioCtxRef.current.close(); } catch (e) {}
+      try {
+        inputAudioCtxRef.current.close();
+      } catch (e) {}
       inputAudioCtxRef.current = null;
     }
-    
+
     audioQueueRef.current.forEach(source => {
-      try { source.stop(); } catch (e) {}
+      try {
+        source.stop();
+      } catch (e) {}
     });
     audioQueueRef.current = [];
     if (liveAudioCtxRef.current) {
-      try { liveAudioCtxRef.current.close(); } catch (e) {}
+      try {
+        liveAudioCtxRef.current.close();
+      } catch (e) {}
       liveAudioCtxRef.current = null;
     }
     nextAudioStartTimeRef.current = 0;
@@ -343,7 +373,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
   const speakText = (text: string, lang: string = 'en-US') => {
     if (liveWsRef.current && liveWsRef.current.readyState === WebSocket.OPEN) {
-      return; 
+      return;
     }
 
     if (isSpeakerMuted) {
@@ -356,7 +386,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = window.speechSynthesis.getVoices();
-      
+
       let selectedVoice = null;
       if (lang.startsWith('ar')) {
         selectedVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('AR'));
@@ -365,31 +395,31 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       } else {
         selectedVoice = voices.find(v => v.lang.startsWith('en') || v.lang.includes('EN'));
       }
-      
+
       if (selectedVoice) {
         utterance.voice = selectedVoice;
       }
       utterance.lang = lang;
       utterance.rate = 1.0;
-      
+
       utterance.onstart = () => {
         setVoiceCallStatus('speaking');
       };
-      
+
       utterance.onend = () => {
         setVoiceCallStatus('listening');
         if (isVoiceCallActive && !isMicMuted) {
           startListeningLoop();
         }
       };
-      
+
       utterance.onerror = () => {
         setVoiceCallStatus('listening');
         if (isVoiceCallActive && !isMicMuted) {
           startListeningLoop();
         }
       };
-      
+
       window.speechSynthesis.speak(utterance);
     } else {
       setVoiceCallStatus('listening');
@@ -398,28 +428,28 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
   const processVoiceInput = async (spokenText: string) => {
     if (!spokenText.trim()) return;
-    
+
     setVoiceTranscript(prev => [...prev, { sender: 'customer', text: spokenText }]);
     setVoiceCallStatus('speaking');
-    
+
     setSimulatorLogs(prev => [
       `[${new Date().toLocaleTimeString()}] 👤 Voice Captured: "${spokenText}"`,
-      ...prev
+      ...prev,
     ]);
-    
+
     if (liveWsRef.current && liveWsRef.current.readyState === WebSocket.OPEN) {
       liveWsRef.current.send(JSON.stringify({ type: 'text', text: spokenText }));
       return;
     }
-    
+
     try {
       const kbPayload = selectedTenant.knowledgeBase || [];
       const appointmentsPayload = selectedTenant.appointments || [];
-      
+
       const payload = {
         messages: [
           ...messages.map(m => ({ sender: m.sender, text: m.text })),
-          { sender: 'customer', text: spokenText }
+          { sender: 'customer', text: spokenText },
         ],
         botName: selectedTenant.botName,
         tone: selectedTenant.tone,
@@ -428,39 +458,43 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         tenantName: selectedTenant.name,
         tenantIndustry: selectedTenant.industry,
         tenantDescription: selectedTenant.description,
-        systemInstruction: selectedTenant.systemInstruction
+        systemInstruction: selectedTenant.systemInstruction,
       };
-      
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
-      
+
       const data = await response.json();
-      const botResponseText = data.reply || "I am processing your query, let me check that.";
-      
+      const botResponseText = data.reply || 'I am processing your query, let me check that.';
+
       if (data.actionTriggered) {
         handleAutonomousAction(data.actionTriggered);
       }
-      
+
       setVoiceTranscript(prev => [...prev, { sender: 'bot', text: botResponseText }]);
-      
+
       let ttsLanguage = 'en-US';
       const lowercaseText = botResponseText.toLowerCase();
       if (/[\u0600-\u06FF]/.test(botResponseText)) {
         ttsLanguage = 'ar-TN';
-      } else if (lowercaseText.includes('bonjour') || lowercaseText.includes('s\'il vous plaît') || lowercaseText.includes('merci') || lowercaseText.includes('semaine')) {
+      } else if (
+        lowercaseText.includes('bonjour') ||
+        lowercaseText.includes("s'il vous plaît") ||
+        lowercaseText.includes('merci') ||
+        lowercaseText.includes('semaine')
+      ) {
         ttsLanguage = 'fr-FR';
       }
-      
+
       speakText(botResponseText, ttsLanguage);
-      
     } catch (err) {
-      console.error("Failed to fetch SaaS response for voice call:", err);
-      const errorMsg = "Sorry, I am having a network issue. Please say that again.";
+      console.error('Failed to fetch SaaS response for voice call:', err);
+      const errorMsg = 'Sorry, I am having a network issue. Please say that again.';
       setVoiceTranscript(prev => [...prev, { sender: 'bot', text: errorMsg }]);
       speakText(errorMsg);
     }
@@ -471,42 +505,44 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
     setVoiceCallStatus('dialing');
     setCallDuration(0);
     setVoiceTranscript([]);
-    
+
     cleanupLiveAudioContexts();
     if (liveWsRef.current) {
-      try { liveWsRef.current.close(); } catch (e) {}
+      try {
+        liveWsRef.current.close();
+      } catch (e) {}
     }
-    
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/api/live-ws?tenantId=${selectedTenant.id}`;
-    
+
     setSimulatorLogs(prev => [
       `[${new Date().toLocaleTimeString()}] 📞 Dialing VoIP Server (Google Gemini Live)...`,
-      ...prev
+      ...prev,
     ]);
-    
+
     try {
       const ws = new WebSocket(wsUrl);
       liveWsRef.current = ws;
-      
+
       ws.onopen = () => {
         setVoiceCallStatus('connected');
         setSimulatorLogs(prev => [
           `[${new Date().toLocaleTimeString()}] 📞 Channel initialized. Activating low-latency Google Gemini Live voice loop!`,
-          ...prev
+          ...prev,
         ]);
         startMicrophoneTracking(ws);
       };
-      
-      ws.onmessage = (event) => {
+
+      ws.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === 'audio' && data.audio) {
             playLiveAudioResponse(data.audio);
             setVoiceCallStatus('speaking');
-            
+
             if (liveSpeakingTimeoutRef.current) {
               clearTimeout(liveSpeakingTimeoutRef.current);
             }
@@ -514,7 +550,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               setVoiceCallStatus('listening');
             }, 650);
           }
-          
+
           if (data.type === 'text' && data.text) {
             setVoiceTranscript(prev => {
               if (prev.length > 0 && prev[prev.length - 1].sender === 'bot') {
@@ -526,24 +562,26 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                 return [...prev, { sender: 'bot', text: data.text }];
               }
             });
-            
+
             setSimulatorLogs(prev => {
               const textChunk = data.text;
               const formatted = `[${new Date().toLocaleTimeString()}] 🤖 Operator speaking: "${textChunk}"`;
-              if (prev[0] && prev[0].includes("Operator speaking:") && prev[0].length < 160) {
-                return [prev[0] + " " + textChunk, ...prev.slice(1)];
+              if (prev[0] && prev[0].includes('Operator speaking:') && prev[0].length < 160) {
+                return [prev[0] + ' ' + textChunk, ...prev.slice(1)];
               }
               return [formatted, ...prev];
             });
           }
-          
+
           if (data.type === 'interrupted') {
             setSimulatorLogs(prev => [
               `[${new Date().toLocaleTimeString()}] 🎙️ Gemini Live speech interrupted by caller voice activity.`,
-              ...prev
+              ...prev,
             ]);
             audioQueueRef.current.forEach(source => {
-              try { source.stop(); } catch (e) {}
+              try {
+                source.stop();
+              } catch (e) {}
             });
             audioQueueRef.current = [];
             if (liveAudioCtxRef.current) {
@@ -551,33 +589,34 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
             }
             setVoiceCallStatus('listening');
           }
-          
+
           if (data.type === 'error') {
-            console.error("[LIVE WS ERROR]", data.error);
-            setVoiceTranscript(prev => [...prev, { sender: 'bot', text: `[VOIP CONNECT ERROR] ${data.error}` }]);
+            console.error('[LIVE WS ERROR]', data.error);
+            setVoiceTranscript(prev => [
+              ...prev,
+              { sender: 'bot', text: `[VOIP CONNECT ERROR] ${data.error}` },
+            ]);
           }
-          
         } catch (msgErr) {
-          console.error("Failed to parse WebSocket stream message:", msgErr);
+          console.error('Failed to parse WebSocket stream message:', msgErr);
         }
       };
-      
+
       ws.onclose = () => {
-        console.log("[LIVE WS] Voice Socket Connection Closed gracefully");
+        console.log('[LIVE WS] Voice Socket Connection Closed gracefully');
         setSimulatorLogs(prev => [
           `[${new Date().toLocaleTimeString()}] 📞 Handset hook placed. VoIP connection closed.`,
-          ...prev
+          ...prev,
         ]);
         cleanupLiveAudioContexts();
         setVoiceCallStatus('ended');
       };
-      
-      ws.onerror = (err) => {
-        console.error("[LIVE WS] Voice Socket Error:", err);
+
+      ws.onerror = err => {
+        console.error('[LIVE WS] Voice Socket Error:', err);
       };
-      
     } catch (wsErr) {
-      console.error("Failed to establish WebSocket link:", wsErr);
+      console.error('Failed to establish WebSocket link:', wsErr);
       setVoiceCallStatus('ended');
     }
   };
@@ -589,13 +628,13 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       setIsMicActive(false);
       setSimulatorLogs(prev => [
         `[${new Date().toLocaleTimeString()}] 🔇 Microphone Muted (Privacy Block active)`,
-        ...prev
+        ...prev,
       ]);
     } else {
       setIsMicActive(true);
       setSimulatorLogs(prev => [
         `[${new Date().toLocaleTimeString()}] 🎤 Microphone Unmuted (Streaming audio)`,
-        ...prev
+        ...prev,
       ]);
     }
   };
@@ -603,31 +642,40 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
   const handleEndVoiceCall = () => {
     setIsVoiceCallActive(false);
     setVoiceCallStatus('ended');
-    
+
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     if (recognitionRef.current) {
       recognitionRef.current.abort();
     }
-    
+
     if (liveWsRef.current) {
       liveWsRef.current.close();
       liveWsRef.current = null;
     }
     cleanupLiveAudioContexts();
-    
+
     setSimulatorLogs(prev => [
       `[${new Date().toLocaleTimeString()}] 📞 VoIP connection ended by user.`,
-      ...prev
+      ...prev,
     ]);
   };
 
   const VOICE_CALL_PRESETS = [
-    { label: "💳 What are your prices?", text: "Can you tell me about your subscription or membership prices?" },
-    { label: "📅 Book tomorrow afternoon", text: "I would like to schedule an appointment tomorrow afternoon please." },
-    { label: "❓ What prep do I need?", text: "Do you have any guidelines or advice for visiting the first session?" },
-    { label: "🇹🇳 Ahla, thama rdv bahi?", text: "Ahla, thama rdv bahi lyoum walla ghodwa?" }
+    {
+      label: '💳 What are your prices?',
+      text: 'Can you tell me about your subscription or membership prices?',
+    },
+    {
+      label: '📅 Book tomorrow afternoon',
+      text: 'I would like to schedule an appointment tomorrow afternoon please.',
+    },
+    {
+      label: '❓ What prep do I need?',
+      text: 'Do you have any guidelines or advice for visiting the first session?',
+    },
+    { label: '🇹🇳 Ahla, thama rdv bahi?', text: 'Ahla, thama rdv bahi lyoum walla ghodwa?' },
   ];
 
   // Real-time Delivery Status Polling Service to progress message ticks ('sent' -> 'delivered' -> 'read')
@@ -637,11 +685,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         let hasChanges = false;
         let loggedAction: string | null = null;
         let targetMsgId = '';
-        
+
         // Find the first message that can transition status is sequential for real-time high fidelity status updates
         const updated = prevMessages.map(msg => {
-          if (hasChanges) return msg; 
-          
+          if (hasChanges) return msg;
+
           if (msg.status === 'sent') {
             hasChanges = true;
             targetMsgId = msg.id.slice(0, 8);
@@ -657,10 +705,14 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         });
 
         if (loggedAction) {
-          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const timestamp = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
           setSimulatorLogs(prev => [
             `[${timestamp}] ${loggedAction}`,
-            ...prev.slice(0, 8) // List maximum 9 logs
+            ...prev.slice(0, 8), // List maximum 9 logs
           ]);
         }
 
@@ -685,10 +737,16 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       description: 'AI extracts name, phone & email autonomously into your CRM portal',
       icon: <Users className="h-4 w-4 text-blue-400" />,
       steps: [
-        { text: "Hello! My name is Marcus Aurelius. I would like to sign up for your private services." },
-        { text: "My email address is marcus.philosophy@ancientrome.com and my WhatsApp number is +1 (312) 555-9011. Can you contact me?" },
-        { text: "That sounds excellent. Yes please, record my information. I look forward to your callback!" }
-      ]
+        {
+          text: 'Hello! My name is Marcus Aurelius. I would like to sign up for your private services.',
+        },
+        {
+          text: 'My email address is marcus.philosophy@ancientrome.com and my WhatsApp number is +1 (312) 555-9011. Can you contact me?',
+        },
+        {
+          text: 'That sounds excellent. Yes please, record my information. I look forward to your callback!',
+        },
+      ],
     },
     {
       id: 'calendar_booking',
@@ -696,9 +754,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       description: 'AI audits busy slots, syncs Google Calendar & inserts booking',
       icon: <Calendar className="h-4 w-4 text-emerald-400" />,
       steps: [
-        { text: "Hi! I am eager to schedule an appointment with your coordinator for next week." },
-        { text: `Is next Tuesday afternoon around 3:00 PM free on your schedule? Summary: "Marcus Private Session". Please secure it.` }
-      ]
+        { text: 'Hi! I am eager to schedule an appointment with your coordinator for next week.' },
+        {
+          text: `Is next Tuesday afternoon around 3:00 PM free on your schedule? Summary: "Marcus Private Session". Please secure it.`,
+        },
+      ],
     },
     {
       id: 'derja_lead_harvest',
@@ -706,10 +766,12 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       description: 'AI responds in authentic Tunisian Derja to harvest contact details and tags',
       icon: <Sparkles className="h-4 w-4 text-amber-400" />,
       steps: [
-        { text: "عسّلامة، أنا بلحسن وبش نسألكم شنية عروض العيد اللي عندكم للتسجيل؟" },
-        { text: "باهي برشة، كلموني في التليفون على 55123456 وإلا إبعثولي إيميل belhassen@gmail.com باش نتفاهمو في البقية" },
-        { text: "يعيشك يرحم والديك، نستنى في تلفونكم!" }
-      ]
+        { text: 'عسّلامة، أنا بلحسن وبش نسألكم شنية عروض العيد اللي عندكم للتسجيل؟' },
+        {
+          text: 'باهي برشة، كلموني في التليفون على 55123456 وإلا إبعثولي إيميل belhassen@gmail.com باش نتفاهمو في البقية',
+        },
+        { text: 'يعيشك يرحم والديك، نستنى في تلفونكم!' },
+      ],
     },
     {
       id: 'derja_latin_booking',
@@ -718,28 +780,28 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       icon: <Smartphone className="h-4 w-4 text-pink-400" />,
       steps: [
         { text: "3aslema, n7eb na3mel rdv m3akom dima behi l'ajenda?" },
-        { text: "nhar thulatha eijey 3la sbe7 m3a 10h msetfa safe? s'il vous plaît securiha" }
-      ]
-    }
+        { text: "nhar thulatha eijey 3la sbe7 m3a 10h msetfa safe? s'il vous plaît securiha" },
+      ],
+    },
   ];
 
-  const handleStartScenario = (scenario: typeof INTEGRATED_SCENARIOS[0]) => {
+  const handleStartScenario = (scenario: (typeof INTEGRATED_SCENARIOS)[0]) => {
     if (isTyping || playingScenario) return;
-    
+
     setMessages([
       {
         id: 'scenario-init-' + Date.now(),
         sender: 'bot',
         text: `*SYSTEM PORTAL*: Dynamic scenario activated — *${scenario.name}*.\nI will now simulate how custom client messages are processed sequentially by @${selectedTenant.botName}. Keep an eye on the Smartphone Simulator ! 📱`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'read'
-      }
+        status: 'read',
+      },
     ]);
 
     setPlayingScenario({
       name: scenario.name,
       steps: scenario.steps,
-      currentStepIndex: 0
+      currentStepIndex: 0,
     });
 
     // Send the first step after a tiny setup pause
@@ -750,15 +812,15 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
   useEffect(() => {
     if (!playingScenario) return;
-    
+
     // Automatically trigger the next conversation step when the AI has completed typing its last reply
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.sender === 'bot' && !isTyping) {
       const nextIndex = playingScenario.currentStepIndex + 1;
-      
+
       if (nextIndex < playingScenario.steps.length) {
         const timer = setTimeout(() => {
-          setPlayingScenario(prev => prev ? { ...prev, currentStepIndex: nextIndex } : null);
+          setPlayingScenario(prev => (prev ? { ...prev, currentStepIndex: nextIndex } : null));
           sendMessageToAgent(playingScenario.steps[nextIndex].text);
         }, 3200); // Wait 3.2s so the user can easily read the previous response
         return () => clearTimeout(timer);
@@ -783,7 +845,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTo({
         top: chatContainerRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     }
   }, [messages.length, isTyping]);
@@ -796,8 +858,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         sender: 'bot',
         text: getWelcomeText(selectedTenant),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'read'
-      }
+        status: 'read',
+      },
     ]);
   }, [selectedTenant, selectedTenant.activeWelcomeTemplateId]);
 
@@ -809,7 +871,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
   };
 
   const toggleChatMic = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       triggerNotification(
         'info',
@@ -846,11 +909,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         const transcript = event.results[0][0].transcript;
         if (transcript.trim()) {
           setInputText(transcript);
-          triggerNotification(
-            'success',
-            'Voice Captured',
-            `Transcribed: "${transcript}"`
-          );
+          triggerNotification('success', 'Voice Captured', `Transcribed: "${transcript}"`);
         }
       };
 
@@ -889,13 +948,13 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           sender: 'customer',
           text: textToSend,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'read'
+          status: 'read',
         };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
         setSimulatorLogs(prev => [
           `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] 👤 [TAKEOVER] Customer uploaded msg: "${textToSend}"`,
-          ...prev
+          ...prev,
         ]);
       } else {
         const botMsg: ChatMessage = {
@@ -903,15 +962,19 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           sender: 'bot',
           text: textToSend,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'sent'
+          status: 'sent',
         };
         setMessages(prev => [...prev, botMsg]);
         setInputText('');
         setSimulatorLogs(prev => [
           `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] 🧑‍💼 [TAKEOVER] Human representative drafted/sent: "${textToSend}"`,
-          ...prev
+          ...prev,
         ]);
-        triggerNotification('info', 'Manual Reply Dispatched', 'Your live agent answer was transmitted to the customer simulator frame.');
+        triggerNotification(
+          'info',
+          'Manual Reply Dispatched',
+          'Your live agent answer was transmitted to the customer simulator frame.'
+        );
       }
       return;
     }
@@ -922,7 +985,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       sender: 'customer',
       text: textToSend,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent'
+      status: 'sent',
     };
 
     const updatedMessages = [...messages, userMsg];
@@ -934,7 +997,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messages: updatedMessages.map(m => ({ sender: m.sender, text: m.text })),
@@ -945,8 +1008,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           tenantName: selectedTenant.name,
           tenantIndustry: selectedTenant.industry,
           tenantDescription: selectedTenant.description,
-          systemInstruction: selectedTenant.systemInstruction || ''
-        })
+          systemInstruction: selectedTenant.systemInstruction || '',
+        }),
       });
 
       if (!response.ok) {
@@ -964,7 +1027,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         sender: 'bot',
         text: data.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'sent'
+        status: 'sent',
       };
 
       // Trigger Text-to-Speech if agent voice is enabled
@@ -975,7 +1038,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
         // Remove markdown-like decoration for text-to-speech engine
         const cleanText = data.reply.replace(/[*#_~`\[\]]/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        
+
         const voices = window.speechSynthesis.getVoices();
         const indLower = (selectedTenant.industry || '').toLowerCase();
         let selectedVoice = null;
@@ -1006,7 +1069,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       if (data.actionTriggered) {
         botMsg.actionsTriggered = {
           type: data.actionTriggered.type,
-          details: data.actionTriggered.details
+          details: data.actionTriggered.details,
         };
 
         // Execute visual action updates
@@ -1015,10 +1078,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
       setMessages(prev => {
         // Mark user message as read
-        const withRead = prev.map(m => m.id === userMsg.id ? { ...m, status: 'read' as const } : m);
+        const withRead = prev.map(m =>
+          m.id === userMsg.id ? { ...m, status: 'read' as const } : m
+        );
         return [...withRead, botMsg];
       });
-
     } catch (err) {
       console.error(err);
       setIsTyping(false);
@@ -1030,8 +1094,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           sender: 'bot',
           text: `I'm currently checking some guidelines and will answer your query directly. Can you clarify that for me?`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'sent'
-        }
+          status: 'sent',
+        },
       ]);
     }
   };
@@ -1047,7 +1111,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           phone: leadData.phone || 'WhatsApp Customer',
           status: 'New',
           dateCaptured: new Date().toISOString().split('T')[0],
-          note: `Captured by AI agent ${selectedTenant.botName} via WhatsApp chat.`
+          note: `Captured by AI agent ${selectedTenant.botName} via WhatsApp chat.`,
         };
         onLeadCaptured(newLead);
         triggerNotification(
@@ -1067,12 +1131,15 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           end: apptData.endStr || new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
           summary: apptData.summary || `Consultation with ${selectedTenant.name}`,
           notes: apptData.notes || 'Autonomous WhatsApp booking.',
-          syncedWithGoogle: !!googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false
+          syncedWithGoogle:
+            !!googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false,
         };
         onAppointmentBooked(newAppt);
         triggerNotification(
           'success',
-          (googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false) ? 'Synced to Google Calendar' : 'Seated in Local Scheduler',
+          googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false
+            ? 'Synced to Google Calendar'
+            : 'Seated in Local Scheduler',
           `Meeting booked for ${newAppt.customerName} on ${new Date(newAppt.start).toLocaleDateString()} at ${new Date(newAppt.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
         );
       } else if (action.type === 'consult_kb') {
@@ -1092,42 +1159,43 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
     {
       label: 'Request Prices',
       text: 'What are your private membership packages and current pricing tiers?',
-      icon: <HelpCircle className="h-4 w-4 text-sky-500" />
+      icon: <HelpCircle className="h-4 w-4 text-sky-500" />,
     },
     {
       label: 'Book Consultation',
       text: `I'd like to book a session for tomorrow afternoon around 3:00 PM if that is open.`,
-      icon: <Calendar className="h-4 w-4 text-emerald-500" />
+      icon: <Calendar className="h-4 w-4 text-emerald-500" />,
     },
     {
       label: '🇹🇳 Derja (العربية)',
       text: 'عسّلامة، باهي نحب نسألكم شنية أرخص باقة عندكم للتسجيل فيها؟ وشكون يخدم فيها؟',
-      icon: <Sparkles className="h-4 w-4 text-amber-500" />
+      icon: <Sparkles className="h-4 w-4 text-amber-500" />,
     },
     {
       label: '🇹🇳 Tunis/Latin (RDV)',
-      text: 'fama rdv libre demian à 14h? brassmi dima behya l\'agenda',
-      icon: <Smartphone className="h-4 w-4 text-red-500" />
+      text: "fama rdv libre demian à 14h? brassmi dima behya l'agenda",
+      icon: <Smartphone className="h-4 w-4 text-red-500" />,
     },
     {
       label: '🇺🇸 Submit Lead Info',
       text: 'My name is Sarah Connor, my email is sarah@skynet.com, and phone is +1 (555) 902-8812. Please have someone contact me!',
-      icon: <FileText className="h-4 w-4 text-blue-500" />
+      icon: <FileText className="h-4 w-4 text-blue-500" />,
     },
     {
       label: '🇫🇷 Demander Tarifs',
-      text: 'Bonjour, quels sont vos prix et tarifs d\'abonnement s\'il vous plaît?',
-      icon: <FileText className="h-4 w-4 text-pink-500" />
+      text: "Bonjour, quels sont vos prix et tarifs d'abonnement s'il vous plaît?",
+      icon: <FileText className="h-4 w-4 text-pink-500" />,
     },
     {
       label: 'Technical FAQ Question',
-      text: selectedTenant.id === 'elysian-medspa' 
-        ? 'Can I apply retinol right before my clinical laser session?'
-        : selectedTenant.id === 'gourmet-catering'
-          ? 'What dietary accommodations do you support for vegans or nut allergy sufferers?'
-          : 'What guidelines do you have for the biological sauna? Can I just walk in?',
-      icon: <Sparkles className="h-4 w-4 text-purple-500" />
-    }
+      text:
+        selectedTenant.id === 'elysian-medspa'
+          ? 'Can I apply retinol right before my clinical laser session?'
+          : selectedTenant.id === 'gourmet-catering'
+            ? 'What dietary accommodations do you support for vegans or nut allergy sufferers?'
+            : 'What guidelines do you have for the biological sauna? Can I just walk in?',
+      icon: <Sparkles className="h-4 w-4 text-purple-500" />,
+    },
   ];
 
   return (
@@ -1147,15 +1215,21 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
             WhatsApp Business Simulator
           </h3>
           <p className="text-sm text-slate-300 mb-6 font-light leading-relaxed">
-            Test how the AI Agent autonomously answers customer queries, consults your custom PDF/FAQ files, captures raw lead details, and updates your calendar. Click a quick testing template below to simulate a customer message!
+            Test how the AI Agent autonomously answers customer queries, consults your custom
+            PDF/FAQ files, captures raw lead details, and updates your calendar. Click a quick
+            testing template below to simulate a customer message!
           </p>
 
           {/* Real-time Voice Call Banner */}
           <div className="mb-6 p-4 rounded-xl border border-teal-500/30 bg-teal-500/5 hover:border-teal-500/40 transition-all flex items-center justify-between gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-xl pointer-events-none" />
             <div className="space-y-1 z-10">
-              <span className="text-[10px] font-mono font-extrabold text-teal-400 block uppercase tracking-widest">📞 REAL-TIME AI VOICE CALL</span>
-              <h4 className="text-xs font-bold text-white">Call the {selectedTenant.name} Voice Operator</h4>
+              <span className="text-[10px] font-mono font-extrabold text-teal-400 block uppercase tracking-widest">
+                📞 REAL-TIME AI VOICE CALL
+              </span>
+              <h4 className="text-xs font-bold text-white">
+                Call the {selectedTenant.name} Voice Operator
+              </h4>
               <p className="text-[10.5px] text-slate-400 font-mono leading-relaxed mt-0.5">
                 Hold low-latency speech conversations backed by Gemini's native voice interaction.
               </p>
@@ -1172,25 +1246,29 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           </div>
 
           {/* Google Calendar Live Sync Dashboard */}
-          <div className={`p-4 rounded-xl border mb-6 relative overflow-hidden transition-all ${
-            googleAccessToken 
-              ? 'bg-emerald-500/5 border-emerald-500/15 text-slate-300' 
-              : 'bg-amber-500/5 border-amber-500/15 text-slate-300'
-          }`}>
+          <div
+            className={`p-4 rounded-xl border mb-6 relative overflow-hidden transition-all ${
+              googleAccessToken
+                ? 'bg-emerald-500/5 border-emerald-500/15 text-slate-300'
+                : 'bg-amber-500/5 border-amber-500/15 text-slate-300'
+            }`}
+          >
             <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/2 rounded-full blur-xl pointer-events-none"></div>
-            
+
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-1.5 font-mono text-[10px] font-extrabold tracking-wider uppercase">
                 <Calendar className="h-4 w-4 text-sky-400 shrink-0" />
                 <span>Google Calendar Sync Engine</span>
               </div>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase tracking-wide ${
-                (googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false)
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]' 
-                  : googleAccessToken
-                  ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.15)]'
-                  : 'bg-slate-500/15 text-slate-400 border border-white/5'
-              }`}>
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase tracking-wide ${
+                  googleAccessToken && selectedTenant.googleCalendarAutoSchedule !== false
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]'
+                    : googleAccessToken
+                      ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.15)]'
+                      : 'bg-slate-500/15 text-slate-400 border border-white/5'
+                }`}
+              >
                 {googleAccessToken ? (
                   selectedTenant.googleCalendarAutoSchedule !== false ? (
                     <>
@@ -1221,12 +1299,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
             </div>
 
             <p className="text-[11px] leading-relaxed text-slate-400 mt-1">
-              {googleAccessToken 
+              {googleAccessToken
                 ? selectedTenant.googleCalendarAutoSchedule !== false
-                  ? "Autonomous WhatsApp booking triggers are automatically synchronized onto your Google Calendar. Let the AI agent negotiate slots over SMS, and look directly at your main timeline!"
-                  : "Google Calendar is linked, but autonomous real-time auto-scheduling is paused in settings. Direct bookings will default to offline sandbox mode until re-enabled."
-                : "Simulator is running inside isolated local sandbox fallback. Appointments scheduled by the WhatsApp chatbot will be kept within this local browser cache session instead of syncing."
-              }
+                  ? 'Autonomous WhatsApp booking triggers are automatically synchronized onto your Google Calendar. Let the AI agent negotiate slots over SMS, and look directly at your main timeline!'
+                  : 'Google Calendar is linked, but autonomous real-time auto-scheduling is paused in settings. Direct bookings will default to offline sandbox mode until re-enabled.'
+                : 'Simulator is running inside isolated local sandbox fallback. Appointments scheduled by the WhatsApp chatbot will be kept within this local browser cache session instead of syncing.'}
             </p>
 
             {googleAccessToken ? (
@@ -1246,22 +1323,34 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                     </button>
                   )}
                 </div>
-                
+
                 {appointmentsList.length > 0 ? (
                   <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                     {appointmentsList.slice(0, 3).map((appt, i) => {
                       const startTime = new Date(appt.start);
                       return (
-                        <div key={appt.id || i} className="flex justify-between items-center bg-slate-950/40 border border-slate-800/60 p-1.5 rounded text-[10px] font-mono text-slate-350">
-                          <span className="truncate max-w-[140px] font-medium text-slate-300">{appt.customerName || appt.summary}</span>
+                        <div
+                          key={appt.id || i}
+                          className="flex justify-between items-center bg-slate-950/40 border border-slate-800/60 p-1.5 rounded text-[10px] font-mono text-slate-350"
+                        >
+                          <span className="truncate max-w-[140px] font-medium text-slate-300">
+                            {appt.customerName || appt.summary}
+                          </span>
                           <span className="text-slate-450 shrink-0 text-[9px] bg-slate-900 px-1 py-0.5 rounded">
-                            {startTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {startTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
+                            at{' '}
+                            {startTime.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
                           </span>
                         </div>
                       );
                     })}
                     {appointmentsList.length > 3 && (
-                      <p className="text-[9px] text-slate-500 italic text-right">+ {appointmentsList.length - 3} more conflict slots active</p>
+                      <p className="text-[9px] text-slate-500 italic text-right">
+                        + {appointmentsList.length - 3} more conflict slots active
+                      </p>
                     )}
                   </div>
                 ) : (
@@ -1272,7 +1361,9 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-amber-500/10 flex flex-col gap-2">
-                <span className="text-[10px] font-medium text-slate-400">Experience actual workspace booking sync:</span>
+                <span className="text-[10px] font-medium text-slate-400">
+                  Experience actual workspace booking sync:
+                </span>
                 {onConnectGoogle && (
                   <button
                     type="button"
@@ -1291,7 +1382,9 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
           <div className="bg-slate-850/90 p-4 rounded-xl border border-slate-700/60 mb-6 space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <span className="text-[10px] font-mono font-bold text-teal-400 block tracking-wide uppercase">⚡ Human-in-the-Loop Mode</span>
+                <span className="text-[10px] font-mono font-bold text-teal-400 block tracking-wide uppercase">
+                  ⚡ Human-in-the-Loop Mode
+                </span>
                 <span className="text-xs font-bold text-white block">AI Autopilot Status</span>
               </div>
               <button
@@ -1300,7 +1393,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   setIsAutopilot(!isAutopilot);
                   setSimulatorLogs(prev => [
                     `[${new Date().toLocaleTimeString()}] 🤖 System Autopilot ${!isAutopilot ? 'Enabled (AI bot active)' : 'Paused (Live takeover)'}`,
-                    ...prev
+                    ...prev,
                   ]);
                 }}
                 className={`px-3 py-1 text-[10px] font-bold font-mono rounded-lg border transition-all cursor-pointer ${
@@ -1315,7 +1408,9 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
             {!isAutopilot && (
               <div className="pt-2.5 border-t border-slate-700/50 space-y-2">
-                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Simulator Sender Role:</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">
+                  Simulator Sender Role:
+                </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1341,7 +1436,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   </button>
                 </div>
                 <p className="text-[10px] leading-relaxed text-slate-400 font-sans italic">
-                  💡 Type messages in the smartphone preview text-box below to simulate conversation as the selected role!
+                  💡 Type messages in the smartphone preview text-box below to simulate conversation
+                  as the selected role!
                 </p>
               </div>
             )}
@@ -1360,9 +1456,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   className="flex items-start gap-3 w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs border border-slate-700/50 hover:border-slate-600 cursor-pointer transition-all hover:-translate-y-0.5"
                   id={`simulator-template-${idx}`}
                 >
-                  <div className="mt-0.5 p-1 bg-slate-700 rounded-lg shrink-0">
-                    {item.icon}
-                  </div>
+                  <div className="mt-0.5 p-1 bg-slate-700 rounded-lg shrink-0">{item.icon}</div>
                   <div>
                     <span className="font-semibold text-slate-200 block mb-0.5">{item.label}</span>
                     <span className="text-slate-400 leading-normal line-clamp-2">{item.text}</span>
@@ -1370,7 +1464,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                 </button>
               ))}
             </div>
-                      {/* Simulated Welcome Greet Injector sandbox */}
+            {/* Simulated Welcome Greet Injector sandbox */}
             {selectedTenant.welcomeTemplates && selectedTenant.welcomeTemplates.length > 0 && (
               <div className="space-y-3 pt-5 mt-5 border-t border-slate-800">
                 <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-2">
@@ -1378,10 +1472,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   Test Welcome Message Templates:
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Select any welcome greeting below to instantly reset the simulated WhatsApp viewport and preview how the chatbot initializes conversations with it.
+                  Select any welcome greeting below to instantly reset the simulated WhatsApp
+                  viewport and preview how the chatbot initializes conversations with it.
                 </p>
                 <div className="grid grid-cols-1 gap-2">
-                  {selectedTenant.welcomeTemplates.map((wt) => {
+                  {selectedTenant.welcomeTemplates.map(wt => {
                     const isActive = selectedTenant.activeWelcomeTemplateId === wt.id;
                     return (
                       <button
@@ -1393,9 +1488,12 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                               id: 'welcome-' + Date.now(),
                               sender: 'bot',
                               text: wt.text,
-                              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                              status: 'read'
-                            }
+                              timestamp: new Date().toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              }),
+                              status: 'read',
+                            },
                           ]);
                           triggerNotification(
                             'info',
@@ -1404,17 +1502,24 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                           );
                         }}
                         className={`flex items-start justify-between gap-3 text-left p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                          isActive 
-                            ? 'bg-blue-950/40 border-blue-500/40 hover:border-blue-500/60 text-slate-200 shadow-[0_0_8px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/10' 
+                          isActive
+                            ? 'bg-blue-950/40 border-blue-500/40 hover:border-blue-500/60 text-slate-200 shadow-[0_0_8px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/10'
                             : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-700 text-slate-300'
                         }`}
                         id={`inject-welcome-wt-${wt.id}`}
                       >
                         <div className="min-w-0 flex-1">
                           <span className="font-semibold block truncate text-[11px] text-white">
-                            {wt.name} {isActive && <span className="text-[9px] text-blue-400 font-mono font-bold uppercase ml-1.5">(Active)</span>}
+                            {wt.name}{' '}
+                            {isActive && (
+                              <span className="text-[9px] text-blue-400 font-mono font-bold uppercase ml-1.5">
+                                (Active)
+                              </span>
+                            )}
                           </span>
-                          <span className="text-slate-400 text-[10.5px] leading-snug line-clamp-1 block mt-0.5 font-mono">{wt.text}</span>
+                          <span className="text-slate-400 text-[10.5px] leading-snug line-clamp-1 block mt-0.5 font-mono">
+                            {wt.text}
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-350 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 font-mono shrink-0 select-none">
                           Load Text
@@ -1441,17 +1546,18 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
             Sequential AI Sandbox Demos:
           </h4>
           <p className="text-xs text-slate-400 leading-relaxed mb-4">
-            Don't want to type manually? Trigger sequential automated client-conversation events to verify pipeline integrations in real-time.
+            Don't want to type manually? Trigger sequential automated client-conversation events to
+            verify pipeline integrations in real-time.
           </p>
 
           <div className="space-y-3">
-            {INTEGRATED_SCENARIOS.map((scenario) => {
+            {INTEGRATED_SCENARIOS.map(scenario => {
               const isCurrent = playingScenario?.name === scenario.name;
               return (
-                <div 
-                  key={scenario.id} 
+                <div
+                  key={scenario.id}
                   className={`p-3.5 rounded-xl border transition-all ${
-                    isCurrent 
+                    isCurrent
                       ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]'
                       : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600'
                   }`}
@@ -1479,20 +1585,40 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">{scenario.description}</p>
-                  
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {scenario.description}
+                  </p>
+
                   {isCurrent && (
                     <div className="mt-3 bg-slate-950/60 p-2.5 rounded-lg border border-indigo-500/20 font-mono text-[10px] leading-relaxed space-y-1.5">
-                      <p className="text-indigo-400 font-bold uppercase tracking-wider text-[9px] mb-1">Scenario Steps Executed:</p>
+                      <p className="text-indigo-400 font-bold uppercase tracking-wider text-[9px] mb-1">
+                        Scenario Steps Executed:
+                      </p>
                       {scenario.steps.map((step, sIdx) => {
                         const done = sIdx < playingScenario.currentStepIndex;
                         const active = sIdx === playingScenario.currentStepIndex;
                         return (
                           <div key={sIdx} className="flex items-start gap-2 text-[10px]">
-                            <span className={done ? 'text-emerald-400 shrink-0' : active ? 'text-indigo-400 animate-pulse shrink-0 font-bold' : 'text-slate-600 shrink-0'}>
+                            <span
+                              className={
+                                done
+                                  ? 'text-emerald-400 shrink-0'
+                                  : active
+                                    ? 'text-indigo-400 animate-pulse shrink-0 font-bold'
+                                    : 'text-slate-600 shrink-0'
+                              }
+                            >
                               {done ? '✓' : active ? '▶' : '○'}
                             </span>
-                            <span className={done ? 'text-slate-500 line-through' : active ? 'text-slate-200 font-bold animate-pulse' : 'text-slate-500'}>
+                            <span
+                              className={
+                                done
+                                  ? 'text-slate-500 line-through'
+                                  : active
+                                    ? 'text-slate-200 font-bold animate-pulse'
+                                    : 'text-slate-500'
+                              }
+                            >
                               {step.text}
                             </span>
                           </div>
@@ -1524,7 +1650,10 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               </span>
             </div>
             {simulatorLogs.map((log, idx) => (
-              <div key={idx} className="text-slate-600 text-[10px] sm:text-xs flex items-start gap-1 justify-between bg-slate-100/40 p-1.5 rounded-lg border border-slate-200/20">
+              <div
+                key={idx}
+                className="text-slate-600 text-[10px] sm:text-xs flex items-start gap-1 justify-between bg-slate-100/40 p-1.5 rounded-lg border border-slate-200/20"
+              >
                 <span className="leading-relaxed">{log}</span>
               </div>
             ))}
@@ -1533,7 +1662,10 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               <span className="text-slate-450">SYSTEM</span>
             </div>
             <div className="text-slate-500">
-              <span className="text-slate-400">[{new Date().toLocaleTimeString()}]</span> System instruction bound to <strong className="text-slate-705">@{selectedTenant.botName}</strong> ({selectedTenant.tone} tone).
+              <span className="text-slate-400">[{new Date().toLocaleTimeString()}]</span> System
+              instruction bound to{' '}
+              <strong className="text-slate-705">@{selectedTenant.botName}</strong> (
+              {selectedTenant.tone} tone).
             </div>
             {isTyping && (
               <div className="text-indigo-600 animate-pulse">
@@ -1547,7 +1679,6 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
       {/* High Fidelity Smartphone Replica */}
       <div className="xl:col-span-7 flex justify-center">
         <div className="relative w-full max-w-[390px] aspect-[9/18.5] bg-slate-950 rounded-[50px] p-3.5 border-4 border-slate-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] ring-12 ring-slate-900 overflow-hidden flex flex-col">
-          
           {/* Smartphone Speaker notch */}
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-6 w-36 bg-slate-900 rounded-b-2xl z-30 flex items-center justify-center gap-2">
             <div className="h-1 w-12 bg-slate-700 rounded" />
@@ -1565,10 +1696,16 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                 id="simulator-action-popup"
               >
                 <div className="flex gap-2.5 items-start">
-                  <div className={`p-1.5 rounded-xl text-white ${
-                    lastNotification.type === 'success' ? 'bg-teal-500' : 'bg-indigo-500'
-                  }`}>
-                    {lastNotification.type === 'success' ? <CheckCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                  <div
+                    className={`p-1.5 rounded-xl text-white ${
+                      lastNotification.type === 'success' ? 'bg-teal-500' : 'bg-indigo-500'
+                    }`}
+                  >
+                    {lastNotification.type === 'success' ? (
+                      <CheckCheck className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
                   </div>
                   <div>
                     <h5 className="text-[11px] font-bold text-white uppercase tracking-wider font-mono">
@@ -1590,7 +1727,11 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-teal-500 animate-pulse inline-block" />
                   <span className="text-[10px] font-mono text-teal-400 font-bold uppercase tracking-widest">
-                    {voiceCallStatus === 'dialing' ? 'Dialing...' : voiceCallStatus === 'ended' ? 'Ended' : 'Live VoIP Session'}
+                    {voiceCallStatus === 'dialing'
+                      ? 'Dialing...'
+                      : voiceCallStatus === 'ended'
+                        ? 'Ended'
+                        : 'Live VoIP Session'}
                   </span>
                 </div>
                 <span className="text-[11px] font-mono text-slate-300 bg-slate-800 px-2.5 py-0.5 rounded border border-white/5 shadow-inner">
@@ -1601,17 +1742,23 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               {/* Bot Persona Hero */}
               <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-                
+
                 {/* Pulsating avatar ring effects */}
                 <div className="relative mb-6">
                   {voiceCallStatus !== 'dialing' && voiceCallStatus !== 'ended' && (
                     <>
-                      <div className="absolute -inset-4 rounded-full bg-teal-500/10 animate-ping opacity-60" style={{ animationDuration: '3s' }} />
-                      <div className="absolute -inset-8 rounded-full bg-teal-500/5 animate-ping opacity-30" style={{ animationDuration: '4s' }} />
+                      <div
+                        className="absolute -inset-4 rounded-full bg-teal-500/10 animate-ping opacity-60"
+                        style={{ animationDuration: '3s' }}
+                      />
+                      <div
+                        className="absolute -inset-8 rounded-full bg-teal-500/5 animate-ping opacity-30"
+                        style={{ animationDuration: '4s' }}
+                      />
                     </>
                   )}
                   <div className="h-24 w-24 rounded-full bg-slate-900 border-2 border-teal-500/30 flex items-center justify-center text-4xl relative z-10 shadow-2xl">
-                    {selectedTenant.avatar || "🤖"}
+                    {selectedTenant.avatar || '🤖'}
                   </div>
                 </div>
 
@@ -1632,11 +1779,26 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   ) : voiceCallStatus === 'speaking' ? (
                     <div className="space-y-1">
                       <div className="flex justify-center items-end gap-1 h-5">
-                        <span className="w-1.5 bg-teal-550 rounded-full animate-pulse h-4" style={{ animationDuration: '0.6s' }} />
-                        <span className="w-1.5 bg-teal-550 rounded-full animate-pulse h-2.5" style={{ animationDuration: '0.4s' }} />
-                        <span className="w-1.5 bg-teal-550 rounded-full animate-pulse h-5" style={{ animationDuration: '0.8s' }} />
-                        <span className="w-1.5 bg-teal-550 rounded-full animate-pulse h-3" style={{ animationDuration: '0.5s' }} />
-                        <span className="w-1.5 bg-teal-550 rounded-full animate-pulse h-4" style={{ animationDuration: '0.7s' }} />
+                        <span
+                          className="w-1.5 bg-teal-550 rounded-full animate-pulse h-4"
+                          style={{ animationDuration: '0.6s' }}
+                        />
+                        <span
+                          className="w-1.5 bg-teal-550 rounded-full animate-pulse h-2.5"
+                          style={{ animationDuration: '0.4s' }}
+                        />
+                        <span
+                          className="w-1.5 bg-teal-550 rounded-full animate-pulse h-5"
+                          style={{ animationDuration: '0.8s' }}
+                        />
+                        <span
+                          className="w-1.5 bg-teal-550 rounded-full animate-pulse h-3"
+                          style={{ animationDuration: '0.5s' }}
+                        />
+                        <span
+                          className="w-1.5 bg-teal-550 rounded-full animate-pulse h-4"
+                          style={{ animationDuration: '0.7s' }}
+                        />
                       </div>
                       <span className="text-[9px] text-teal-400 font-mono uppercase tracking-wider font-bold block">
                         🎙️ Speaking...
@@ -1645,21 +1807,35 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   ) : (
                     <div className="space-y-1">
                       <div className="flex justify-center items-end gap-1 h-5">
-                        <span className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-4' : ''}`} style={{ animationDelay: '0ms' }} />
-                        <span className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-2.5' : ''}`} style={{ animationDelay: '150ms' }} />
-                        <span className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-5' : ''}`} style={{ animationDelay: '300ms' }} />
-                        <span className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-3' : ''}`} style={{ animationDelay: '450ms' }} />
-                        <span className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-4' : ''}`} style={{ animationDelay: '600ms' }} />
+                        <span
+                          className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-4' : ''}`}
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <span
+                          className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-2.5' : ''}`}
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <span
+                          className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-5' : ''}`}
+                          style={{ animationDelay: '300ms' }}
+                        />
+                        <span
+                          className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-3' : ''}`}
+                          style={{ animationDelay: '450ms' }}
+                        />
+                        <span
+                          className={`w-1.5 bg-indigo-500 rounded-full h-1.5 ${isMicActive ? 'animate-bounce h-4' : ''}`}
+                          style={{ animationDelay: '600ms' }}
+                        />
                       </div>
                       <span className="text-[9px] text-indigo-400 font-mono uppercase tracking-wider block font-bold">
-                        {isMicMuted 
-                          ? '🔇 Mic Muted' 
+                        {isMicMuted
+                          ? '🔇 Mic Muted'
                           : !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
                             ? '⚠️ Mic restricted inside iframe (Use Type-To-Speak below)'
-                            : isMicActive 
-                              ? '🎤 listening (speak now)' 
-                              : '🎧 standby'
-                        }
+                            : isMicActive
+                              ? '🎤 listening (speak now)'
+                              : '🎧 standby'}
                       </span>
                     </div>
                   )}
@@ -1671,14 +1847,21 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                     {voiceTranscript.length === 0 ? (
                       <div className="text-slate-600 italic text-center h-full flex items-center justify-center text-[10px] flex-col gap-1">
                         <span>Speech transcript feeds here in real-time...</span>
-                        <span className="text-[8px] opacity-70">Hint: Try typing a question in the input below!</span>
+                        <span className="text-[8px] opacity-70">
+                          Hint: Try typing a question in the input below!
+                        </span>
                       </div>
                     ) : (
                       voiceTranscript.map((t, index) => (
-                        <div key={index} className={`mb-2 pb-1.5 border-b border-white/5 last:border-b-0 last:mb-0 ${
-                          t.sender === 'customer' ? 'text-indigo-300' : 'text-teal-300'
-                        }`}>
-                          <strong className="uppercase mr-1">{t.sender === 'customer' ? 'You' : selectedTenant.botName}:</strong>
+                        <div
+                          key={index}
+                          className={`mb-2 pb-1.5 border-b border-white/5 last:border-b-0 last:mb-0 ${
+                            t.sender === 'customer' ? 'text-indigo-300' : 'text-teal-300'
+                          }`}
+                        >
+                          <strong className="uppercase mr-1">
+                            {t.sender === 'customer' ? 'You' : selectedTenant.botName}:
+                          </strong>
                           <span>{t.text}</span>
                         </div>
                       ))
@@ -1697,27 +1880,39 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                     </span>
                     <span className="text-[7.5px] text-slate-500">Iframe mic block solution</span>
                   </div>
-                  <form 
-                    onSubmit={(e) => {
+                  <form
+                    onSubmit={e => {
                       e.preventDefault();
-                      if (voiceCallInputText.trim() && voiceCallStatus !== 'dialing' && voiceCallStatus !== 'speaking') {
+                      if (
+                        voiceCallInputText.trim() &&
+                        voiceCallStatus !== 'dialing' &&
+                        voiceCallStatus !== 'speaking'
+                      ) {
                         processVoiceInput(voiceCallInputText.trim());
                         setVoiceCallInputText('');
                       }
-                    }} 
+                    }}
                     className="flex gap-1"
                   >
                     <input
                       type="text"
                       value={voiceCallInputText}
-                      onChange={(e) => setVoiceCallInputText(e.target.value)}
+                      onChange={e => setVoiceCallInputText(e.target.value)}
                       disabled={voiceCallStatus === 'dialing' || voiceCallStatus === 'speaking'}
-                      placeholder={voiceCallStatus === 'speaking' ? "Wait for agent to finish..." : "Type text and hit enter to speak..."}
+                      placeholder={
+                        voiceCallStatus === 'speaking'
+                          ? 'Wait for agent to finish...'
+                          : 'Type text and hit enter to speak...'
+                      }
                       className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500 font-sans disabled:opacity-50"
                     />
                     <button
                       type="submit"
-                      disabled={!voiceCallInputText.trim() || voiceCallStatus === 'dialing' || voiceCallStatus === 'speaking'}
+                      disabled={
+                        !voiceCallInputText.trim() ||
+                        voiceCallStatus === 'dialing' ||
+                        voiceCallStatus === 'speaking'
+                      }
                       className="px-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-850 disabled:text-slate-500 disabled:opacity-45 text-white rounded text-[10px] font-bold font-mono transition-colors cursor-pointer"
                     >
                       Send
@@ -1754,13 +1949,17 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   type="button"
                   onClick={toggleMuteMic}
                   className={`h-9 w-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                    isMicMuted 
-                      ? 'bg-rose-600 border border-rose-500 text-white' 
+                    isMicMuted
+                      ? 'bg-rose-600 border border-rose-500 text-white'
                       : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border border-white/5'
                   }`}
                   title={isMicMuted ? 'Unmute microphone' : 'Mute microphone'}
                 >
-                  {isMicMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                  {isMicMuted ? (
+                    <MicOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
                 </button>
 
                 {/* Hang Up Button */}
@@ -1778,13 +1977,17 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   type="button"
                   onClick={() => setIsSpeakerMuted(!isSpeakerMuted)}
                   className={`h-9 w-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                    isSpeakerMuted 
-                      ? 'bg-amber-600 border border-amber-500 text-white' 
+                    isSpeakerMuted
+                      ? 'bg-amber-600 border border-amber-500 text-white'
                       : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border border-white/5'
                   }`}
                   title={isSpeakerMuted ? 'Unmute voice output' : 'Mute voice output'}
                 >
-                  {isSpeakerMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                  {isSpeakerMuted ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -1803,19 +2006,22 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                       {selectedTenant.name}
                     </h4>
                     <p className="text-[10px] text-[#e0f2f1] flex items-center gap-1 font-mono">
-                      <span className={`h-1.5 w-1.5 rounded-full animate-pulse inline-block ${selectedTenant.whatsAppSandboxActive ? 'bg-blue-300' : 'bg-emerald-300'}`} />
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full animate-pulse inline-block ${selectedTenant.whatsAppSandboxActive ? 'bg-blue-300' : 'bg-emerald-300'}`}
+                      />
                       <span>
-                        {selectedTenant.whatsAppSandboxActive && selectedTenant.whatsAppSandboxNumbers && selectedTenant.whatsAppSandboxNumbers.length > 0
+                        {selectedTenant.whatsAppSandboxActive &&
+                        selectedTenant.whatsAppSandboxNumbers &&
+                        selectedTenant.whatsAppSandboxNumbers.length > 0
                           ? `${selectedTenant.whatsAppSandboxNumbers[0]} (Sandbox)`
-                          : selectedTenant.whatsAppPhoneNumber 
-                            ? `${selectedTenant.whatsAppPhoneNumber} | @${selectedTenant.botName}` 
-                            : `@${selectedTenant.botName} (Sandbox)`
-                        }
+                          : selectedTenant.whatsAppPhoneNumber
+                            ? `${selectedTenant.whatsAppPhoneNumber} | @${selectedTenant.botName}`
+                            : `@${selectedTenant.botName} (Sandbox)`}
                       </span>
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2.5 text-slate-200">
                   <button
                     type="button"
@@ -1834,17 +2040,20 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               </div>
 
               {/* WhatsApp Chat History Grid */}
-              <div 
+              <div
                 ref={chatContainerRef}
                 className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3 flex flex-col bg-[#ece5dd]"
-                style={{ backgroundImage: 'radial-gradient(#dfdcd6 10%, transparent 11%)', backgroundSize: '12px 12px' }}
+                style={{
+                  backgroundImage: 'radial-gradient(#dfdcd6 10%, transparent 11%)',
+                  backgroundSize: '12px 12px',
+                }}
               >
                 {/* Header info badge */}
                 <div className="self-center bg-[#ffe0b2] text-[#e65100] text-[10px] py-1 px-3 rounded-lg font-medium shadow-sm border border-[#ffd180]/50 text-center max-w-[85%]">
                   🔒 Messages and calls are end-to-end encrypted under standard client SSL rules.
                 </div>
 
-                {messages.map((m) => (
+                {messages.map(m => (
                   <MessageBubble
                     key={m.id}
                     message={m}
@@ -1856,11 +2065,22 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
 
                 {isTyping && (
                   <div className="self-start bg-white text-slate-800 rounded-xl rounded-tl-none px-3.5 py-2.5 text-xs shadow-sm flex items-center gap-2">
-                    <span className="font-semibold text-[10px] text-teal-600">{selectedTenant.botName} is typing</span>
+                    <span className="font-semibold text-[10px] text-teal-600">
+                      {selectedTenant.botName} is typing
+                    </span>
                     <span className="flex gap-1">
-                      <span className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span
+                        className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0ms' }}
+                      />
+                      <span
+                        className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '150ms' }}
+                      />
+                      <span
+                        className="h-1.5 w-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '300ms' }}
+                      />
                     </span>
                   </div>
                 )}
@@ -1869,8 +2089,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               </div>
 
               {/* WhatsApp Text Input panel */}
-              <form 
-                onSubmit={(e) => {
+              <form
+                onSubmit={e => {
                   e.preventDefault();
                   sendMessageToAgent(inputText);
                 }}
@@ -1880,13 +2100,13 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   id="whatsapp-text-input"
                   type="text"
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={e => setInputText(e.target.value)}
                   placeholder={
                     !isAutopilot
                       ? simulatorSender === 'bot'
                         ? `Reply as ${selectedTenant.botName} (Live Agent takeover)...`
-                        : "Simulate typing message as Client..."
-                      : "Type message to agent..."
+                        : 'Simulate typing message as Client...'
+                      : 'Type message to agent...'
                   }
                   disabled={isTyping}
                   className={`flex-1 bg-white hover:bg-slate-50 focus:bg-white text-xs text-slate-800 font-sans border rounded-full px-3.5 py-2.5 outline-none focus:ring-1 ${
@@ -1895,7 +2115,7 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                       : 'border-slate-200 focus:ring-teal-500'
                   }`}
                 />
-                
+
                 {/* Real-time Voice speech recognition button */}
                 <button
                   id="whatsapp-mic-btn"
@@ -1907,9 +2127,15 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                       ? 'bg-rose-500 text-white border-rose-400 shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse'
                       : 'bg-white text-slate-500 hover:text-slate-800 border-slate-200 hover:border-slate-350'
                   }`}
-                  title={isChatMicActive ? "Stop voice listening" : "Speak to agent (Voice dictionary input)"}
+                  title={
+                    isChatMicActive
+                      ? 'Stop voice listening'
+                      : 'Speak to agent (Voice dictionary input)'
+                  }
                 >
-                  <span className={`absolute -inset-0.5 rounded-full bg-rose-500/20 pointer-events-none ${isChatMicActive ? 'animate-ping' : 'hidden'}`} />
+                  <span
+                    className={`absolute -inset-0.5 rounded-full bg-rose-500/20 pointer-events-none ${isChatMicActive ? 'animate-ping' : 'hidden'}`}
+                  />
                   {isChatMicActive ? (
                     <Mic className="h-4 w-4 text-white" />
                   ) : (
@@ -1928,8 +2154,8 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
                   }`}
                   title={
                     !isAutopilot && simulatorSender === 'bot'
-                      ? "Send direct human representative agent response"
-                      : "Send simulated customer reply"
+                      ? 'Send direct human representative agent response'
+                      : 'Send simulated customer reply'
                   }
                 >
                   <Send className="h-4 w-4" />
@@ -1937,7 +2163,6 @@ export const BotSimulator: React.FC<BotSimulatorProps> = ({
               </form>
             </>
           )}
-
         </div>
       </div>
     </div>

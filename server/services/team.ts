@@ -1,12 +1,12 @@
-import { eq } from "drizzle-orm";
-import { getDb, isDbAvailable, schema } from "../db/index";
+import { eq } from 'drizzle-orm';
+import { getDb, isDbAvailable, schema } from '../db/index';
 
 export interface TeamMember {
   id: string;
   tenantId: string;
   uid: string;
   email: string;
-  role: "admin" | "support";
+  role: 'admin' | 'support';
   invitedAt: string;
 }
 
@@ -28,12 +28,12 @@ export async function listTeamMembers(tenantId: string): Promise<TeamMember[]> {
     .from(schema.teamMembers)
     .where(eq(schema.teamMembers.tenantId, tenantId));
 
-  return rows.map((r) => ({
+  return rows.map(r => ({
     id: r.id,
     tenantId: r.tenantId,
     uid: r.uid,
     email: r.email,
-    role: r.role as TeamMember["role"],
+    role: r.role as TeamMember['role'],
     invitedAt: r.invitedAt?.toISOString() ?? new Date().toISOString(),
   }));
 }
@@ -42,7 +42,7 @@ export async function addTeamMember(
   tenantId: string,
   uid: string,
   email: string,
-  role: "admin" | "support"
+  role: 'admin' | 'support'
 ): Promise<TeamMember> {
   const member: TeamMember = {
     id: `tm-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -76,19 +76,17 @@ export async function removeTeamMember(tenantId: string, memberId: string): Prom
     const list = _memTeamMembers.get(tenantId) ?? [];
     _memTeamMembers.set(
       tenantId,
-      list.filter((m) => m.id !== memberId)
+      list.filter(m => m.id !== memberId)
     );
     return;
   }
 
   const db = getDb();
-  await db
-    .delete(schema.teamMembers)
-    .where(eq(schema.teamMembers.id, memberId));
+  await db.delete(schema.teamMembers).where(eq(schema.teamMembers.id, memberId));
 }
 
 /** Returns the member's role if uid belongs to tenantId's team, else null. */
 export async function findTeamMemberRole(tenantId: string, uid: string): Promise<string | null> {
   const members = await listTeamMembers(tenantId);
-  return members.find((m) => m.uid === uid)?.role ?? null;
+  return members.find(m => m.uid === uid)?.role ?? null;
 }

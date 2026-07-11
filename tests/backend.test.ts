@@ -861,7 +861,7 @@ describe('Team RBAC', () => {
       ownerId: 'uid-owner',
       knowledgeBase: [],
       leads: [],
-      appointments: []
+      appointments: [],
     });
   });
 
@@ -940,7 +940,11 @@ describe('Team RBAC', () => {
     await addTeamMember('rbac-tenant', 'uid-teammate', 'teammate@example.com', 'support');
 
     // Team member: access granted, role attached to the request
-    const reqMember: any = { params: { id: 'rbac-tenant' }, headers: {}, user: { uid: 'uid-teammate' } };
+    const reqMember: any = {
+      params: { id: 'rbac-tenant' },
+      headers: {},
+      user: { uid: 'uid-teammate' },
+    };
     const nextMember = vi.fn();
     await tenantAccessMiddleware(reqMember, {} as any, nextMember);
     expect(nextMember).toHaveBeenCalled();
@@ -948,7 +952,11 @@ describe('Team RBAC', () => {
 
     // Unrelated uid: access denied
     const jsonSpy = vi.fn();
-    const reqStranger: any = { params: { id: 'rbac-tenant' }, headers: {}, user: { uid: 'uid-stranger' } };
+    const reqStranger: any = {
+      params: { id: 'rbac-tenant' },
+      headers: {},
+      user: { uid: 'uid-stranger' },
+    };
     const resStranger: any = { status: vi.fn(() => resStranger), json: jsonSpy };
     const nextStranger = vi.fn();
     await tenantAccessMiddleware(reqStranger, resStranger, nextStranger);

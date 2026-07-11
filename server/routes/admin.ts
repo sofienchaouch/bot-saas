@@ -343,7 +343,10 @@ router.post(
       store[tenantId] = tenant;
       await writeTenantsStore(store);
 
-      logger.info({ tenantId, botUsername: meData.result?.username }, '[TELEGRAM CONNECT] Bot connected and webhook registered');
+      logger.info(
+        { tenantId, botUsername: meData.result?.username },
+        '[TELEGRAM CONNECT] Bot connected and webhook registered'
+      );
       res.json({ status: 'success', botUsername: meData.result?.username });
     } catch (err: any) {
       logger.error({ err: err.message, tenantId }, '[TELEGRAM CONNECT] Failed to connect bot');
@@ -367,7 +370,10 @@ router.post(
       try {
         await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`);
       } catch (err: any) {
-        logger.warn({ err: err.message, tenantId }, '[TELEGRAM DISCONNECT] Failed to unregister webhook');
+        logger.warn(
+          { err: err.message, tenantId },
+          '[TELEGRAM DISCONNECT] Failed to unregister webhook'
+        );
       }
     }
 
@@ -420,7 +426,8 @@ router.post(
     } catch (err: any) {
       if (err.code === 'auth/user-not-found') {
         return res.status(404).json({
-          error: 'No account found for that email. They must sign in at least once before being invited.',
+          error:
+            'No account found for that email. They must sign in at least once before being invited.',
         });
       }
       logger.error({ err: err.message, tenantId }, '[TEAM INVITE] Failed to invite member');

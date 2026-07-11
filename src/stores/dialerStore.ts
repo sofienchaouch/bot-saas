@@ -16,16 +16,16 @@ interface DialerStore {
   setDialerTimer: (val: number | ((prev: number) => number)) => void;
 }
 
-export const useDialerStore = create<DialerStore>((set) => ({
+export const useDialerStore = create<DialerStore>(set => ({
   isDialerModalOpen: false,
-  setIsDialerModalOpen: (val) => set({ isDialerModalOpen: val }),
+  setIsDialerModalOpen: val => set({ isDialerModalOpen: val }),
   dialerCustomerNumber: '',
-  setDialerCustomerNumber: (val) => set({ dialerCustomerNumber: val }),
+  setDialerCustomerNumber: val => set({ dialerCustomerNumber: val }),
   dialerCustomerName: '',
-  setDialerCustomerName: (val) => set({ dialerCustomerName: val }),
+  setDialerCustomerName: val => set({ dialerCustomerName: val }),
   dialerState: 'dialing',
-  setDialerState: (val) => set({ dialerState: val }),
+  setDialerState: val => set({ dialerState: val }),
   dialerTimer: 0,
-  setDialerTimer: (val) =>
-    set((s) => ({ dialerTimer: typeof val === 'function' ? val(s.dialerTimer) : val })),
+  setDialerTimer: val =>
+    set(s => ({ dialerTimer: typeof val === 'function' ? val(s.dialerTimer) : val })),
 }));

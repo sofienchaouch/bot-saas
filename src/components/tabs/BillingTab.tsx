@@ -108,9 +108,7 @@ export const BillingTab: React.FC = () => {
               <div className="text-[10px] font-mono text-slate-500 uppercase">
                 {t('billingCurrentCycle')}
               </div>
-              <div className="text-xs text-slate-200 font-medium">
-                {t('billingRenews')}
-              </div>
+              <div className="text-xs text-slate-200 font-medium">{t('billingRenews')}</div>
             </div>
             {billingEnabled && selectedTenant.stripeCustomerId && (
               <button
@@ -330,7 +328,9 @@ export const BillingTab: React.FC = () => {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">{t('billingEnterpriseTier')}</span>
+                <span className="text-xs font-bold text-slate-400">
+                  {t('billingEnterpriseTier')}
+                </span>
                 {currentTier === 'Enterprise' && <CheckCircle className="h-4 w-4 text-blue-500" />}
               </div>
               <div>
