@@ -17,6 +17,7 @@ import { WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET } from '../config';
 import { recordEvent } from '../services/analytics';
 import { logWebhookEvent } from '../services/webhookLogger';
 import { isOverQuota } from '../services/quota';
+import { broadcastToTenant } from '../services/realtime';
 
 const verifyMetaSignature = (
   req: express.Request,
@@ -458,6 +459,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
               citations: citations,
             });
             await writeConversationsStore(conversations);
+            broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
           } else {
             logger.info(
               { tenantId },
@@ -800,6 +802,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
               citations: citations,
             });
             await writeConversationsStore(conversations);
+            broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
 
             const durationMs = Date.now() - inboundAt;
             // Record AI reply analytics
@@ -1085,6 +1088,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       citations: citations,
     });
     await writeConversationsStore(conversations);
+    broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
 
     // Send message back to Telegram
     const botToken = tenant.telegramBotToken;
@@ -1333,6 +1337,7 @@ Do not wrap your output in markdown codeblocks like \`\`\`json. Return bare clea
       citations: citations,
     });
     await writeConversationsStore(conversations);
+    broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
 
     // Return TwiML XML
     res.type('text/xml');

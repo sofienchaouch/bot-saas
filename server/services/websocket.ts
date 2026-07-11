@@ -3,6 +3,7 @@ import { Modality } from "@google/genai";
 import { ai } from "./gemini";
 import { readTenantsStore } from "./db";
 import { buildSystemPrompt } from "./promptBuilder";
+import { registerAdminClient } from "./realtime";
 import { logger } from "../lib/logger";
 
 // Transcoding helpers for Twilio VoIP G.711 mu-law <-> PCM 16kHz
@@ -72,6 +73,7 @@ function encodePcm16kToMuLaw(pcmBuffer: Buffer): Buffer {
 export function setupWebSocket(server: any) {
   const wss = new WebSocketServer({ noServer: true });
   const twilioWss = new WebSocketServer({ noServer: true });
+  const adminWss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (request: any, socket: any, head: any) => {
     const pathname = new URL(request.url || "", `http://${request.headers.host || "localhost"}`).pathname;
@@ -83,9 +85,25 @@ export function setupWebSocket(server: any) {
       twilioWss.handleUpgrade(request, socket, head, (ws) => {
         twilioWss.emit("connection", ws, request);
       });
+    } else if (pathname === "/api/admin-events") {
+      adminWss.handleUpgrade(request, socket, head, (ws) => {
+        adminWss.emit("connection", ws, request);
+      });
     } else {
       socket.destroy();
     }
+  });
+
+  // Admin dashboard push channel: new webhook events / conversation messages
+  adminWss.on("connection", (clientWs, req) => {
+    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
+    const tenantId = url.searchParams.get("tenantId");
+    if (!tenantId) {
+      clientWs.close();
+      return;
+    }
+    logger.info({ tenantId }, "[ADMIN WS] Dashboard client connected");
+    registerAdminClient(tenantId, clientWs);
   });
 
   // Live Web client handler

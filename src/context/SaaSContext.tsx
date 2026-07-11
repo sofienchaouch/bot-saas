@@ -360,6 +360,39 @@ export const SaaSProvider: React.FC<{
   const currentTenantIndex = tenants.findIndex(t => t.id === selectedTenantId);
   const selectedTenant = tenants[currentTenantIndex] || tenants[0];
 
+  // Real-time push: new inbound/outbound conversation messages arrive over
+  // WebSocket and merge directly into takeoverConvos, instead of relying on
+  // a refetch after every send.
+  useEffect(() => {
+    if (!selectedTenant?.id) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`);
+
+    ws.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data);
+        if (data.type === 'conversation-message' && data.payload?.convoKey) {
+          const { convoKey, message } = data.payload;
+          setTakeoverConvos((prev) => {
+            const existing = prev[convoKey] || { messages: [] };
+            if (existing.messages.some((m: any) => m.timestamp === message.timestamp && m.text === message.text)) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [convoKey]: { ...existing, messages: [...existing.messages, message] }
+            };
+          });
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    };
+
+    return () => ws.close();
+  }, [selectedTenant?.id]);
+
   // Auth and Token States
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [googleToken, setGoogleToken] = useState<string | null>(null);

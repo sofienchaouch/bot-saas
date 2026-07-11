@@ -20,6 +20,7 @@ import { NODE_ENV } from '../config';
 import { getAnalytics, clearAnalytics } from '../services/analytics';
 import { getWebhookEvents, clearWebhookEvents } from '../services/webhookLogger';
 import { validateUrlForSsrf, crawlWebsite } from '../services/crawler';
+import { broadcastToTenant } from '../services/realtime';
 
 const router = express.Router();
 
@@ -445,6 +446,7 @@ router.post(
       isInternal: internalNote,
     });
     await writeConversationsStore(conversations);
+    broadcastToTenant(tenantId, { type: 'conversation-message', payload: { convoKey, message: conversations[convoKey].messages[conversations[convoKey].messages.length - 1] } });
 
     if (internalNote) {
       logger.info({ convoKey }, '[CONVERSATION INTERNAL NOTE] Stored internal note for thread');

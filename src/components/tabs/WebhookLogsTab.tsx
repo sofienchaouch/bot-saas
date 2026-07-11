@@ -195,16 +195,42 @@ export const WebhookLogsTab: React.FC = () => {
     handleRefresh();
   }, [handleRefresh]);
 
-  // Live polling every 8s
+  // Fallback reconciliation poll — the WebSocket below delivers new events
+  // immediately; this just guards against a dropped connection.
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (liveMode) {
-      intervalRef.current = setInterval(fetchEvents, 8000);
+      intervalRef.current = setInterval(fetchEvents, 30000);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [liveMode, fetchEvents]);
+
+  // Real-time push: new webhook events arrive over WebSocket instead of
+  // waiting for the next poll tick.
+  useEffect(() => {
+    if (!selectedTenant || !liveMode) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/api/admin-events?tenantId=${selectedTenant.id}`);
+
+    ws.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data);
+        if (data.type === 'webhook-event' && data.payload) {
+          setEvents((prev) => {
+            if (prev.some((e) => e.id === data.payload.id)) return prev;
+            return [data.payload, ...prev].slice(0, 100);
+          });
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    };
+
+    return () => ws.close();
+  }, [selectedTenant, liveMode]);
 
   // Clear logs
   const handleClear = async () => {

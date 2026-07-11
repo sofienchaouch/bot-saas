@@ -1,5 +1,6 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb, isDbAvailable, schema } from "../db/index";
+import { broadcastToTenant } from "./realtime";
 import { logger } from "../lib/logger";
 
 // ── Types (unchanged) ─────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ export function logWebhookEvent(
     ...event,
     payload: truncatePayload(event.payload),
   };
+
+  broadcastToTenant(tenantId, { type: "webhook-event", payload: record });
 
   if (!isDbAvailable()) {
     const list = _memEvents.get(tenantId) ?? [];
