@@ -1,8 +1,8 @@
-import { eq, and, sql } from "drizzle-orm";
-import { ai } from "./gemini";
-import { Type } from "@google/genai";
-import { getDb, isDbAvailable, schema } from "../db/index";
-import { logger } from "../lib/logger";
+import { eq, and, sql } from 'drizzle-orm';
+import { ai } from './gemini';
+import { Type } from '@google/genai';
+import { getDb, isDbAvailable, schema } from '../db/index';
+import { logger } from '../lib/logger';
 
 // ── Pure utility functions (unchanged) ────────────────────────────────────────
 
@@ -10,14 +10,14 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
   if (!text) return [];
   const sentences = text.split(/(?<=[.!?])\s+|\n+/);
   const chunks: string[] = [];
-  let currentChunk = "";
+  let currentChunk = '';
 
   for (const sentence of sentences) {
     const trimmed = sentence.trim();
     if (!trimmed) continue;
 
     if (currentChunk.length + trimmed.length + 1 <= size) {
-      currentChunk += (currentChunk ? " " : "") + trimmed;
+      currentChunk += (currentChunk ? ' ' : '') + trimmed;
     } else {
       if (currentChunk) chunks.push(currentChunk);
       if (trimmed.length > size) {
@@ -26,10 +26,10 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
           chunks.push(trimmed.substring(idx, idx + size));
           idx += size - overlap;
         }
-        currentChunk = "";
+        currentChunk = '';
       } else {
         const overlapPart = currentChunk.substring(Math.max(0, currentChunk.length - overlap));
-        currentChunk = overlapPart.trim() + (overlapPart ? " " : "") + trimmed;
+        currentChunk = overlapPart.trim() + (overlapPart ? ' ' : '') + trimmed;
       }
     }
   }
@@ -40,17 +40,19 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
 export async function getEmbedding(text: string): Promise<number[] | undefined> {
   if (!ai) return undefined;
   try {
-    const response = await ai.models.embedContent({ model: "text-embedding-004", contents: text });
+    const response = await ai.models.embedContent({ model: 'text-embedding-004', contents: text });
     return (response as any).embedding?.values || undefined;
   } catch (err) {
-    logger.error({ err }, "Gemini Embeddings error");
+    logger.error({ err }, 'Gemini Embeddings error');
     return undefined;
   }
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
-  let dot = 0, normA = 0, normB = 0;
+  let dot = 0,
+    normA = 0,
+    normB = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     normA += a[i] * a[i];
@@ -114,7 +116,7 @@ export async function deleteChunksForDocument(documentId: string, tenantId: stri
 // ── RAG Filter type (unchanged) ────────────────────────────────────────────────
 
 export interface RAGFilter {
-  type?: "faq" | "document" | "file" | "url" | "crawl";
+  type?: 'faq' | 'document' | 'file' | 'url' | 'crawl';
   titlePattern?: string;
 }
 
@@ -125,9 +127,8 @@ export async function getRAGContext(
   tenantId: string,
   filter?: RAGFilter
 ): Promise<{ contextText: string; citations: string[] }> {
-
   if (!isDbAvailable()) {
-    return { contextText: "No knowledge base available (database not configured).", citations: [] };
+    return { contextText: 'No knowledge base available (database not configured).', citations: [] };
   }
 
   const db = getDb();
@@ -137,7 +138,7 @@ export async function getRAGContext(
 
   if (queryVector) {
     // pgvector cosine distance search
-    const vectorLiteral = `[${queryVector.join(",")}]`;
+    const vectorLiteral = `[${queryVector.join(',')}]`;
 
     const rows = await db.execute(sql`
       SELECT
@@ -179,7 +180,7 @@ export async function getRAGContext(
   }
 
   if (candidates.length === 0) {
-    return { contextText: "No matching knowledge base documents found.", citations: [] };
+    return { contextText: 'No matching knowledge base documents found.', citations: [] };
   }
 
   // Gemini re-ranking (unchanged logic)
@@ -193,19 +194,19 @@ Return your choice strictly as a JSON array of integers representing the 0-index
 Do not wrap your output in markdown codeblocks. Return bare clean JSON.
 
 Chunks:
-${candidates.map((c, i) => `[Chunk ${i}]:\nTitle: ${c.title}\nContent: ${c.chunkText}`).join("\n\n")}`;
+${candidates.map((c, i) => `[Chunk ${i}]:\nTitle: ${c.title}\nContent: ${c.chunkText}`).join('\n\n')}`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
           temperature: 0.1,
-          responseMimeType: "application/json",
+          responseMimeType: 'application/json',
           responseSchema: { type: Type.ARRAY, items: { type: Type.INTEGER } },
         },
       });
 
-      const rawText = response.text || "";
+      const rawText = response.text || '';
       let indices: number[];
       try {
         indices = JSON.parse(rawText.trim());
@@ -217,7 +218,7 @@ ${candidates.map((c, i) => `[Chunk ${i}]:\nTitle: ${c.title}\nContent: ${c.chunk
       if (Array.isArray(indices) && indices.length > 0) {
         const reRanked: typeof candidates = [];
         const seen = new Set<number>();
-        indices.forEach((idx) => {
+        indices.forEach(idx => {
           if (idx >= 0 && idx < candidates.length && !seen.has(idx)) {
             reRanked.push(candidates[idx]);
             seen.add(idx);
@@ -227,17 +228,15 @@ ${candidates.map((c, i) => `[Chunk ${i}]:\nTitle: ${c.title}\nContent: ${c.chunk
           if (!seen.has(idx) && reRanked.length < 4) reRanked.push(c);
         });
         finalChunks = reRanked.slice(0, 4);
-        logger.info({ titles: finalChunks.map((c) => c.title) }, "[RAG ENGINE] Re-ranked candidates");
+        logger.info({ titles: finalChunks.map(c => c.title) }, '[RAG ENGINE] Re-ranked candidates');
       }
     } catch (reRankErr) {
-      logger.warn({ err: reRankErr }, "[RAG ENGINE] Re-ranking failed, using vector order");
+      logger.warn({ err: reRankErr }, '[RAG ENGINE] Re-ranking failed, using vector order');
     }
   }
 
-  const uniqueCitations = Array.from(new Set(finalChunks.map((c) => c.title)));
-  const contextText = finalChunks
-    .map((c) => `[DOCUMENT: ${c.title}]\n${c.chunkText}`)
-    .join("\n\n");
+  const uniqueCitations = Array.from(new Set(finalChunks.map(c => c.title)));
+  const contextText = finalChunks.map(c => `[DOCUMENT: ${c.title}]\n${c.chunkText}`).join('\n\n');
 
   return { contextText, citations: uniqueCitations };
 }

@@ -262,16 +262,14 @@ export async function writeTenantsStore(store: Record<string, any>): Promise<voi
     // Welcome templates: delete then insert (full replace)
     await db.delete(schema.welcomeTemplates).where(eq(schema.welcomeTemplates.tenantId, tenant.id));
     if (tenant.welcomeTemplates && tenant.welcomeTemplates.length > 0) {
-      await db
-        .insert(schema.welcomeTemplates)
-        .values(
-          tenant.welcomeTemplates.map((w: WelcomeTemplate) => ({
-            id: w.id,
-            tenantId: tenant.id,
-            name: w.name,
-            text: w.text,
-          }))
-        );
+      await db.insert(schema.welcomeTemplates).values(
+        tenant.welcomeTemplates.map((w: WelcomeTemplate) => ({
+          id: w.id,
+          tenantId: tenant.id,
+          name: w.name,
+          text: w.text,
+        }))
+      );
     }
 
     // Agents: delete then insert

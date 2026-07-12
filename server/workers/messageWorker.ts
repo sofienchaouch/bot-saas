@@ -27,7 +27,10 @@ export async function processOutboundMessage(data: OutboundMessageJobData) {
   const accessToken = tenant.whatsAppApiKey || process.env.WHATSAPP_TOKEN;
 
   if (!phoneNumberId || !accessToken || isPlaceholderToken(accessToken)) {
-    logger.info({ tenantId, to }, 'Skipping outbound message: placeholder or missing WhatsApp credentials');
+    logger.info(
+      { tenantId, to },
+      'Skipping outbound message: placeholder or missing WhatsApp credentials'
+    );
     return { skipped: true };
   }
 

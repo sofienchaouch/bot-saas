@@ -35,7 +35,10 @@ export function startCrawlWorker(): Worker<CrawlJobData> {
 
       const isUrlSafe = await validateUrlForSsrf(targetItem.url);
       if (!isUrlSafe) {
-        logger.warn({ tenantId, url: targetItem.url }, 'Crawl job: SSRF check failed for scheduled URL');
+        logger.warn(
+          { tenantId, url: targetItem.url },
+          'Crawl job: SSRF check failed for scheduled URL'
+        );
         tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => kb.id !== documentId);
         tenant.knowledgeBase.push({
           id: documentId,
@@ -79,7 +82,10 @@ export function startCrawlWorker(): Worker<CrawlJobData> {
         await enrichTenantEmbeddings(tenant);
 
         await writeTenantsStore(store);
-        logger.info({ tenantId, schedule: tenant.crawlSchedule, pagesCount: result.pagesCount }, 'Crawl job completed');
+        logger.info(
+          { tenantId, schedule: tenant.crawlSchedule, pagesCount: result.pagesCount },
+          'Crawl job completed'
+        );
       } catch (err) {
         tenant.knowledgeBase = tenant.knowledgeBase.filter((kb: any) => kb.id !== documentId);
         tenant.knowledgeBase.push({
